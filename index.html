@@ -158,7 +158,8 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 #layers{width:300px}
 .bases{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .bases button{border:2px solid var(--line);border-radius:12px;background:#fff;padding:0 0 6px;font-size:12px;font-weight:600;overflow:hidden}
-.bases button i{display:block;height:46px;margin-bottom:5px}
+.bases button i{display:block;height:58px;margin-bottom:5px;position:relative;overflow:hidden}
+.bases button i img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .bases button.on{border-color:var(--green)}
 #toolbar{position:absolute;z-index:6;bottom:22px;left:calc(200px + 50%);transform:translateX(-50%);transition:left .25s ease;display:flex;gap:10px;background:var(--pill);border-radius:999px;padding:9px 12px;box-shadow:0 6px 24px rgba(0,0,0,.3)}
 #toolbar button{width:50px;height:50px;border-radius:50%;border:0;background:#2a2a2a;color:#fff;display:flex;align-items:center;justify-content:center;position:relative}
@@ -2639,27 +2640,30 @@ function previewRoute(coords) {
 function stopPreview() { if (previewing) { previewing = false; toast(null); } }
 
 // ================= Layers panel =================
+// A real sample of each base map: one tile over the Tetons (hidden if it cannot load, leaving the color swatch)
+function baseThumb(b) {
+  if (!b.tiles) return '';
+  const z = 11, u = b.tiles[0].replace('{z}', z).replace('{x}', lon2x(-110.80, z)).replace('{y}', lat2y(43.76, z));
+  return `<img src="${u}" alt="" loading="lazy" onerror="this.remove()">`;
+}
+const layersOpen = {};
+function layersSec(key, title, body, open) { return `<details class="set" data-lsec="${key}" ${(layersOpen[key] ?? open) ? 'open' : ''}><summary>${title}</summary>${body}</details>`; }
 function renderLayers() {
   const s = data.settings, toggles = [['trails', 'Trails'], ['places', 'Peaks, passes, waterfalls'], ['lakes', 'Lakes'], ['tracks', 'My hikes'], ['routes', 'My routes'], ['pins', 'Pins'], ['areas', 'Areas I drew'], ['labels', 'Labels'], ['contours', 'Contour lines (Outdoor map)'], ['hillshade', 'Hillshade'], ['heat', 'Heatmap'], ['recency', 'Color peaks & lakes by last visit (off by default)'], ['boundary', 'Grand Teton NP boundary (dashed)']];
   $('layers').innerHTML = `<h3 class="sec" style="margin-top:0">Map type</h3>
-    <div class="bases">${Object.entries(BASES).map(([k, b]) => `<button data-base="${k}" class="${(s.base || 'topo') === k ? 'on' : ''}"><i style="background:${b.sw}"></i>${b.label}</button>`).join('')}</div>
-    <h3 class="sec">Show</h3>
-    ${toggles.map(([k, l]) => `<label class="toggle"><input type="checkbox" data-layer="${k}" ${layerOn(k) ? 'checked' : ''}> ${l}</label>`).join('')}
-    <h3 class="sec">Heatmap & filters</h3>
-    <select id="heatMode"><option value="both">Heatmap: hikes + places</option><option value="tracks">Heatmap: hikes only</option><option value="places">Heatmap: places only</option></select>
-    ${filterSelects()}
-    <h3 class="sec">3D</h3>
-    <label class="toggle"><input type="checkbox" id="l3d" ${s.terrain ? 'checked' : ''}> 3D terrain</label>
+    <div class="bases">${Object.entries(BASES).map(([k, b]) => `<button data-base="${k}" class="${(s.base || 'topo') === k ? 'on' : ''}"><i style="background:${b.sw}">${baseThumb(b)}</i>${b.label}</button>`).join('')}</div>
+    ${layersSec('show', 'Show on map', toggles.map(([k, l]) => `<label class="toggle"><input type="checkbox" data-layer="${k}" ${layerOn(k) ? 'checked' : ''}> ${l}</label>`).join(''), true)}
+    ${layersSec('heat', 'Heatmap & filters', `<select id="heatMode"><option value="both">Heatmap: hikes + places</option><option value="tracks">Heatmap: hikes only</option><option value="places">Heatmap: places only</option></select>${filterSelects()}`, false)}
+    ${layersSec('3d', '3D', `<label class="toggle"><input type="checkbox" id="l3d" ${s.terrain ? 'checked' : ''}> 3D terrain</label>
     <label class="f">Terrain exaggeration: <b id="exagV">${(+(s.exag || 1.5)).toFixed(1)}×</b></label><input type="range" id="exag" min="1" max="3" step="0.1" value="${s.exag || 1.5}" style="padding:0">
-    <label class="f">Rotate view: <b id="bearV">${Math.round(map.getBearing())}°</b></label><input type="range" id="bearing" min="-180" max="180" step="1" value="${Math.round(map.getBearing())}" style="padding:0">
-    <h3 class="sec">Legend</h3>
-    <div class="small" style="line-height:1.9">
+    <label class="f">Rotate view: <b id="bearV">${Math.round(map.getBearing())}°</b></label><input type="range" id="bearing" min="-180" max="180" step="1" value="${Math.round(map.getBearing())}" style="padding:0">`, false)}
+    ${layersSec('legend', 'Legend', `<div class="small" style="line-height:1.9">
       <span style="color:#d9480f">┅</span> trail · <span style="color:#82c91e">━</span> partly hiked · <span style="color:#2bb24c">━</span> hiked<br>
       <span style="color:#1e88e5">━</span> Garmin hike · <span style="color:#8e24aa">┅</span> drawn hike<br>
       <span style="color:#fbc02d">┅</span> planned hike · <span style="color:#e65100">┈</span> waiting for approval<br>
       ▲ white = not yet · <span style="color:#d62828">▲</span> summited · <span style="color:#f77f00">▲</span> seen · ◆ pass · ● waterfall<br>
       <span style="color:#558b2f">▭</span> area you drew · <span style="color:#1e88e5">◯</span> peak list on map<br>
-      Recency (when on): <span style="color:#2bb24c">●</span> within a year · <span style="color:#fbc02d">●</span> 1–3 years · <span style="color:#f57c00">●</span> over 3 years · <span style="color:#90a4ae">●</span> never been</div>`;
+      Recency (when on): <span style="color:#2bb24c">●</span> within a year · <span style="color:#fbc02d">●</span> 1–3 years · <span style="color:#f57c00">●</span> over 3 years · <span style="color:#90a4ae">●</span> never been</div>`, false)}`;
   $('heatMode').value = s.heatMode || 'both';
 }
 
@@ -2882,7 +2886,8 @@ document.querySelectorAll('#toolbar [data-mode]').forEach(b => b.addEventListene
 $('btn3d').addEventListener('click', () => { set3D(!data.settings.terrain); touch({ noRender: true }); if (!$('layers').hidden) renderLayers(); });
 $('menuBtn').addEventListener('click', e => { e.stopPropagation(); $('layers').hidden = true; $('menu').hidden = !$('menu').hidden; });
 $('layersBtn').addEventListener('click', e => { e.stopPropagation(); $('menu').hidden = true; const L = $('layers'); L.hidden = !L.hidden; if (!L.hidden) renderLayers(); });
-document.addEventListener('click', e => { if (!e.target.closest('#menu,#menuBtn')) $('menu').hidden = true; if (!e.target.closest('#layers,#layersBtn')) $('layers').hidden = true; });
+document.addEventListener('click', e => { if (!e.target.isConnected) return;   // the click re-drew its own panel: not an outside click
+  if (!e.target.closest('#menu,#menuBtn')) $('menu').hidden = true; if (!e.target.closest('#layers,#layersBtn')) $('layers').hidden = true; });
 $('menu').addEventListener('click', e => {
   const b = e.target.closest('[data-menu]'); if (!b) return;
   $('menu').hidden = true;
@@ -2975,6 +2980,7 @@ $('layers').addEventListener('input', e => {
   if (e.target.id === 'exag') { data.settings.exag = +e.target.value; $('exagV').textContent = (+e.target.value).toFixed(1) + '×'; if (data.settings.terrain) map.setTerrain({ source: 'dem', exaggeration: +e.target.value }); }
   if (e.target.id === 'bearing') { $('bearV').textContent = e.target.value + '°'; map.setBearing(+e.target.value); }
 });
+$('layers').addEventListener('toggle', e => { const k = e.target.dataset && e.target.dataset.lsec; if (k) layersOpen[k] = e.target.open; }, true);
 $('layers').addEventListener('click', e => { const b = e.target.closest('[data-base]'); if (b) { setBase(b.dataset.base); renderLayers(); touch({ noRender: true }); } });
 $('gpxFile').addEventListener('change', async e => { const files = [...e.target.files]; e.target.value = ''; if (files.length) await importGPXFiles(files); });
 $('oldFile').addEventListener('change', async e => {
