@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Teton Atlas V10</title>
+<title>Teton Atlas V11</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#1f5e2c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Teton Atlas">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -165,34 +165,48 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 .maplibregl-ctrl-bottom-right{bottom:0}
 #toast .tact{margin-left:10px;border:0;border-radius:999px;background:var(--lime);color:#111;font-weight:700;padding:5px 12px}
 #toast .tx{display:inline-block;margin-left:8px;opacity:.7;font-size:16px;vertical-align:middle}
+details.set{border-top:1px solid var(--line);padding:0}
+details.set>summary,details.sub2>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 0;font-weight:700}
+details.sub2>summary{font-weight:600;font-size:13px;color:var(--muted);padding:8px 0}
+details>summary::-webkit-details-marker{display:none}
+details.set>summary::after,details.sub2>summary::after{content:'›';font-size:20px;color:var(--muted);transform:rotate(90deg);transition:transform .15s}
+details[open]>summary::after{transform:rotate(-90deg)}
+details.set>summary .sv{margin-left:auto;font-weight:400;font-size:12px;color:var(--muted);max-width:50%;text-align:right}
+details.set[open]{padding-bottom:6px}
+#topbar{display:none}
 @media (max-width:800px){
-  :root{--sheet:46vh;--sab:env(safe-area-inset-bottom,0px);--sat:env(safe-area-inset-top,0px)}
-  @supports (height:1dvh){:root{--sheet:46dvh}}
+  :root{--sab:env(safe-area-inset-bottom,0px);--sat:env(safe-area-inset-top,0px);--bar:calc(var(--sat) + 56px)}
   html,body{height:100%}
   @supports (height:1dvh){html,body{height:100dvh}}
-  #side{top:auto;bottom:0;width:100%;height:var(--sheet);border-right:0;border-top:1px solid var(--line);border-radius:18px 18px 0 0}
-  #map{left:0;bottom:var(--sheet);transition:bottom .25s ease}
-  #sideBody{padding-bottom:calc(120px + var(--sab))}
-  /* The tool bar sits well above the handle so it never covers the hide/show arrow */
-  #toolbar{left:50%;bottom:calc(var(--sheet) + 40px);gap:8px;padding:7px 9px}
-  #toolbar button{width:46px;height:46px}
-  .mapbtn{top:calc(12px + var(--sat))}
-  .pop{top:calc(66px + var(--sat));max-height:calc(100vh - 90px - var(--sat) - var(--sab))}
-  @supports (height:1dvh){.pop{max-height:calc(100dvh - 90px - var(--sat) - var(--sab))}}
-  #layers{width:min(300px,calc(100vw - 28px))}
-  #toast{left:50%;top:calc(68px + var(--sat));max-width:88vw;border-radius:18px}
-  /* Handle: a larger tap target that sits on the top edge of the sheet */
-  #collapseBtn{top:auto;left:50%;bottom:var(--sheet);transform:translateX(-50%);width:72px;height:30px;border:1px solid var(--line);border-bottom:0;border-radius:14px 14px 0 0;transition:bottom .25s ease;z-index:7}
-  #collapseBtn svg{transform:rotate(-90deg)}
+  /* Top bar: fills the area behind the status bar / dynamic island */
+  #topbar{display:flex;position:absolute;z-index:4;top:0;left:0;right:0;height:var(--bar);padding:var(--sat) 14px 0;align-items:center;gap:10px;background:var(--green);color:#fff}
+  #topbar svg{flex:none}
+  #topbar b{font-size:18px;letter-spacing:-.01em}
+  #topbar .chip-v{background:rgba(255,255,255,.18);color:#fff}
+  #map{left:0;top:var(--bar);bottom:0;transition:none}
+  /* The panel: closed = only a tab at the very bottom; open = the whole screen under the top bar */
+  #side{top:var(--bar);bottom:0;left:0;width:100%;height:auto;border:0;border-radius:0}
+  #side header{display:none}
+  .search{padding-top:30px}
+  #sideBody{padding-bottom:calc(60px + var(--sab))}
   body.collapsed #side{transform:translateY(100%)}
-  body.collapsed #map{left:0;bottom:0}
-  body.collapsed #collapseBtn{left:50%;bottom:var(--sab)}
+  #collapseBtn{top:var(--bar);bottom:auto;left:50%;transform:translateX(-50%);width:76px;height:28px;border:1px solid var(--line);border-top:0;border-radius:0 0 14px 14px;z-index:7;transition:none}
+  #collapseBtn svg{transform:rotate(-90deg)}
+  body.collapsed #collapseBtn{top:auto;bottom:0;border:1px solid var(--line);border-bottom:0;border-radius:14px 14px 0 0;left:50%}
   body.collapsed #collapseBtn svg{transform:rotate(90deg)}
-  body.collapsed #toolbar{bottom:calc(var(--sab) + 44px)}
-  /* 16px inputs stop iOS from zooming the page when a field is focused */
+  #toolbar{left:50%;bottom:calc(var(--sab) + 44px);gap:8px;padding:7px 9px}
+
+  body:not(.collapsed) #toast{display:none}
+  details.set>summary{padding:12px 0}
+  details.set>label.f:first-of-type,details.set>p:first-of-type{margin-top:0}
+  #toolbar button{width:46px;height:46px}
+  .mapbtn{top:calc(var(--sat) + 6px);z-index:6}
+  .pop{top:calc(var(--bar) + 6px);max-height:calc(100vh - var(--bar) - 20px - var(--sab))}
+  @supports (height:1dvh){.pop{max-height:calc(100dvh - var(--bar) - 20px - var(--sab))}}
+  #layers{width:min(300px,calc(100vw - 28px))}
+  #toast{left:50%;top:calc(var(--bar) + 10px);max-width:88vw;border-radius:18px}
   input,select,textarea{font-size:16px}
   nav.tabs button{padding:12px 10px 13px}
-  #side header{padding-top:12px}
 }
 /* V6: drag to reorder, filter panel, recency legend */
 .dragrow{border-radius:14px;transition:outline-color .1s}
@@ -204,10 +218,14 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 </style>
 </head>
 <body>
+<div id="topbar">
+  <svg width="30" height="30" viewBox="0 0 34 34"><rect width="34" height="34" rx="9" fill="#fff" fill-opacity=".14"/><path d="M4 26 L13 12 L16 16 L20 7 L30 26 Z" fill="#fff"/><path d="M20 7 L17.5 12 L19.5 11 L21.5 13 Z" fill="#aef07f"/></svg>
+  <b>Teton Atlas</b><span class="chip-v">V11</span>
+</div>
 <aside id="side">
   <header>
     <svg width="34" height="34" viewBox="0 0 34 34"><rect width="34" height="34" rx="9" fill="#1f5e2c"/><path d="M4 26 L13 12 L16 16 L20 7 L30 26 Z" fill="#fff"/><path d="M20 7 L17.5 12 L19.5 11 L21.5 13 Z" fill="#aef07f"/></svg>
-    <h1>Teton Atlas</h1><span class="chip-v">V10</span>
+    <h1>Teton Atlas</h1><span class="chip-v">V11</span>
   </header>
   <div class="search">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b6f6b" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
@@ -272,7 +290,7 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V10';
+const APP_VERSION = 'V11';
 const BBOX = { s: 43.40, w: -111.25, n: 44.15, e: -110.50 }; // whole Teton Range, WY + ID sides
 const OVERPASS_URLS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
@@ -372,7 +390,12 @@ const VERSIONS = [
   { name: 'Teton Atlas V10', date: '2026-11-16', notes: [
     'Sync between devices: Settings → Sync between devices. Your trips, pins, ideas, notes and photos are kept in a private GitHub repo and stay the same on iPhone and computer.',
     'Changes upload a few seconds after you make them, and are fetched when you open or return to the app. Edits made offline upload when you reconnect.',
-    'Your access token stays in each device\'s browser only; it is never in the app file or in backups.'] }
+    'Your access token stays in each device\'s browser only; it is never in the app file or in backups.'] },
+  { name: 'Teton Atlas V11', date: '2026-11-16', notes: [
+    'Settings are grouped into collapsible sections (Hiking, Photos, Sync, Map data).',
+    'iPhone: a green header fills the area behind the status bar and dynamic island.',
+    'iPhone: the panel tab sits at the very bottom, and the panel opens full screen.',
+    'Map credits are tucked behind the (i) button.'] }
 ];
 
 // ================= State =================
@@ -1965,31 +1988,39 @@ function pageHistory() {
   return `${backBtn()}<div class="d-title">Version history</div><div class="d-sub">Every version we've built together.</div>
     ${VERSIONS.slice().reverse().map(v => `<div class="visit" style="align-items:flex-start"><div class="tx"><b>${esc(v.name)}</b> <span class="muted small">${fmtDate(v.date)}</span><ul class="history small">${v.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></div></div>`).join('')}`;
 }
+function setOpen(k, dflt) { view.setOpen = view.setOpen || {}; return (view.setOpen[k] === undefined ? dflt : view.setOpen[k]) ? 'open' : ''; }
 function pageSettings() {
-  const s = data.settings;
+  const s = data.settings, on = syncOn();
+  const fld = (id, label, val, extra) => `<label class="f">${label}</label><input id="${id}" autocapitalize="none" autocorrect="off" value="${esc(val)}" ${extra || ''}>`;
   return `${backBtn()}<div class="d-title">Settings</div>
-    <label class="f">Hiking pace on flat ground (mph), used for time estimates</label><input type="number" id="sPace" min="0.5" max="5" step="0.1" value="${s.pace}">
-    <label class="toggle"><input type="checkbox" id="sSnap" ${s.snap !== false ? 'checked' : ''}> Route builder follows trails by default</label>
-    <h2 class="sec">Photos</h2>
-    <label class="f">Photo size (longest side, pixels). Smaller photos keep the file lighter.</label>
-    <select id="sPhoto">${[800, 1200, 1600].map(px => `<option value="${px}" ${(s.photoMax || 1200) === px ? 'selected' : ''}>${px} px${px === 1200 ? ' (standard)' : px === 800 ? ' (smallest file)' : ' (sharpest)'}</option>`).join('')}</select>
-    <p class="muted small">${photoSummary()}</p>
-    <div class="row"><button class="btn" data-act="recompressPhotos">Shrink existing photos to this size</button></div>
-    <div class="row"><button class="btn primary" data-act="saveSettings">Save settings</button></div>
-    <h2 class="sec">Sync between devices</h2>
-    <p class="muted small">Keeps your trips, pins, ideas, notes and photos the same on every device, through a private GitHub repository. Set it up once per device.</p>
-    <p class="small" id="syncLine"><b>${esc(sync.msg || syncIdle())}</b></p>
-    <label class="f">GitHub username</label><input id="syOwner" autocapitalize="none" autocorrect="off" value="${esc((sync.cfg && sync.cfg.owner) || 'mackayoakey')}">
-    <label class="f">Private data repository</label><input id="syRepo" autocapitalize="none" autocorrect="off" value="${esc((sync.cfg && sync.cfg.repo) || 'teton-atlas-data')}">
-    <label class="f">Folder in the repo</label><input id="syDir" autocapitalize="none" autocorrect="off" value="${esc((sync.cfg && sync.cfg.dir) || 'data')}">
-    <label class="f">Branch</label><input id="syBranch" autocapitalize="none" autocorrect="off" value="${esc((sync.cfg && sync.cfg.branch) || 'main')}">
-    <label class="f">Access token ${sync.cfg && sync.cfg.token ? '(saved on this device; leave blank to keep it)' : '(starts with github_pat_)'}</label><input id="syToken" type="password" autocapitalize="none" autocorrect="off" autocomplete="off" placeholder="${sync.cfg && sync.cfg.token ? '••••••••' : 'github_pat_…'}">
-    <div class="row"><button class="btn primary" data-act="syncSave">Save and sync</button>${syncOn() ? '<button class="btn" data-act="syncNow">Sync now</button><button class="btn" data-act="syncOff">Disconnect this device</button>' : ''}</div>
-    <h2 class="sec">Map data</h2>
-    <p class="muted small">${FEATS.length ? `${FEATS.length.toLocaleString()} features, downloaded ${data.osm && data.osm.fetchedAt ? new Date(data.osm.fetchedAt).toLocaleString() : ''}.` : 'Not downloaded yet.'} Data © OpenStreetMap contributors (ODbL).</p>
-    <p class="muted small">${data.parkOutline ? 'Grand Teton NP outline is loaded.' : 'Grand Teton NP outline is not loaded yet. The boundary shows the rectangle until it is.'}</p>
-    <div class="row"><button class="btn" data-act="fetchAll">Re-download whole range</button><button class="btn" data-act="fetchView">Add this map view</button></div>
-    <div class="row"><button class="btn" data-act="parkOutline">Load Grand Teton NP outline</button></div>`;
+    <details class="set" data-k="general" ${setOpen('general', true)}><summary>Hiking</summary>
+      <label class="f">Flat-ground pace (mph), used for time estimates</label><input type="number" id="sPace" min="0.5" max="5" step="0.1" value="${s.pace}">
+      <label class="toggle"><input type="checkbox" id="sSnap" ${s.snap !== false ? 'checked' : ''}> Route builder follows trails by default</label>
+    </details>
+    <details class="set" data-k="photos" ${setOpen('photos', false)}><summary>Photos</summary>
+      <label class="f">Photo size (longest side)</label>
+      <select id="sPhoto">${[800, 1200, 1600].map(px => `<option value="${px}" ${(s.photoMax || 1200) === px ? 'selected' : ''}>${px} px${px === 1200 ? ' (standard)' : px === 800 ? ' (smallest)' : ' (sharpest)'}</option>`).join('')}</select>
+      <p class="muted small">${photoSummary()}</p>
+      <div class="row"><button class="btn" data-act="recompressPhotos">Shrink existing photos</button></div>
+    </details>
+    <details class="set" data-k="sync" ${setOpen('sync', !on)}><summary>Sync between devices<span class="sv" id="syncLine">${esc(sync.msg || syncIdle())}</span></summary>
+      <p class="muted small">Keeps trips, pins, ideas, notes and photos the same on every device through a private GitHub repo.</p>
+      ${on ? `<div class="row"><button class="btn primary" data-act="syncNow">Sync now</button><button class="btn" data-act="syncOff">Disconnect</button></div>` : ''}
+      <details class="sub2" ${on ? '' : 'open'}><summary>${on ? 'Connection details' : 'Connect this device'}</summary>
+        ${fld('syOwner', 'GitHub username', (sync.cfg && sync.cfg.owner) || 'mackayoakey')}
+        ${fld('syRepo', 'Private data repository', (sync.cfg && sync.cfg.repo) || 'teton-atlas-data')}
+        ${fld('syDir', 'Folder', (sync.cfg && sync.cfg.dir) || 'data')}
+        ${fld('syBranch', 'Branch', (sync.cfg && sync.cfg.branch) || 'main')}
+        <label class="f">Access token ${on ? '(saved here; leave blank to keep)' : ''}</label><input id="syToken" type="password" autocapitalize="none" autocorrect="off" autocomplete="off" placeholder="${on ? '••••••••' : 'github_pat_…'}">
+        <div class="row"><button class="btn ${on ? '' : 'primary'}" data-act="syncSave">Save and sync</button></div>
+      </details>
+    </details>
+    <details class="set" data-k="map" ${setOpen('map', false)}><summary>Map data<span class="sv">${FEATS.length ? FEATS.length.toLocaleString() + ' features' : 'Not downloaded'}</span></summary>
+      <p class="muted small">${FEATS.length && data.osm && data.osm.fetchedAt ? 'Downloaded ' + new Date(data.osm.fetchedAt).toLocaleDateString() + '. ' : ''}${data.parkOutline ? 'Park outline loaded.' : 'Park outline not loaded yet.'}</p>
+      <div class="row"><button class="btn" data-act="fetchAll">Re-download range</button><button class="btn" data-act="fetchView">Add this view</button><button class="btn" data-act="parkOutline">Park outline</button></div>
+    </details>
+    <div class="row" style="margin-top:18px"><button class="btn primary" data-act="saveSettings">Save settings</button></div>
+    <p class="muted small" style="margin-top:14px">Map data © OpenStreetMap contributors (ODbL). Base maps: OpenFreeMap, OpenTopoMap, USGS, Esri.</p>`;
 }
 function pageHelp() {
   return `${backBtn()}<div class="d-title">How to use Teton Atlas</div>
@@ -2370,6 +2401,7 @@ document.addEventListener('keydown', e => {
 });
 window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
+document.addEventListener('toggle', e => { const d = e.target; if (d && d.dataset && d.dataset.k) { view.setOpen = view.setOpen || {}; view.setOpen[d.dataset.k] = d.open; } }, true);
 // Page zoom (double-tap, pinch) only happens on the map itself
 ['gesturestart', 'gesturechange'].forEach(ev => document.addEventListener(ev, e => { if (!e.target.closest || !e.target.closest('#map')) e.preventDefault(); }));
 // ================= Collapsible side panel =================
@@ -2609,7 +2641,10 @@ function initMap() {
     try { updateSources(); } catch (e) { console.error(e); }
   };
   map.on('style.load', startOverlays);
+  const closeAttrib = () => { const c = document.querySelector('.maplibregl-ctrl-attrib'); if (c) { c.classList.remove('maplibregl-compact-show'); c.removeAttribute('open'); } };
+  setTimeout(closeAttrib, 300); setTimeout(closeAttrib, 1500);
   map.on('load', () => {
+    closeAttrib();
     startOverlays();
     try { addContours(); applyLayerVisibility(); } catch (e) { console.warn('Contours unavailable', e); }
   });
@@ -2664,6 +2699,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
   indexFeatures();
   if (window.maplibregl) initMap(); else toast('The map engine could not load. Connect to the internet and reload.', 0);
   if (!data.parkOutline && FEATS.length && navigator.onLine) fetchParkOutline(true).catch(() => { /* Overpass unreachable: the rectangle stays until loaded */ });
+  if (data.settings.collapsed === undefined && window.matchMedia('(max-width:800px)').matches) data.settings.collapsed = true;
   if (data.settings.collapsed) setCollapsed(true);
   updateSaveState(); renderSide();
   if (syncOn()) { syncStatus(syncIdle()); syncNow(); }
