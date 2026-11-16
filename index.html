@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Teton Atlas V5</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="theme-color" content="#1f5e2c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Teton Atlas">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/maplibre-contour@0.1.1/dist/index.min.js"></script>
@@ -31,6 +37,12 @@ body.collapsed #toolbar,body.collapsed #toast{left:50%}
 .photos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
 .ph{position:relative}
 .ph img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;display:block}
+@media print{
+  #map,#toolbar,#menu,#layers,#menuBtn,#layersBtn,#collapseBtn,#toast,nav.tabs,.search,#side header,.actions,.back,.btn,.x,.ph-x,.chips,.photos,.stats .muted{display:none!important}
+  #side{position:static!important;width:auto!important;height:auto!important;border:0!important;transform:none!important;display:block!important;background:#fff}
+  html,body{height:auto!important;overflow:visible!important;background:#fff}
+  #sideBody{overflow:visible!important;padding:0!important}
+}
 .ph-x{position:absolute;top:4px;right:4px;width:26px;height:26px;border:0;border-radius:50%;background:rgba(255,255,255,.9);box-shadow:0 1px 4px rgba(0,0,0,.25);font-size:16px;line-height:1;padding:0}
 #menu .mh{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:6px 12px 2px}
 #side header{display:flex;align-items:center;gap:10px;padding:16px 20px 8px}
@@ -201,6 +213,7 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
   <button data-menu="ideas"><span>💡</span><span>Ideas (Sooner &amp; Later)</span></button>
   <button data-menu="exportJson"><span>📤</span><span>Export full backup (JSON)<span class="sub">Includes photos, ideas and ratings</span></span></button>
   <button data-menu="pngMap"><span>🖼️</span><span>Export map view (PNG)</span></button>
+  <button data-menu="printPdf"><span>🖨️</span><span>Stats &amp; checklist as PDF<span class="sub">Opens the print dialog; choose "Save as PDF"</span></span></button>
   <button data-menu="settings"><span>⚙️</span><span>Settings</span></button>
   <button data-menu="history"><span>🕘</span><span>Version history</span></button>
   <button data-menu="help"><span>❔</span><span>How to use</span></button>
@@ -289,7 +302,13 @@ const VERSIONS = [
     'Photos can be attached to peaks, places, hikes and pins. They are saved in the file, so they travel with your data in backups.',
     'Range checklist on Stats: named peaks, lakes and camp sites, with how many you have done.',
     'Range boundary layer (Layers → Show), a rotate control for 3D, a YDS rating for peaks, and a PNG export of the map view.',
-    'Full backup (JSON) now includes photos, ideas and ratings.'] }
+    'Full backup (JSON) now includes photos, ideas and ratings.',
+    'Approval queue: hikes imported from Garmin or GPX wait in Pending review until you approve them. Approved hikes count toward the map, stats and place visits.',
+    'Planned trips are listed on Activity by date, and kept out of stats.',
+    'Camps and nights on each hike: list the camps you used, or add a camp at the end of the hike. Multi-day hikes show a reminder if camps are missing.',
+    'Summit routes: each peak can list several ways up, each with its own YDS rating.',
+    'Print or save as PDF: Stats and the range checklist from the menu.',
+    'Installable on iPhone and desktop (Add to Home Screen). The app opens offline; map tiles still need a connection.'] }
 ];
 
 // ================= State =================
@@ -315,7 +334,14 @@ function normalize(d) {
     if (!PIN_TYPES[p.type]) p.type = ({ peak: 'summit', viewpoint: 'view' })[p.type] || (p.type === 'lake' || p.type === 'camp' || p.type === 'trailhead' ? p.type : 'other');
     if (!p.status) p.status = 'been';
   }
-  for (const t of d.tracks) { if (!t.notes) t.notes = ''; for (const s of t.segments || []) s.pts = s.pts || []; }
+  for (const t of d.tracks) {
+    if (!t.notes) t.notes = '';
+    for (const s of t.segments || []) s.pts = s.pts || [];
+    if (t.approved === undefined) t.approved = true; // hikes from before V5 were already counted
+    if (!Array.isArray(t.camps)) t.camps = [];
+    if (!t.nights) t.nights = 0;
+  }
+  for (const [id, v] of Object.entries(d.yds)) if (!Array.isArray(v)) d.yds[id] = v ? [{ name: '', yds: String(v) }] : [];
   d.settings = Object.assign({ pace: 2.0, base: 'outdoor' }, d.settings);
   if (!d.settings.v4) { d.settings.v4 = true; d.settings.base = 'outdoor'; }
   if (!d.editedAt) d.editedAt = d.savedAt || 0;
@@ -801,11 +827,12 @@ async function importGPXFiles(files) {
     for (const t of parseGPX(await f.text(), f.name)) {
       const n = t.segments.reduce((a, s) => a + s.pts.length, 0);
       if (data.tracks.some(o => o.name === t.name && o.date === t.date && o.segments.reduce((a, s) => a + s.pts.length, 0) === n)) { dup++; continue; }
-      data.tracks.push(t); places += matchTrack(t).length; added++; lastId = t.id;
+      // Imports wait in Pending review; places are matched and stats counted once you approve them
+      t.approved = false; data.tracks.push(t); added++; lastId = t.id;
     }
   }
   if (added) { touch(); if (added === 1) openDetail({ type: 'track', id: lastId }); else setTab('activity'); }
-  toast(added ? `Imported ${added} hike${added > 1 ? 's' : ''}${places ? `, matched ${places} places` : ''}${dup ? ` (${dup} duplicate skipped)` : ''}.` : (dup ? 'Already imported.' : 'No tracks found in that file.'));
+  toast(added ? `Imported ${added} hike${added > 1 ? 's' : ''}${dup ? ` (${dup} duplicate skipped)` : ''}. Approve ${added > 1 ? 'them' : 'it'} in Activity to count ${added > 1 ? 'them' : 'it'}.` : (dup ? 'Already imported.' : 'No tracks found in that file.'), 8000);
 }
 
 // ================= Track helpers =================
@@ -821,6 +848,18 @@ function tripMeta(t) {
   return { num: i >= 0 ? i + 1 : null, tag: t.segments.some(s => s.src === 'garmin') ? 'GPS' : 'Manual' };
 }
 function tripLabel(t) { if (t.planned) return 'Planned'; const m = tripMeta(t); return `Trip #${m.num} · ${m.tag}`; }
+function approveTrack(t) { t.approved = true; const n = matchTrack(t).length; touch(); toast(`Approved${n ? `, matched ${n} places` : ''}.`); }
+function campsHTML(t) {
+  const used = (t.camps || []).map(findPin).filter(Boolean);
+  const camps = data.pins.filter(p => p.type === 'camp' && !used.includes(p));
+  const nights = t.nights || 0;
+  return `<h2 class="sec">Camps and nights <span class="small muted">${used.length}</span></h2>
+    ${used.map(p => `<div class="visit"><span>⛺</span><div class="tx"><b>${esc(p.name || 'Camp')}</b></div><button class="x" data-act="unCamp" data-pid="${p.id}" title="Remove from this trip">×</button></div>`).join('') || '<div class="empty small">No camps listed for this trip.</div>'}
+    <label class="f">Nights out</label><input type="number" id="tNights" min="0" max="60" value="${nights}">
+    ${nights > used.length ? `<div class="small" style="color:#b45309;margin-top:6px">Multi-day trip: ${nights} night${nights > 1 ? 's' : ''} but ${used.length} camp${used.length === 1 ? '' : 's'} listed. Add where you slept.</div>` : ''}
+    <div class="row"><select id="tCampPick" style="flex:1"><option value="">Add an existing camp…</option>${camps.map(p => `<option value="${p.id}">${esc(p.name || 'Camp')}</option>`).join('')}</select><button class="btn" data-act="addCamp">Add</button></div>
+    <div class="row"><button class="btn" data-act="newCamp">＋ New camp at the end of this trip</button></div>`;
+}
 // Photos: shrink to about 1200 px JPEG so the saved file stays a sensible size
 function shrinkImage(file) {
   return new Promise((resolve, reject) => {
@@ -1072,7 +1111,7 @@ function updateSources() {
   const sel = view.detail || {};
   const trackF = [], heatF = [], hm = data.settings.heatMode || 'both';
   for (const t of data.tracks) {
-    if (!inFilter(t.date)) continue;
+    if (!inFilter(t.date) || t.approved === false || t.planned) continue; // only approved, taken hikes reach the map and heatmap
     t.segments.forEach((s, si) => {
       if (s.pts.length < 2) return;
       trackF.push({ type: 'Feature', properties: { tid: t.id, si, src: s.src, sel: sel.type === 'track' && sel.id === t.id }, geometry: { type: 'LineString', coordinates: s.pts.map(p => [p[0], p[1]]) } });
@@ -1496,9 +1535,24 @@ function pageRoutes() {
     <h2 class="sec">My routes <span class="small muted">${list.length}</span></h2>
     ${list.map(r => { const s = r.stats || {}; return cardHTML({ title: r.name, icon: '🧭', color: r.color, sub: `${fmtMi(s.len || 0)} mi · ${fmtFt(s.gain || 0)} ft gain · ${s.days || 1} day${(s.days || 1) > 1 ? 's' : ''}`, open: { type: 'route', id: r.id } }); }).join('') || '<div class="empty">No routes yet.</div>'}`;
 }
+// Activity: pending review and planned trips sit above the taken hikes
 function pageActivity() {
-  const list = data.tracks.filter(t => inFilter(t.date)).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  let html = `<button class="btn" style="width:100%;margin:16px 0 4px;padding:12px" data-act="drawHike">✏️ Draw a hike on the map</button>`;
+  const all = data.tracks.filter(t => inFilter(t.date));
+  const pending = all.filter(t => t.approved === false).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const planned = all.filter(t => t.planned).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  let extra = '';
+  if (pending.length) extra += `<h2 class="sec">Pending review <span class="small muted">${pending.length}</span></h2>
+    <div class="small muted">Imported hikes count toward your map and stats only after you approve them.</div>
+    <div class="row"><button class="btn primary" data-act="approveAll">Approve all</button></div>
+    ${pending.map(t => { const st = lineStats(trackLine(t)); return cardHTML({ title: t.name, icon: '⌚', sub: `${fmtDate(t.date)} · ${fmtMi(st.len)} mi · ${fmtFt(st.gain)} ft · waiting`, open: { type: 'track', id: t.id } }); }).join('')}`;
+  if (planned.length) extra += `<h2 class="sec">Planned trips <span class="small muted">${planned.length}</span></h2>
+    ${planned.map(t => cardHTML({ title: t.name, icon: '🗓️', sub: `${t.date ? fmtDate(t.date) : 'No date yet'}${t.trip ? ' · ' + esc(t.trip) : ''}`, open: { type: 'track', id: t.id } })).join('')}`;
+  return pageActivityList(extra);
+}
+function pageActivityList(extra) {
+  const list = data.tracks.filter(t => inFilter(t.date) && t.approved !== false && !t.planned).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  let html = `<button class="btn" style="width:100%;margin:16px 0 4px;padding:12px" data-act="drawHike">✏️ Draw a hike on the map</button>${extra || ''}`;
+  if (list.length) html += `<h2 class="sec">Taken hikes <span class="small muted">${list.length}</span></h2>`;
   let yr = null;
   for (const t of list) {
     const y = (t.date || '').slice(0, 4);
@@ -1515,7 +1569,7 @@ function filterSelects() {
     <select data-filter="season" style="flex:1">${[['all', 'All seasons'], ['spring', 'Spring'], ['summer', 'Summer'], ['fall', 'Fall'], ['winter', 'Winter']].map(([k, l]) => `<option value="${k}" ${filter.season === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`;
 }
 function pageStats() {
-  const tracks = data.tracks.filter(t => inFilter(t.date) && !t.planned);
+  const tracks = data.tracks.filter(t => inFilter(t.date) && !t.planned && t.approved !== false);
   let miles = 0, gain = 0; const byYear = {};
   for (const t of tracks) { const st = lineStats(trackLine(t)); miles += st.len; gain += st.gain; const y = (t.date || '').slice(0, 4); byYear[y] = (byYear[y] || 0) + st.len; }
   const kinds = k => FEATS.filter(f => f.kind === k);
@@ -1541,7 +1595,7 @@ function pageStats() {
       <div class="tile"><b>${been(namedPeaks)}<small class="muted" style="font-size:14px"> / ${namedPeaks.length}</small></b><span>named peaks done</span></div>
       <div class="tile"><b>${been(lakes.filter(f => nameOf(f)))}<small class="muted" style="font-size:14px"> / ${lakes.filter(f => nameOf(f)).length}</small></b><span>named lakes done</span></div>
       <div class="tile"><b>${data.pins.filter(p => p.type === 'camp' && p.status === 'been').length}<small class="muted" style="font-size:14px"> / ${data.pins.filter(p => p.type === 'camp').length}</small></b><span>camp sites done (your pins)</span></div>
-      <div class="tile"><b>${Object.keys(data.yds).length}</b><span>peaks with a YDS rating</span></div>
+      <div class="tile"><b>${Object.values(data.yds).filter(l => l.some(r => r.yds)).length}</b><span>peaks with a YDS rating</span></div>
     </div>
     <h2 class="sec">Miles by year</h2>
     ${years.map(y => `<div class="yr"><span>${y || '—'}</span><div class="bar"><i style="width:${(byYear[y] / max * 100).toFixed(1)}%"></i></div><span>${(byYear[y] / M_PER_MI).toFixed(1)} mi</span></div>`).join('') || '<div class="empty">No hikes in this period.</div>'}
@@ -1571,6 +1625,15 @@ function visitsHTML(id) {
     ${list.map(v => { const t = v.trackId && findTrack(v.trackId); return `<div class="visit"><span class="badge ${v.status}">${v.status === 'been' ? 'Been' : 'Seen'}</span><div class="tx"><b>${fmtDate(v.date)}</b>${t ? ` · <a href="#" data-open='${esc(JSON.stringify({ type: 'track', id: t.id }))}'>${esc(t.name)}</a>` : ''}${v.note ? `<div class="small muted">${esc(v.note)}</div>` : ''}</div>${v.src === 'log' ? `<button class="x" data-act="delVisit" data-vid="${v.vid}" title="Remove">×</button>` : ''}</div>`; }).join('') || '<div class="empty small">No visits logged yet.</div>'}
     <div class="row"><input type="date" id="vDate" value="${today()}" style="flex:1"><select id="vStatus" style="flex:1"><option value="been">Been here</option><option value="seen">Seen it</option></select></div>
     <input id="vNote" placeholder="Note (optional)"><div class="row"><button class="btn primary" data-act="addVisit">Add visit</button></div>`;
+}
+const YDS_OPTIONS = ['Class 2', 'Class 3', 'Class 4', 'Class 5.0', 'Class 5.4', 'Class 5.7', 'Class 5.9', 'Class 5.10'];
+function summitRoutesHTML(id) {
+  const list = data.yds[id] || [];
+  return `<h2 class="sec">Summit routes <span class="small muted">${list.length}</span></h2>
+    ${list.map((r, i) => `<div class="visit"><div class="tx"><b>${esc(r.name || 'Route ' + (i + 1))}</b> <span class="muted small">${esc(r.yds || 'no YDS rating')}</span></div><button class="x" data-act="delSummitRoute" data-i="${i}" title="Remove">×</button></div>`).join('') || '<div class="empty small">No summit routes yet. Add one per way up, each with its own YDS rating.</div>'}
+    <div class="row"><input id="srName" placeholder="Route name, e.g. Exum Ridge" style="flex:1"><input id="srYds" list="ydsList" placeholder="YDS, e.g. Class 3" style="flex:1"></div>
+    <div class="row"><button class="btn" data-act="addSummitRoute">Add summit route</button></div>
+    <datalist id="ydsList">${YDS_OPTIONS.map(o => `<option>${o}</option>`).join('')}</datalist>`;
 }
 function pageFeature(d) {
   const grp = isGroup(d.id) ? GROUPS[d.id] : null, f = grp ? null : FEAT[d.id];
@@ -1616,9 +1679,7 @@ function pageFeature(d) {
     </div>
     ${visitsHTML(d.id)}
     ${photosHTML(d.id)}
-    ${kind === 'peak' ? `<h2 class="sec">Difficulty (YDS)</h2>
-    <div class="row"><input id="fYds" list="ydsList" value="${esc(data.yds[d.id] || '')}" placeholder="e.g. Class 3, 5.4" style="flex:1"><button class="btn" data-act="saveYds">Save</button></div>
-    <datalist id="ydsList"><option>Class 2</option><option>Class 3</option><option>Class 4</option><option>Class 5.0</option><option>Class 5.4</option><option>Class 5.7</option><option>Class 5.9</option><option>Class 5.10</option></datalist>` : ''}
+    ${kind === 'peak' ? summitRoutesHTML(d.id) : ''}
     <h2 class="sec">Name</h2>
     <div class="row"><input id="fName" value="${esc(name)}" placeholder="Give this ${info.label.toLowerCase()} a name" style="flex:1"><button class="btn" data-act="saveName">Save</button></div>
     ${(grp ? grp.ways.some(w => data.names[w.id]) : data.names[f.id]) ? '<div class="small muted">Custom name. Clear the box and save to go back to the map name.</div>' : ''}`;
@@ -1661,6 +1722,7 @@ function pageTrack(d) {
   return `${backBtn()}
     <div class="d-title">${esc(t.name)}</div>
     <div class="d-sub">${fmtDate(t.date)} · ${tripLabel(t)}${t.trip ? ' · ' + esc(t.trip) : ''}</div>
+    ${t.approved === false ? `<div class="small" style="background:#fff4e5;border-radius:12px;padding:10px 12px;margin:8px 0">Waiting for your review. Its places and stats count after you approve it.</div><div class="row"><button class="btn primary" data-act="approveTrack">Approve hike</button><button class="btn danger" data-act="rejectTrack">Delete</button></div>` : ''}
     <div class="stats">${statHTML(fmtMi(len), 'mi', 'Length')}${statHTML(fmtFt(c.gain), 'ft', 'Elev. gain')}${dur ? statHTML(dur, '', 'Time') : statHTML(estTime(len, c.gain), 'hr', 'Est. time')}${statHTML(places.length, '', 'Places')}</div>
     ${chartHTML(prof, breaks)}
     <div class="actions">
@@ -1678,6 +1740,7 @@ function pageTrack(d) {
     <div class="row"><div style="flex:1"><label class="f">Date</label><input type="date" id="tDate" value="${esc(t.date)}"></div><div style="flex:1"><label class="f">Trip</label><input id="tTrip" value="${esc(t.trip || '')}" placeholder="e.g. Teton Crest 2026"></div></div>
     <label class="f">Notes</label><textarea id="tNotes" rows="3">${esc(t.notes || '')}</textarea>
     <label class="toggle"><input type="checkbox" id="tPlanned" ${t.planned ? 'checked' : ''}> Planned trip (not done yet, kept out of stats)</label>
+    ${campsHTML(t)}
     ${photosHTML(t.id)}
     <div class="row"><button class="btn primary" data-act="saveTrack">Save details</button></div>`;
 }
@@ -1897,11 +1960,25 @@ function onAction(act, el) {
     case 'split': setMode('split'); break;
     case 'unsplit': if (confirm('Undo the split? This removes the parts you drew and restores the full Garmin line.')) { unsplit(t); matchTrack(t); touch(); } break;
     case 'gpxTrack': download(t.name + '.gpx', toGPX(t.name, t.segments.filter(s => s.src !== 'ignored').map(s => s.pts)), 'application/gpx+xml'); break;
-    case 'rematch': { const n = matchTrack(t).length; touch(); toast(`Matched ${n} places.`); break; }
+    case 'rematch': { if (t.approved === false) { toast('Approve this hike first.'); break; } const n = matchTrack(t).length; touch(); toast(`Matched ${n} places.`); break; }
+    case 'approveTrack': approveTrack(t); break;
+    case 'approveAll': { const pend = data.tracks.filter(x => x.approved === false); pend.forEach(approveTrack); toast(`Approved ${pend.length} hike${pend.length === 1 ? '' : 's'}.`); break; }
+    case 'rejectTrack': if (confirm('Delete this imported hike? It is not counted anywhere.')) { data.tracks = data.tracks.filter(x => x !== t); touch({ noRender: true }); goBack(); } break;
     case 'delTrack': if (confirm('Delete this hike and the visits it logged?')) { data.tracks = data.tracks.filter(x => x !== t); matchTrack({ id: t.id, segments: [] }); touch({ noRender: true }); goBack(); } break;
+    case 'addCamp': { const pid = $('tCampPick').value; if (!pid) break; t.camps = [...(t.camps || []), pid]; touch(); break; }
+    case 'unCamp': t.camps = (t.camps || []).filter(x => x !== el.dataset.pid); touch(); break;
+    case 'newCamp': {
+      const last = trackLine(t).slice(-1)[0]; if (!last) { toast('This hike has no points to place a camp on.'); break; }
+      const p = { id: uid(), lon: +last[0].toFixed(6), lat: +last[1].toFixed(6), name: `Camp ${fmtDate(t.date)}`, type: 'camp', status: 'been', note: '', date: t.date, icon: '', color: '' };
+      data.pins.push(p); t.camps = [...(t.camps || []), p.id]; touch(); toast('Camp added at the end of the hike. Rename it under Pins if you like.', 6000); break;
+    }
     case 'addPhoto': $('photoFile').click(); break;
     case 'delPhoto': { const list = d.id && data.photos[d.id]; if (list) { list.splice(+el.dataset.idx, 1); if (!list.length) delete data.photos[d.id]; touch(); } break; }
-    case 'saveYds': { const v = $('fYds').value.trim(); if (v) data.yds[d.id] = v; else delete data.yds[d.id]; touch(); toast('Saved.'); break; }
+    case 'addSummitRoute': {
+      const name = $('srName').value.trim(), yds = $('srYds').value.trim(); if (!name && !yds) break;
+      (data.yds[d.id] = data.yds[d.id] || []).push({ name, yds }); touch(); break;
+    }
+    case 'delSummitRoute': { const l = data.yds[d.id]; if (l) { l.splice(+el.dataset.i, 1); if (!l.length) delete data.yds[d.id]; touch(); } break; }
     case 'ideaTab': view.ideaTab = el.dataset.tab; renderSide(); break;
     case 'ideaAdd': { const v = $('ideaIn').value.trim(); if (!v) break; data.ideas[view.ideaTab || 'sooner'].push(v); touch(); break; }
     case 'ideaDel': data.ideas[view.ideaTab || 'sooner'].splice(+el.dataset.i, 1); touch(); break;
@@ -1912,7 +1989,7 @@ function onAction(act, el) {
       navigator.clipboard.writeText(txt).then(() => toast('Copied to clipboard.'), () => toast('Could not copy here. Select the text and copy it manually.', 6000)); break;
     }
     case 'saveTrack': {
-      t.name = $('tName').value.trim() || t.name; t.trip = $('tTrip').value.trim(); t.notes = $('tNotes').value; t.planned = $('tPlanned').checked;
+      t.name = $('tName').value.trim() || t.name; t.trip = $('tTrip').value.trim(); t.notes = $('tNotes').value; t.planned = $('tPlanned').checked; t.nights = Math.max(0, Math.min(60, +($('tNights') && $('tNights').value) || 0));
       const nd = $('tDate').value;
       if (nd && nd !== t.date) { t.date = nd; for (const l of Object.values(data.visits)) for (const v of l) if (v.trackId === t.id) v.date = nd; }
       touch(); toast('Saved.'); break;
@@ -1981,6 +2058,7 @@ $('menu').addEventListener('click', e => {
   if (m === 'fetchAll' || m === 'fetchView') onAction(m);
   if (m === 'exportJson') { const { osm, ...rest } = data; download(`Teton Atlas backup ${today()}.json`, JSON.stringify(rest, null, 1), 'application/json'); }
   if (m === 'pngMap') exportMapPNG();
+  if (m === 'printPdf') { if (editor) stopEditor(); view.detail = null; viewStack = []; setTab('stats'); setTimeout(() => window.print(), 350); }
   if (['history', 'settings', 'help', 'ideas'].includes(m)) { if (editor) stopEditor(); openDetail({ type: m }); }
 });
 function exportMapPNG() {
@@ -2099,6 +2177,8 @@ function initMap() {
 }
 
 // ================= Startup =================
+// Installable app shell (serves the page when offline; map tiles still need a connection)
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => { /* optional */ });
 (async function start() {
   try {
     const local = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
