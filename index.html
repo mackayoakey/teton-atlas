@@ -272,6 +272,8 @@ details.set[open]{padding-bottom:6px}
   <button data-menu="fetchView"><span>Add trails &amp; places for this view</span></button>
   <hr>
   <button data-menu="newArea"><span>Draw an area<span class="sub">Basins, meadows and other off-trail places</span></span></button>
+  <button data-menu="cleanup"><span>Clean up the map<span class="sub">Draw a shape and remove the trails, lakes or peaks inside it</span></span></button>
+  <button data-menu="trash"><span>Deleted items<span class="sub">Restore anything you removed or deleted</span></span></button>
   <button data-menu="ideas"><span>Ideas (Sooner &amp; Later)</span></button>
   <button data-menu="exportJson"><span>Export full backup (JSON)<span class="sub">Includes photos, ideas and ratings</span></span></button>
   <button data-menu="pngMap"><span>Export map view (PNG)</span></button>
@@ -305,6 +307,8 @@ details.set[open]{padding-bottom:6px}
 'use strict';
 // ================= Config =================
 const APP_VERSION = 'V12';
+// Rough outline of the Teton Range (Teton Pass to Conant Pass, Jackson Hole side and Teton Valley side). Editable from the Layers panel.
+const RANGE_DEFAULT = [[-111.02, 43.48], [-110.88, 43.45], [-110.70, 43.58], [-110.62, 43.85], [-110.59, 44.05], [-110.68, 44.13], [-110.80, 44.12], [-110.93, 43.95], [-111.05, 43.78], [-111.10, 43.60], [-111.02, 43.48]];
 const BBOX = { s: 43.40, w: -111.25, n: 44.15, e: -110.50 }; // whole Teton Range, WY + ID sides
 const OVERPASS_URLS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
@@ -429,7 +433,7 @@ const VERSIONS = [
 
 // ================= State =================
 const ORIGINAL_HTML = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
-const EMPTY = () => ({ version: 3, editedAt: 0, visits: {}, names: {}, tracks: [], pins: [], routes: [], wish: {}, settings: {}, ideas: { sooner: [], later: [] }, photos: {}, yds: {}, areas: [], peakLists: [], osm: null });
+const EMPTY = () => ({ version: 3, editedAt: 0, visits: {}, names: {}, tracks: [], pins: [], routes: [], wish: {}, settings: {}, ideas: { sooner: [], later: [] }, photos: {}, yds: {}, areas: [], peakLists: [], hidden: {}, trash: [], range: null, osm: null });
 let data = normalize(JSON.parse(document.getElementById('embedded-data').textContent || '{}'));
 let dirty = false, fileHandle = null, map = null, mapReady = false;
 let mode = 'browse', view = { tab: 'explore' }, viewStack = [];
@@ -441,10 +445,11 @@ let hoverPt = null;
 
 function normalize(d) {
   d = Object.assign(EMPTY(), d || {});
-  for (const k of ['visits', 'names', 'wish', 'settings', 'photos', 'yds']) if (!d[k] || typeof d[k] !== 'object') d[k] = {};
+  for (const k of ['visits', 'names', 'wish', 'settings', 'photos', 'yds', 'hidden']) if (!d[k] || typeof d[k] !== 'object') d[k] = {};
   if (!d.ideas || typeof d.ideas !== 'object') d.ideas = {};
   for (const k of ['sooner', 'later']) if (!Array.isArray(d.ideas[k])) d.ideas[k] = [];
-  for (const k of ['tracks', 'pins', 'routes', 'areas', 'peakLists']) if (!Array.isArray(d[k])) d[k] = [];
+  for (const k of ['tracks', 'pins', 'routes', 'areas', 'peakLists', 'trash']) if (!Array.isArray(d[k])) d[k] = [];
+  if (d.range && !Array.isArray(d.range)) d.range = null;
   for (const list of Object.values(d.visits)) for (const v of list) { if (!v.status) v.status = 'been'; if (!v.vid) v.vid = uid(); }
   for (const p of d.pins) {
     if (!PIN_TYPES[p.type]) p.type = ({ peak: 'summit', viewpoint: 'view' })[p.type] || (p.type === 'lake' || p.type === 'camp' || p.type === 'trailhead' ? p.type : 'other');
@@ -727,9 +732,12 @@ async function idbGet(k) { try { const db = await idb(); return await new Promis
 
 // ================= Indexing, trail groups, routing graph =================
 const nameOf = f => (data.names[f.id] || f.name || '');
+let RAW = new Map();     // every original map feature, including ones you removed (so they can be restored)
 function indexFeatures() {
-  FEAT = {}; FEATS = []; PGRID = new Map();
+  FEAT = {}; FEATS = []; PGRID = new Map(); RAW = new Map();
   for (const f of (data.osm && data.osm.features) || []) {
+    RAW.set(f.id, f);
+    if (data.hidden[f.id]) continue;
     if (f.kind === 'lake' && !f.polys && f.ring) f.polys = [f.ring]; // V1/V2 cached format
     if (f.kind === 'lake') { f.bb = bboxOf(f.polys.flat()); f.center = ringCentroid(f.polys[0]); }
     if (f.kind === 'trail') { f.bb = bboxOf(f.coords); f.len = lineLen(f.coords); }
@@ -1057,6 +1065,63 @@ function photosHTML(id) {
     <div class="row"><button class="btn" data-act="addPhoto">📷 Add photo</button></div>`;
 }
 
+// ================= Removing and restoring =================
+// "Remove from map" hides original map features (trails, lakes, peaks...) without destroying them; "Deleted items" brings any of them back.
+// Things you made (pins, hikes, routes, areas, lists) go to the trash when deleted, with their visits, and can be restored too.
+function afterFeatureChange(restoreVisits) {
+  indexFeatures(); profCache.clear();
+  if (restoreVisits) rematchAll();
+  touch({ noRender: true }); updateSources(); updateSelection(); renderSide();
+}
+function hideFeatures(ids, label) {
+  const batch = uid(), at = Date.now(); let n = 0;
+  for (const id of ids) if (!data.hidden[id] && RAW.has(id)) { const f = RAW.get(id); data.hidden[id] = { at, batch, label, kind: f.kind, name: data.names[id] || f.name || '' }; n++; }
+  if (n) afterFeatureChange(false);
+  return n;
+}
+function restoreHidden(pred) {
+  let n = 0; for (const [id, h] of Object.entries(data.hidden)) if (pred(id, h)) { delete data.hidden[id]; n++; }
+  if (n) afterFeatureChange(true);
+  return n;
+}
+const TRASH_ARR = { pin: 'pins', track: 'tracks', route: 'routes', area: 'areas', list: 'peakLists' };
+const TRASH_LABEL = { pin: 'Pin', track: 'Hike', route: 'Route', area: 'Area', list: 'Peak list' };
+function trashPut(type, item, name) {
+  const extra = {};
+  for (const k of ['visits', 'wish', 'yds', 'names']) if (data[k][item.id] !== undefined) { extra[k] = data[k][item.id]; delete data[k][item.id]; }   // photos stay where they are
+  data.trash.push({ id: uid(), type, name: name || item.name || TRASH_LABEL[type], at: Date.now(), item: JSON.parse(JSON.stringify(item)), extra });
+  data[TRASH_ARR[type]] = data[TRASH_ARR[type]].filter(x => x.id !== item.id);
+}
+function restoreTrash(tid) {
+  const e = data.trash.find(x => x.id === tid); if (!e) return;
+  const arr = data[TRASH_ARR[e.type]];
+  if (!arr.some(x => x.id === e.item.id)) arr.push(e.item);
+  for (const [k, v] of Object.entries(e.extra || {})) if (data[k][e.item.id] === undefined) data[k][e.item.id] = v;
+  data.trash = data.trash.filter(x => x.id !== tid);
+  if (e.type === 'track' && !e.item.planned && e.item.approved !== false) matchTrack(e.item);
+  touch(); toast(`Restored "${e.name}".`);
+}
+function purgeTrash(tid) {
+  const e = data.trash.find(x => x.id === tid); if (!e) return;
+  delete data.photos[e.item.id]; data.trash = data.trash.filter(x => x.id !== tid); touch();
+}
+function pageTrash() {
+  const batches = {};
+  for (const [id, h] of Object.entries(data.hidden)) (batches[h.batch] = batches[h.batch] || { at: h.at, label: h.label, ids: [] }).ids.push([id, h]);
+  const bl = Object.entries(batches).sort((a, b) => b[1].at - a[1].at);
+  const tr = data.trash.slice().sort((a, b) => b.at - a.at);
+  const when = at => new Date(at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+  const sum = ids => { const c = {}; for (const [, h] of ids) c[h.kind] = (c[h.kind] || 0) + 1; return Object.entries(c).map(([k, n]) => `${n} ${(KIND_INFO[k] || { label: k }).label.toLowerCase()}${n === 1 ? '' : 's'}`).join(', '); };
+  return `${backBtn()}<div class="d-title">Deleted items</div>
+    <div class="d-sub">Everything you have removed or deleted is kept here, so you can bring it back.</div>
+    <h2 class="sec">Removed from the map</h2>
+    ${bl.map(([b, g]) => `<div class="visit" style="flex-direction:column;align-items:stretch"><div class="row" style="align-items:center"><div style="flex:1"><b>${esc(g.label || 'Removed items')}</b><div class="small muted">${when(g.at)} · ${sum(g.ids)}</div></div><button class="btn sm" data-act="restoreBatch" data-b="${b}">Restore${g.ids.length > 1 ? ' all' : ''}</button></div>
+      ${g.ids.length > 1 ? `<details class="sub2"><summary>Show ${g.ids.length} items</summary>${g.ids.slice(0, 80).map(([id, h]) => `<div class="wp"><span style="flex:1">${esc(h.name || (KIND_INFO[h.kind] || { label: h.kind }).label)} <span class="muted small">${esc((KIND_INFO[h.kind] || { label: '' }).label)}</span></span><button class="btn sm" data-act="restoreOne" data-id="${esc(id)}">Restore</button></div>`).join('')}${g.ids.length > 80 ? `<div class="small muted">…and ${g.ids.length - 80} more (use Restore all)</div>` : ''}</details>` : ''}</div>`).join('') || '<div class="empty small">Nothing removed from the map.</div>'}
+    <h2 class="sec">Deleted by you</h2>
+    ${tr.map(e => `<div class="visit"><div class="tx" style="flex:1"><b>${esc(e.name)}</b><div class="small muted">${TRASH_LABEL[e.type] || e.type} · ${when(e.at)}</div></div><button class="btn sm" data-act="restoreTrash" data-id="${e.id}">Restore</button><button class="x" data-act="purgeTrash" data-id="${e.id}" title="Delete forever">×</button></div>`).join('') || '<div class="empty small">Nothing deleted.</div>'}
+    <div class="small muted">The × deletes an item for good (its photos too). Removed map items cannot be lost: they are only hidden.</div>`;
+}
+
 // ================= Photo store (opt-in) =================
 // Off: photos live inside the data as JPEG text, as before. On: each photo is saved once (in this browser, and as its own file in
 // your private data repo when sync is connected) and the data only holds a short reference like "ph:1a2b3c". This keeps the saved file small.
@@ -1198,6 +1263,9 @@ function mergeData(inc) {
     const keys = new Set(cur.map(v => v.vid + '|' + v.date + '|' + v.src + '|' + (v.trackId || '')));
     for (const v of list) { const k = v.vid + '|' + v.date + '|' + v.src + '|' + (v.trackId || ''); const k2 = cur.some(c => c.date === v.date && c.src === v.src && (c.trackId || '') === (v.trackId || '') && (c.note || '') === (v.note || '')); if (!keys.has(k) && !k2) { cur.push(v); n++; } }
   }
+  for (const [id, h] of Object.entries(inc.hidden || {})) if (!data.hidden[id]) { data.hidden[id] = h; n++; }
+  { const have = new Set(data.trash.map(x => x.id)); for (const x of inc.trash || []) if (!have.has(x.id)) { data.trash.push(x); n++; } }
+  if (!data.range && inc.range) data.range = inc.range;
   for (const [id, nm] of Object.entries(inc.names)) if (!data.names[id]) { data.names[id] = nm; n++; }
   for (const id of Object.keys(inc.wish)) data.wish[id] = true;
   for (const [id, list] of Object.entries(inc.photos || {})) { const cur = data.photos[id] = data.photos[id] || []; for (const p of list) if (!cur.includes(p)) { cur.push(p); n++; } }
@@ -1213,7 +1281,7 @@ function extractEmbedded(html) {
 }
 
 // ================= Map =================
-function layerOn(k) { const L = data.settings.layers || {}; return L[k] !== undefined ? L[k] : k === 'hillshade' ? true : !['heat', 'boundary', 'recency'].includes(k); }
+function layerOn(k) { const L = data.settings.layers || {}; return L[k] !== undefined ? L[k] : k === 'hillshade' ? true : !['heat', 'boundary', 'recency', 'range'].includes(k); }
 // Recency buckets for "last visited": y1 = within a year, y3 = 1 to 3 years, old = over 3 years, none = never been
 const RC_COLORS = ['match', ['get', 'rc'], 'y1', '#2bb24c', 'y3', '#fbc02d', 'old', '#f57c00', '#90a4ae'];
 const LAKE_FILL_EXPR = ['match', ['get', 'st'], 'been', '#2a9d8f', 'seen', '#f4a261', '#4fa3e0'];
@@ -1327,6 +1395,8 @@ function addOverlays() {
   addIcons();
   // Range boundary: the Grand Teton NP outline once loaded, otherwise the BBOX rectangle
   map.addSource('boundary', { type: 'geojson', data: boundaryFC() });
+  map.addSource('range', { type: 'geojson', data: rangeFC() });
+  map.addLayer({ id: 'range-line', type: 'line', source: 'range', layout: { visibility: layerOn('range') ? 'visible' : 'none' }, paint: { 'line-color': '#e65100', 'line-width': 2.4, 'line-dasharray': [5, 3] } });
   map.addLayer({ id: 'boundary-line', type: 'line', source: 'boundary', layout: { visibility: layerOn('boundary') ? 'visible' : 'none' }, paint: { 'line-color': '#7b1fa2', 'line-width': 2, 'line-dasharray': [4, 2] } });
   for (const id of ['trails', 'trail-text', 'lakes', 'lake-pts', 'pois', 'poi-text', 'tracks', 'routes', 'heat', 'edit', 'sel', 'hover', 'areas', 'area-text', 'areaedit', 'listpts']) map.addSource(id, { type: 'geojson', data: fc([]) });
   const halo = { 'text-color': '#1b1b1b', 'text-halo-color': '#ffffff', 'text-halo-width': 1.6 };
@@ -1387,6 +1457,7 @@ function applyLayerVisibility() {
   if (map.getLayer('hillshade')) map.setLayoutProperty('hillshade', 'visibility', !outdoor && layerOn('hillshade') ? 'visible' : 'none');
   if (map.getLayer('poi-label')) map.setLayoutProperty('poi-label', 'visibility', layerOn('places') && layerOn('labels') ? 'visible' : 'none');
   if (map.getLayer('boundary-line')) map.setLayoutProperty('boundary-line', 'visibility', layerOn('boundary') ? 'visible' : 'none');
+  if (map.getLayer('range-line')) map.setLayoutProperty('range-line', 'visibility', layerOn('range') ? 'visible' : 'none');
   // Recency colors (off by default): a colored halo under each peak, and lake fills colored by last visit
   const rec = layerOn('recency');
   if (map.getLayer('poi-rec')) map.setLayoutProperty('poi-rec', 'visibility', rec && layerOn('places') ? 'visible' : 'none');
@@ -1394,6 +1465,13 @@ function applyLayerVisibility() {
   syncPins();
 }
 // Range boundary as GeoJSON: the park outline when loaded, else the BBOX rectangle (edit BBOX at the top to change it)
+function rangeRing() { return data.range && data.range.length > 3 ? data.range : RANGE_DEFAULT; }
+function rangeFC() { return fc([{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: closeRing(rangeRing()) } }]); }
+function rangeOnly() { return data.settings.rangeOnly !== false; }
+function inRangeF(f) {
+  const r = closeRing(rangeRing()), c = f.kind === 'trail' ? f.coords[Math.floor(f.coords.length / 2)] : f.kind === 'lake' ? f.center : f.coord;
+  return !!c && pointInRing(c[0], c[1], r);
+}
 function boundaryFC() {
   if (data.parkOutline && data.parkOutline.length) return fc([{ type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: data.parkOutline } }]);
   return fc([{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [[BBOX.w, BBOX.s], [BBOX.e, BBOX.s], [BBOX.e, BBOX.n], [BBOX.w, BBOX.n], [BBOX.w, BBOX.s]] } }]);
@@ -1468,6 +1546,7 @@ function updateSources() {
   map.getSource('routes').setData(fc(routeF));
   map.getSource('heat').setData(fc(heatF));
   map.getSource('boundary').setData(boundaryFC());
+  map.getSource('range').setData(rangeFC());
   map.getSource('areas').setData(fc(areaF));
   map.getSource('area-text').setData(fc(areaT));
   map.getSource('listpts').setData(fc(listPointFeatures()));
@@ -1769,14 +1848,16 @@ async function saveEditor() {
 let areaEd = null;
 const findArea = id => data.areas.find(a => a.id === id);
 const ringPerim = r => lineLen(closeRing(r));
-function startAreaEditor(area) {
+function startAreaEditor(area, purpose) {
   if (editor) stopEditor(true);
   stopAreaEditor(true);
-  areaEd = { id: area ? area.id : null, name: area ? area.name : '', type: area ? area.type : 'basin', pts: area ? area.ring.map(q => q.slice()) : [], markers: [] };
+  areaEd = { id: area ? area.id : null, name: area ? area.name : '', type: area ? area.type : 'basin', pts: area ? area.ring.map(q => q.slice()) : [], markers: [], purpose: purpose || 'area',
+    cut: { kinds: { trail: true, lake: true, peak: true, pass: true, waterfall: true }, touch: false } };
+  if (purpose === 'range') areaEd.pts = rangeRing().slice(0, -1).map(q => q.slice());
   setMode('area', true);
   redrawArea();
   view.detail = { type: 'areaEditor' }; viewStack = []; renderSide();
-  if (!area) toast('Click the map around the edge of the area. Drag points to adjust.', 5000);
+  if (!area) toast(purpose === 'cut' ? 'Click the map around what you want to clean up (a ski hill, say). Drag points to adjust.' : purpose === 'range' ? 'Drag the points to reshape the Teton Range outline, or click the map to add more.' : 'Click the map around the edge of the area. Drag points to adjust.', 6000);
 }
 function stopAreaEditor(silent) {
   if (!areaEd) return;
@@ -1792,6 +1873,7 @@ function redrawArea() {
   if (pts.length >= 3) feats.push({ type: 'Feature', properties: { k: 'fill' }, geometry: { type: 'Polygon', coordinates: [closeRing(pts)] } });
   if (pts.length >= 2) feats.push({ type: 'Feature', properties: { k: 'line' }, geometry: { type: 'LineString', coordinates: pts.length >= 3 ? closeRing(pts) : pts } });
   map.getSource('areaedit').setData(fc(feats));
+  if (areaEd.purpose === 'cut') highlightCut();
   for (const m of areaEd.markers) m.remove();
   areaEd.markers = pts.map((q, i) => {
     const el = document.createElement('div'); el.className = 'wpm' + (i === 0 ? ' first' : ''); el.title = 'Point ' + (i + 1);
@@ -1801,8 +1883,62 @@ function redrawArea() {
     return m;
   });
 }
+// What a clean-up shape would remove
+function cutMatches() {
+  const e = areaEd, ring = closeRing(e.pts), out = [];
+  if (e.pts.length < 3) return out;
+  const inside = c => pointInRing(c[0], c[1], ring);
+  for (const f of FEATS) {
+    if (!e.cut.kinds[f.kind]) continue;
+    let hit = false;
+    if (f.kind === 'trail') { const n = f.coords.filter(inside).length; hit = e.cut.touch ? n > 0 : n === f.coords.length; }
+    else if (f.kind === 'lake') { hit = e.cut.touch ? f.polys.some(r => r.some(inside)) : inside(f.center); }
+    else hit = inside(f.coord);
+    if (hit) out.push(f);
+  }
+  return out;
+}
+function highlightCut() {
+  if (!mapReady) return;
+  const feats = cutMatches().slice(0, 1500).map(f => f.kind === 'trail' ? { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: f.coords } } : f.kind === 'lake' ? { type: 'Feature', properties: {}, geometry: { type: 'MultiPolygon', coordinates: f.polys.map(r => [r]) } } : null).filter(Boolean);
+  map.getSource('sel').setData(fc(feats));
+}
+function pageCut() {
+  const e = areaEd, m = cutMatches(), by = {}; for (const f of m) by[f.kind] = (by[f.kind] || 0) + 1;
+  const all = {}; for (const f of FEATS) all[f.kind] = (all[f.kind] || 0) + 1;
+  const miles = m.filter(f => f.kind === 'trail').reduce((a, f) => a + f.len, 0) / M_PER_MI;
+  return `${backBtn()}
+    <div class="d-title">Clean up the map</div>
+    <div class="d-sub">Click the map around the place (a ski hill, a town, a road network). Everything of the kinds you pick inside the shape can be removed in one go. Nothing is lost: it all goes to Deleted items, where one tap restores it.</div>
+    ${Object.entries({ trail: 'Trails', lake: 'Lakes', peak: 'Peaks', pass: 'Passes', waterfall: 'Waterfalls' }).map(([k, l]) => `<label class="toggle"><input type="checkbox" data-cutkind="${k}" ${e.cut.kinds[k] ? 'checked' : ''}> ${l} <span class="muted small">· ${by[k] || 0} inside${all[k] ? ' of ' + all[k] : ''}</span></label>`).join('')}
+    <label class="toggle"><input type="checkbox" id="cutTouch" ${e.cut.touch ? 'checked' : ''}> Also things that only partly overlap the shape</label>
+    <div class="stats three"><div class="stat"><b>${e.pts.length}</b><div>Points</div></div><div class="stat"><b>${m.length}</b><div>To remove</div></div>${statHTML(miles.toFixed(1), 'mi', 'Trail length')}</div>
+    <div class="small muted">Trails to be removed are highlighted on the map. Your own pins, hikes, routes and areas are never touched.</div>
+    <div class="row"><button class="btn" data-act="areaUndo">↶ Undo point</button><button class="btn" data-act="areaClear">Clear</button></div>
+    <div class="row"><button class="btn danger" style="flex:1;padding:12px" data-act="cutApply" ${m.length ? '' : 'disabled'}>Remove ${m.length} item${m.length === 1 ? '' : 's'}</button><button class="btn" data-act="areaCancel">Cancel</button></div>`;
+}
+function applyCut() {
+  const e = areaEd, m = cutMatches(); if (!m.length) return;
+  const label = (e.name || 'Clean-up') + ' ' + today();
+  if (!confirm(`Remove ${m.length} item${m.length === 1 ? '' : 's'} from the map? You can restore them from Deleted items.`)) return;
+  stopAreaEditor(); view.detail = null; viewStack = [];
+  const n = hideFeatures(m.map(f => f.id), 'Clean-up ' + today());
+  toast(`Removed ${n} item${n === 1 ? '' : 's'}. Restore them any time from Deleted items.`, 7000); renderSide();
+}
+function pageRangeEditor() {
+  const e = areaEd, ac = ringAcres(e.pts);
+  return `${backBtn()}
+    <div class="d-title">Teton Range outline</div>
+    <div class="d-sub">Shape the area that counts as "the Tetons" in your totals. Drag points, click the map to add more. It shows as an orange dashed line when the layer is on.</div>
+    <div class="stats three"><div class="stat"><b>${e.pts.length}</b><div>Points</div></div>${statHTML(Math.round(ac / 640).toLocaleString(), 'sq mi', 'Area')}${statHTML(e.pts.length > 2 ? fmtMi(ringPerim(e.pts)) : '—', 'mi', 'Perimeter')}</div>
+    <div class="row"><button class="btn" data-act="areaUndo">↶ Undo point</button><button class="btn" data-act="rangeDefault">Reset to default</button>${data.parkOutline && data.parkOutline.length ? '<button class="btn" data-act="rangePark">Use park outline</button>' : ''}</div>
+    <div class="row"><button class="btn primary" style="flex:1;padding:12px" data-act="rangeSave">Save outline</button><button class="btn" data-act="areaCancel">Cancel</button></div>
+    <div class="small muted">The default is a rough outline of the range from Teton Pass to Conant Pass, including both sides. Stats count only things inside it (change that in Settings or on the Stats page).</div>`;
+}
 function pageAreaEditor() {
   const e = areaEd; if (!e) return '';
+  if (e.purpose === 'cut') return pageCut();
+  if (e.purpose === 'range') return pageRangeEditor();
   const ac = ringAcres(e.pts);
   return `${backBtn()}
     <div class="d-title">${e.id ? 'Edit area' : 'Draw an area'}</div>
@@ -2043,7 +2179,7 @@ function goBack() {
 function renderSide() {
   const d = view.detail;
   if (d) {
-    const fn = { feature: pageFeature, route: pageRoute, track: pageTrack, pin: pagePin, editor: pageEditor, history: pageHistory, settings: pageSettings, help: pageHelp, ideas: pageIdeas, offline: pageOffline, report: pageReport, area: pageArea, areaEditor: pageAreaEditor, list: pageList }[d.type];
+    const fn = { feature: pageFeature, route: pageRoute, track: pageTrack, pin: pagePin, editor: pageEditor, history: pageHistory, settings: pageSettings, help: pageHelp, ideas: pageIdeas, offline: pageOffline, report: pageReport, area: pageArea, areaEditor: pageAreaEditor, list: pageList, trash: pageTrash }[d.type];
     if (fn) { body().innerHTML = fn(d); return; }
   }
   const q = $('q').value.trim().toLowerCase();
@@ -2234,20 +2370,22 @@ function pageStats() {
   const tracks = data.tracks.filter(t => inFilter(t.date) && !t.planned && t.approved !== false);
   let miles = 0, gain = 0;
   for (const t of tracks) { const st = lineStats(trackLine(t)); miles += st.len; gain += st.gain; }
-  const kinds = k => FEATS.filter(f => f.kind === k);
+  const ro = rangeOnly(), kinds = k => FEATS.filter(f => f.kind === k && (!ro || inRangeF(f)));
   const been = list => list.filter(f => statusOf(f.id) === 'been').length;
   const peaks = kinds('peak'), lakes = kinds('lake'), passes = kinds('pass'), falls = kinds('waterfall');
   let trailM = 0; for (const f of kinds('trail')) trailM += f.len * wayCoverage(f.id);
   const allTrailM = kinds('trail').reduce((a, f) => a + f.len, 0);
   const namedPk = peaks.filter(f => nameOf(f)).sort((a, b) => (b.ele || 0) - (a.ele || 0));
+  const ownP = data.pins.filter(x => x.type === 'summit'), ownL = data.pins.filter(x => x.type === 'lake');
   return `${filterSelects()}
+    <div class="small muted" style="margin:4px 0 8px">Totals count ${ro ? 'things inside the <b>Teton Range outline</b>' : 'everything downloaded'}${data.pins.some(x => x.type === 'summit' || x.type === 'lake') ? ', plus your own summit and lake pins' : ''}. <a href="#" data-act="editRange">Change the outline</a> · <a href="#" data-act="openTrash">Removed items (${Object.keys(data.hidden).length})</a></div>
     <div class="grid">
       <div class="tile"><b>${(miles / M_PER_MI).toFixed(1)}</b><span>miles hiked</span></div>
       <div class="tile"><b>${fmtFt(gain)}</b><span>feet climbed</span></div>
       <div class="tile"><b>${tracks.length}</b><span>hikes</span></div>
       <div class="tile"><b>${(trailM / M_PER_MI).toFixed(1)}</b><span>of ${(allTrailM / M_PER_MI).toFixed(0)} trail miles explored</span></div>
-      <div class="tile"><b>${been(peaks)}<small class="muted" style="font-size:14px"> / ${peaks.length}</small></b><span>peaks summited</span></div>
-      <div class="tile"><b>${been(lakes)}<small class="muted" style="font-size:14px"> / ${lakes.length}</small></b><span>lakes reached</span></div>
+      <div class="tile"><b>${been(peaks) + ownP.filter(x => x.status === 'been').length}<small class="muted" style="font-size:14px"> / ${peaks.length + ownP.length}</small></b><span>peaks summited${ownP.length ? ` (${ownP.length} yours)` : ''}</span></div>
+      <div class="tile"><b>${been(lakes) + ownL.filter(x => x.status === 'been').length}<small class="muted" style="font-size:14px"> / ${lakes.length + ownL.length}</small></b><span>lakes reached${ownL.length ? ` (${ownL.length} yours)` : ''}</span></div>
       <div class="tile"><b>${been(passes)}<small class="muted" style="font-size:14px"> / ${passes.length}</small></b><span>passes crossed</span></div>
       <div class="tile"><b>${been(falls)}<small class="muted" style="font-size:14px"> / ${falls.length}</small></b><span>waterfalls</span></div>
     </div>
@@ -2408,7 +2546,9 @@ function pageFeature(d) {
     ${kind === 'peak' ? summitRoutesHTML(d.id) : ''}
     <h2 class="sec">Name</h2>
     <div class="row"><input id="fName" value="${esc(name)}" placeholder="Give this ${info.label.toLowerCase()} a name" style="flex:1"><button class="btn" data-act="saveName">Save</button></div>
-    ${(grp ? grp.ways.some(w => data.names[w.id]) : data.names[f.id]) ? '<div class="small muted">Custom name. Clear the box and save to go back to the map name.</div>' : ''}`;
+    ${(grp ? grp.ways.some(w => data.names[w.id]) : data.names[f.id]) ? '<div class="small muted">Custom name. Clear the box and save to go back to the map name.</div>' : ''}
+    <div class="small muted" style="margin-top:10px">Original map data (OpenStreetMap). Wrong or not wanted? Remove it from the map; it stops counting in your totals, and you can restore it any time.</div>
+    <div class="row"><button class="btn danger" data-act="hideFeat">Remove from map</button></div>`;
 }
 function pageRoute(d) {
   const r = findRoute(d.id); if (!r) return backBtn() + '<div class="empty">Route not found.</div>';
@@ -2649,9 +2789,14 @@ function baseThumb(b) {
 const layersOpen = {};
 function layersSec(key, title, body, open) { return `<details class="set" data-lsec="${key}" ${(layersOpen[key] ?? open) ? 'open' : ''}><summary>${title}</summary>${body}</details>`; }
 function renderLayers() {
-  const s = data.settings, toggles = [['trails', 'Trails'], ['places', 'Peaks, passes, waterfalls'], ['lakes', 'Lakes'], ['tracks', 'My hikes'], ['routes', 'My routes'], ['pins', 'Pins'], ['areas', 'Areas I drew'], ['labels', 'Labels'], ['contours', 'Contour lines (Outdoor map)'], ['hillshade', 'Hillshade'], ['heat', 'Heatmap'], ['recency', 'Color peaks & lakes by last visit (off by default)'], ['boundary', 'Grand Teton NP boundary (dashed)']];
+  const s = data.settings, toggles = [['trails', 'Trails'], ['places', 'Peaks, passes, waterfalls'], ['lakes', 'Lakes'], ['tracks', 'My hikes'], ['routes', 'My routes'], ['pins', 'Pins'], ['areas', 'Areas I drew'], ['labels', 'Labels'], ['contours', 'Contour lines (Outdoor map)'], ['hillshade', 'Hillshade'], ['heat', 'Heatmap'], ['recency', 'Color peaks & lakes by last visit (off by default)']];
   $('layers').innerHTML = `<h3 class="sec" style="margin-top:0">Map type</h3>
     <div class="bases">${Object.entries(BASES).map(([k, b]) => `<button data-base="${k}" class="${(s.base || 'topo') === k ? 'on' : ''}"><i style="background:${b.sw}">${baseThumb(b)}</i>${b.label}</button>`).join('')}</div>
+    ${layersSec('borders', 'Borders', `<label class="toggle"><input type="checkbox" data-layer="boundary" ${layerOn('boundary') ? 'checked' : ''}> Grand Teton National Park border <span class="muted small">(purple dashes)</span></label>
+      ${data.parkOutline && data.parkOutline.length ? '' : '<div class="small muted">The park outline is not loaded yet (a rough box shows instead). <button class="btn sm" data-act="parkOutline">Load it</button></div>'}
+      <label class="toggle"><input type="checkbox" data-layer="range" ${layerOn('range') ? 'checked' : ''}> Teton Range outline <span class="muted small">(orange dashes)</span></label>
+      <div class="row"><button class="btn sm" data-act="editRange">Edit the range outline</button></div>
+      <label class="toggle"><input type="checkbox" id="rangeOnlyCk" ${rangeOnly() ? 'checked' : ''}> Count only things inside the range outline in Stats</label>`, true)}
     ${layersSec('show', 'Show on map', toggles.map(([k, l]) => `<label class="toggle"><input type="checkbox" data-layer="${k}" ${layerOn(k) ? 'checked' : ''}> ${l}</label>`).join(''), true)}
     ${layersSec('heat', 'Heatmap & filters', `<select id="heatMode"><option value="both">Heatmap: hikes + places</option><option value="tracks">Heatmap: hikes only</option><option value="places">Heatmap: places only</option></select>${filterSelects()}`, false)}
     ${layersSec('3d', '3D', `<label class="toggle"><input type="checkbox" id="l3d" ${s.terrain ? 'checked' : ''}> 3D terrain</label>
@@ -2692,15 +2837,20 @@ function onAction(act, el) {
     case 'areaUndo': areaEd.pts.pop(); redrawArea(); renderSide(); break;
     case 'areaClear': areaEd.pts = []; redrawArea(); renderSide(); break;
     case 'areaSave': saveArea(); break;
-    case 'areaCancel': { const back = areaEd && areaEd.id ? { type: 'area', id: areaEd.id } : null; stopAreaEditor(); view.detail = back; renderSide(); break; }
+    case 'cutApply': applyCut(); break;
+    case 'rangeSave': { if (areaEd.pts.length < 3) { toast('Add at least three points.'); break; } data.range = closeRing(areaEd.pts.map(q => q.slice())); stopAreaEditor(); view.detail = null; viewStack = []; touch(); toast('Range outline saved.'); break; }
+    case 'rangeDefault': areaEd.pts = RANGE_DEFAULT.slice(0, -1).map(q => q.slice()); redrawArea(); renderSide(); break;
+    case 'rangePark': { const big = data.parkOutline.slice().sort((a, b) => b.length - a.length)[0]; areaEd.pts = big.slice(0, -1).map(q => q.slice()); redrawArea(); renderSide(); break; }
+    case 'editRange': if (editor) stopEditor(true); startAreaEditor(null, 'range'); if ($('layers')) $('layers').hidden = true; break;
+    case 'areaCancel': { const back = areaEd && areaEd.id ? { type: 'area', id: areaEd.id } : null; stopAreaEditor(); view.detail = back; renderSide(); updateSelection(); break; }
     case 'areaDelPt': areaEd.pts.splice(+el.dataset.i, 1); redrawArea(); renderSide(); break;
     case 'saveAreaInfo': { const a = findArea(d.id); if (!a) break; a.name = $('arNameD').value.trim() || a.name; a.type = $('arTypeD').value; a.note = $('arNote').value; touch(); toast('Saved.'); break; }
-    case 'delArea': { const a = findArea(d.id); if (a && confirm('Delete this area and its visits?')) { data.areas = data.areas.filter(x => x !== a); delete data.visits[a.id]; delete data.photos[a.id]; delete data.wish[a.id]; touch({ noRender: true }); goBack(); } break; }
+    case 'delArea': { const a = findArea(d.id); if (a && confirm('Delete this area? You can restore it from Deleted items.')) { trashPut('area', a, a.name); touch({ noRender: true }); goBack(); } break; }
     case 'newList': { const nm = prompt('Name for the new peak list:', ''); if (!nm || !nm.trim()) break; const l = { id: uid(), name: nm.trim(), ids: [] }; data.peakLists.push(l); touch({ noRender: true }); openDetail({ type: 'list', id: l.id }); break; }
     case 'lpAdd': { const l = data.peakLists.find(x => x.id === d.id); if (l && !l.ids.includes(el.dataset.id)) { l.ids.push(el.dataset.id); touch(); } break; }
     case 'lpDel': { const l = data.peakLists.find(x => x.id === d.id); if (l) { l.ids = l.ids.filter(x => x !== el.dataset.id); touch(); } break; }
     case 'lpRename': { const l = data.peakLists.find(x => x.id === d.id); if (l && $('lpName').value.trim()) { l.name = $('lpName').value.trim(); touch(); toast('Saved.'); } break; }
-    case 'lpDelete': { const l = data.peakLists.find(x => x.id === d.id); if (l && confirm('Delete this peak list? Your visits are not affected.')) { data.peakLists = data.peakLists.filter(x => x !== l); if (data.settings.activeList === l.id) data.settings.activeList = ''; touch({ noRender: true }); goBack(); } break; }
+    case 'lpDelete': { const l = data.peakLists.find(x => x.id === d.id); if (l && confirm('Delete this peak list? Your visits are not affected, and you can restore it from Deleted items.')) { trashPut('list', l); if (data.settings.activeList === l.id) data.settings.activeList = ''; touch({ noRender: true }); goBack(); } break; }
     case 'lpShow': { const was = data.settings.activeList === d.id; data.settings.activeList = was ? '' : d.id; touch(); if (!was) { const c = coordsOf(d); if (c) fitTo(c, 12); } break; }
     case 'lpCopy': { const l = allLists().find(x => x.id === d.id); if (!l) break; const nl = { id: uid(), name: l.name + ' (mine)', ids: l.ids.slice() }; data.peakLists.push(nl); touch({ noRender: true }); openDetail({ type: 'list', id: nl.id }, true); toast('Copied. You can add and remove peaks now.'); break; }
     case 'yrMetric': view.yrMetric = el.dataset.k; renderSide(); break;
@@ -2756,7 +2906,7 @@ function onAction(act, el) {
       const nt = { id: uid(), name: r.name, date, trip: '', notes: 'Logged from planned route.', segments: [{ src: 'manual', pts: routeLine(r).map(q => q.slice()) }] };
       data.tracks.push(nt); const n = matchTrack(nt).length; touch({ noRender: true }); openDetail({ type: 'track', id: nt.id }); toast(`Logged as a hike${n ? `, matched ${n} places` : ''}.`); break;
     }
-    case 'delRoute': if (confirm('Delete this route?')) { data.routes = data.routes.filter(x => x !== r); touch({ noRender: true }); goBack(); } break;
+    case 'delRoute': if (confirm('Delete this route? You can restore it from Deleted items.')) { trashPut('route', r); touch({ noRender: true }); goBack(); } break;
     case 'saveRoute': r.name = $('rName').value.trim() || r.name; r.notes = $('rNotes').value; touch(); toast('Saved.'); break;
     case 'split': setMode('split'); break;
     case 'unsplit': if (confirm('Undo the split? This removes the parts you drew and restores the full Garmin line.')) { unsplit(t); matchTrack(t); touch(); } break;
@@ -2771,8 +2921,8 @@ function onAction(act, el) {
     case 'rematch': { if (t.approved === false) { toast('Approve this hike first.'); break; } const n = matchTrack(t).length; touch(); toast(`Matched ${n} places.`); break; }
     case 'approveTrack': approveTrack(t); break;
     case 'approveAll': { const pend = data.tracks.filter(x => x.approved === false); pend.forEach(approveTrack); toast(`Approved ${pend.length} hike${pend.length === 1 ? '' : 's'}.`); break; }
-    case 'rejectTrack': if (confirm('Delete this imported hike? It is not counted anywhere.')) { data.tracks = data.tracks.filter(x => x !== t); touch({ noRender: true }); goBack(); } break;
-    case 'delTrack': if (confirm('Delete this hike and the visits it logged?')) { data.tracks = data.tracks.filter(x => x !== t); matchTrack({ id: t.id, segments: [] }); touch({ noRender: true }); goBack(); } break;
+    case 'rejectTrack': if (confirm('Delete this imported hike? It is not counted anywhere. You can restore it from Deleted items.')) { trashPut('track', t); touch({ noRender: true }); goBack(); } break;
+    case 'delTrack': if (confirm('Delete this hike and the visits it logged? You can restore it from Deleted items.')) { trashPut('track', t); matchTrack({ id: t.id, segments: [] }); touch({ noRender: true }); goBack(); } break;
     case 'addCamp': { const pid = $('tCampPick').value; if (!pid) break; t.camps = [...(t.camps || []), pid]; touch(); break; }
     case 'unCamp': t.camps = (t.camps || []).filter(x => x !== el.dataset.pid); touch(); break;
     case 'newCamp': {
@@ -2783,6 +2933,12 @@ function onAction(act, el) {
     case 'pmPick': $('pmFile').click(); break;
     case 'pmSite': pmDownloadFromSite(); break;
     case 'pmDel': if (confirm('Remove the offline map from this device?')) pmRemove(); break;
+    case 'openTrash': openDetail({ type: 'trash' }); break;
+    case 'hideFeat': { const ids = idsOf(d.id), f = isGroup(d.id) ? GROUPS[d.id] : FEAT[d.id]; const nm = f ? (isGroup(d.id) ? f.name : nameOf(f)) : ''; if (confirm(`Remove ${nm ? '"' + nm + '"' : 'this'} from the map? It will not count in your totals. You can bring it back from Deleted items.`)) { hideFeatures(ids, nm || (KIND_INFO[f.kind] || { label: 'Item' }).label); goBack(); toast('Removed. Restore it from Deleted items.', 5000); } break; }
+    case 'restoreBatch': { const n = restoreHidden((id, h) => h.batch === el.dataset.b); toast(`Restored ${n} item${n === 1 ? '' : 's'}.`); break; }
+    case 'restoreOne': { restoreHidden(id => id === el.dataset.id); toast('Restored.'); break; }
+    case 'restoreTrash': restoreTrash(el.dataset.id); break;
+    case 'purgeTrash': if (confirm('Delete this for good? Its photos go too.')) purgeTrash(el.dataset.id); break;
     case 'hiDl': download1m(el.dataset.key, +el.dataset.z); break;
     case 'hiDel': remove1m(+el.dataset.i); break;
     case 'offDl': downloadOffline(el.dataset.level, el.dataset.area); break;
@@ -2813,7 +2969,7 @@ function onAction(act, el) {
       p.name = $('pName').value.trim(); p.type = $('pType').value; p.status = $('pStatus').value; p.icon = $('pIcon').value.trim(); p.date = $('pDate').value; p.note = $('pNote').value;
       touch(); toast('Pin saved.'); break;
     }
-    case 'delPin': if (confirm('Delete this pin?')) { data.pins = data.pins.filter(x => x !== p); selectedPinId = null; touch({ noRender: true }); goBack(); } break;
+    case 'delPin': if (confirm('Delete this pin? You can restore it from Deleted items.')) { trashPut('pin', p); selectedPinId = null; touch({ noRender: true }); goBack(); } break;
     case 'edUndo': undoPoint(); break;
     case 'edClear': editor.wps = []; editor.legs = []; redrawEditor(); renderSide(); break;
     case 'edDay': { const w = editor.wps[editor.wps.length - 1]; w.brk = !w.brk; redrawEditor(); renderSide(); break; }
@@ -2853,6 +3009,9 @@ $('side').addEventListener('change', e => {
   const id = e.target.id;
   if (id === 'pmFile' && e.target.files[0]) { const f = e.target.files[0]; pmInstall(f, f.name); e.target.value = ''; }
   if (id === 'pmOn') pmToggle(e.target.checked);
+  if (id === 'rangeOnlyCk') { data.settings.rangeOnly = e.target.checked; touch(); }
+  if (e.target.dataset && e.target.dataset.cutkind && areaEd) { areaEd.cut.kinds[e.target.dataset.cutkind] = e.target.checked; highlightCut(); renderSide(); }
+  if (id === 'cutTouch' && areaEd) { areaEd.cut.touch = e.target.checked; highlightCut(); renderSide(); }
   if (id === 'sPhotoStore') { if (e.target.checked) { if (!syncOn() && !confirm('Sync is not connected, so photos in the store stay only in this browser until you connect it. Continue?')) { e.target.checked = false; return; } migratePhotosToStore(); } else if (confirm('Bring all photos back into the file?')) bringPhotosBack(); else e.target.checked = true; }
   if (id === 'exSt') { view.explore.st = e.target.value; renderSide(); }
   if (id === 'exSort') { view.explore.sort = e.target.value; renderSide(); }
@@ -2895,6 +3054,7 @@ $('menu').addEventListener('click', e => {
   if (m === 'save') saveFile();
   if (m === 'sync') { if (syncOn()) syncNow(true); else { if (editor) stopEditor(); openDetail({ type: 'settings' }); } }
   if (m === 'newArea') { if (editor) stopEditor(true); startAreaEditor(); }
+  if (m === 'cleanup') { if (editor) stopEditor(true); startAreaEditor(null, 'cut'); }
   if (m === 'importOld') $('oldFile').click();
   if (m === 'importJson') $('jsonFile').click();
   if (m === 'gpx') $('gpxFile').click();
@@ -2903,7 +3063,7 @@ $('menu').addEventListener('click', e => {
   if (m === 'pngMap') exportMapPNG();
   if (m === 'pdfMap') exportMapPDF();
   if (m === 'printPdf') { if (editor) stopEditor(); view.detail = null; viewStack = []; setTab('stats'); setTimeout(() => window.print(), 350); }
-  if (['history', 'settings', 'help', 'ideas', 'offline'].includes(m)) { if (editor) stopEditor(); if (areaEd) stopAreaEditor(); openDetail({ type: m }); if (m === 'offline') setTimeout(updateOffStatus, 50); }
+  if (['history', 'settings', 'help', 'ideas', 'offline', 'trash'].includes(m)) { if (editor) stopEditor(); if (areaEd) stopAreaEditor(); openDetail({ type: m }); if (m === 'offline') setTimeout(updateOffStatus, 50); }
 });
 // Photos: how much space they take in the file, shown in Settings
 function photoSummary() {
@@ -3049,7 +3209,7 @@ function photoSig() {
   return n + ':' + len + (refs ? ':' + hashStr(refs) : '');
 }
 function hasLocalContent() {
-  return !!(data.tracks.length || data.pins.length || data.routes.length || Object.keys(data.visits).length || Object.keys(data.names).length || Object.keys(data.wish).length || data.ideas.sooner.length || data.ideas.later.length || Object.keys(data.photos).length || data.areas.length || data.peakLists.length);
+  return !!(data.tracks.length || data.pins.length || data.routes.length || Object.keys(data.visits).length || Object.keys(data.names).length || Object.keys(data.wish).length || data.ideas.sooner.length || data.ideas.later.length || Object.keys(data.photos).length || data.areas.length || data.peakLists.length || Object.keys(data.hidden).length || data.trash.length);
 }
 function toB64(str) {
   const bytes = new TextEncoder().encode(str); let bin = '';
