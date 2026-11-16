@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Teton Atlas V8</title>
+<title>Teton Atlas V9</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -23,6 +23,8 @@ html,body{margin:0;height:100%;overflow:hidden;font:14px/1.45 -apple-system,Blin
 #map{position:absolute;top:0;bottom:0;left:400px;right:0;transition:left .25s ease}
 button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%;overscroll-behavior:none}
+html,body,#side,.pop,#toolbar,#toast,.mapbtn,#collapseBtn{touch-action:manipulation;-webkit-user-select:none;user-select:none}
+input,textarea,select,#sideBody p,#sideBody .t,#sideBody textarea{-webkit-user-select:text;user-select:text}
 input,select,textarea{font:inherit;color:var(--ink);width:100%;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;outline:none}
 input:focus,select:focus,textarea:focus{border-color:var(--green)}
 label.f{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
@@ -205,7 +207,7 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 <aside id="side">
   <header>
     <svg width="34" height="34" viewBox="0 0 34 34"><rect width="34" height="34" rx="9" fill="#1f5e2c"/><path d="M4 26 L13 12 L16 16 L20 7 L30 26 Z" fill="#fff"/><path d="M20 7 L17.5 12 L19.5 11 L21.5 13 Z" fill="#aef07f"/></svg>
-    <h1>Teton Atlas</h1><span class="chip-v">V8</span>
+    <h1>Teton Atlas</h1><span class="chip-v">V9</span>
   </header>
   <div class="search">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b6f6b" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
@@ -227,26 +229,26 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 <button id="menuBtn" class="mapbtn" title="Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1b1b1b" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
 
 <div id="menu" class="pop" hidden>
-  <button data-menu="save"><span>💾</span><span>Save file</span></button>
+  <button data-menu="save"><span>Save file</span></button>
   <hr>
   <div class="mh">Import</div>
-  <button data-menu="gpx"><span>⬆️</span><span>Import GPX hikes<span class="sub">Garmin Connect: open an activity → ⚙ → Export to GPX</span></span></button>
-  <button data-menu="importOld"><span>📂</span><span>Import from an older version<span class="sub">Pick your old Teton Atlas file (V1, V2, V3…)</span></span></button>
-  <button data-menu="importJson"><span>📥</span><span>Import a backup (JSON)</span></button>
+  <button data-menu="gpx"><span>Import GPX hikes<span class="sub">Garmin Connect: open an activity → ⚙ → Export to GPX</span></span></button>
+  <button data-menu="importOld"><span>Import from an older version<span class="sub">Pick your old Teton Atlas file (V1, V2, V3…)</span></span></button>
+  <button data-menu="importJson"><span>Import a backup (JSON)</span></button>
   <hr>
   <div class="mh">Map data</div>
-  <button data-menu="fetchAll"><span>🗺️</span><span>Download trails &amp; places (whole range)</span></button>
-  <button data-menu="fetchView"><span>🔍</span><span>Add trails &amp; places for this view</span></button>
+  <button data-menu="fetchAll"><span>Download trails &amp; places (whole range)</span></button>
+  <button data-menu="fetchView"><span>Add trails &amp; places for this view</span></button>
   <hr>
-  <button data-menu="ideas"><span>💡</span><span>Ideas (Sooner &amp; Later)</span></button>
-  <button data-menu="exportJson"><span>📤</span><span>Export full backup (JSON)<span class="sub">Includes photos, ideas and ratings</span></span></button>
-  <button data-menu="pngMap"><span>🖼️</span><span>Export map view (PNG)</span></button>
-  <button data-menu="pdfMap"><span>🗺️</span><span>Map view as PDF<span class="sub">Opens the print dialog; choose "Save as PDF"</span></span></button>
-  <button data-menu="offline"><span>📶</span><span>Offline terrain (download)</span></button>
-  <button data-menu="printPdf"><span>🖨️</span><span>Stats &amp; checklist as PDF<span class="sub">Opens the print dialog; choose "Save as PDF"</span></span></button>
-  <button data-menu="settings"><span>⚙️</span><span>Settings</span></button>
-  <button data-menu="history"><span>🕘</span><span>Version history</span></button>
-  <button data-menu="help"><span>❔</span><span>How to use</span></button>
+  <button data-menu="ideas"><span>Ideas (Sooner &amp; Later)</span></button>
+  <button data-menu="exportJson"><span>Export full backup (JSON)<span class="sub">Includes photos, ideas and ratings</span></span></button>
+  <button data-menu="pngMap"><span>Export map view (PNG)</span></button>
+  <button data-menu="pdfMap"><span>Map view as PDF<span class="sub">Opens the print dialog; choose "Save as PDF"</span></span></button>
+  <button data-menu="offline"><span>Offline terrain (download)</span></button>
+  <button data-menu="printPdf"><span>Stats &amp; checklist as PDF<span class="sub">Opens the print dialog; choose "Save as PDF"</span></span></button>
+  <button data-menu="settings"><span>Settings</span></button>
+  <button data-menu="history"><span>Version history</span></button>
+  <button data-menu="help"><span>How to use</span></button>
 </div>
 
 <div id="layers" class="pop" hidden></div>
@@ -269,7 +271,7 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V8';
+const APP_VERSION = 'V9';
 const BBOX = { s: 43.40, w: -111.25, n: 44.15, e: -110.50 }; // whole Teton Range, WY + ID sides
 const OVERPASS_URLS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
@@ -362,7 +364,10 @@ const VERSIONS = [
     'iPhone: the "No trail data" notice now has a Download now button and stays until you close it (tap it or the x).',
     'iPhone: layout respects the notch and home bar, the panel height follows the visible screen, and fields no longer zoom the page when tapped.',
     'iPhone: the empty-state Download button is at the top of the panel so it is visible without scrolling.',
-    'Asks the browser to keep this app\'s saved map data from being cleared.'] }
+    'Asks the browser to keep this app\'s saved map data from being cleared.'] },
+  { name: 'Teton Atlas V9', date: '2026-11-16', notes: [
+    'Double-tap and pinch no longer zoom the page; only the map zooms.',
+    'Removed the emoji from the menu.'] }
 ];
 
 // ================= State =================
@@ -950,7 +955,7 @@ function touch(opts) {
   clearTimeout(touch.tm); touch.tm = setTimeout(saveLocal, 500);
   if (!opts || !opts.noRender) { updateSources(); renderSide(); }
 }
-function updateSaveState() { const b = document.querySelector('[data-menu=save]'); if (b) b.innerHTML = dirty ? '<span>💾</span><span>Save file<span class="sub">You have unsaved changes</span></span>' : '<span>💾</span><span>Save file</span>'; }
+function updateSaveState() { const b = document.querySelector('[data-menu=save]'); if (b) b.innerHTML = dirty ? '<span>Save file<span class="sub">You have unsaved changes</span></span>' : '<span>Save file</span>'; }
 function saveLocal() {
   // Photos are large, so they stay out of the browser's small localStorage; they are kept in the saved file and JSON backups.
   try { const { osm, photos, ...rest } = data; localStorage.setItem(LS_KEY, JSON.stringify({ savedAt: data.editedAt, data: rest })); } catch (e) { /* optional */ }
@@ -2339,6 +2344,8 @@ document.addEventListener('keydown', e => {
 });
 window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
+// Page zoom (double-tap, pinch) only happens on the map itself
+['gesturestart', 'gesturechange'].forEach(ev => document.addEventListener(ev, e => { if (!e.target.closest || !e.target.closest('#map')) e.preventDefault(); }));
 // ================= Collapsible side panel =================
 function setCollapsed(on) {
   document.body.classList.toggle('collapsed', on);
