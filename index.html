@@ -213,6 +213,7 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
   <button data-menu="ideas"><span>💡</span><span>Ideas (Sooner &amp; Later)</span></button>
   <button data-menu="exportJson"><span>📤</span><span>Export full backup (JSON)<span class="sub">Includes photos, ideas and ratings</span></span></button>
   <button data-menu="pngMap"><span>🖼️</span><span>Export map view (PNG)</span></button>
+  <button data-menu="offline"><span>📶</span><span>Offline terrain (download)</span></button>
   <button data-menu="printPdf"><span>🖨️</span><span>Stats &amp; checklist as PDF<span class="sub">Opens the print dialog; choose "Save as PDF"</span></span></button>
   <button data-menu="settings"><span>⚙️</span><span>Settings</span></button>
   <button data-menu="history"><span>🕘</span><span>Version history</span></button>
@@ -244,6 +245,11 @@ const BBOX = { s: 43.40, w: -111.25, n: 44.15, e: -110.50 }; // whole Teton Rang
 const OVERPASS_URLS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const DEM_Z = 14;
+const DEM_PROTO = 'teton-dem://'; // terrain tiles go through this so downloaded copies are used offline
+const DEM_CACHE = 'teton-dem-offline';
+const OFF_LEVELS = { low: { label: 'Low', zooms: [10, 11] }, medium: { label: 'Medium', zooms: [10, 11, 12, 13] }, high: { label: 'High', zooms: [10, 11, 12, 13, 14] } };
+const OFF_TILE_KB = 25; // rough average for one terrain tile, shown as an estimate only
+const OFF_MAX_TILES = 4000;
 const LS_KEY = 'teton-atlas-v1'; // shared with V1/V2 so unsaved data carries forward
 const IDB_NAME = 'teton-atlas';
 const FONT = ['Noto Sans Bold'];
@@ -308,7 +314,8 @@ const VERSIONS = [
     'Camps and nights on each hike: list the camps you used, or add a camp at the end of the hike. Multi-day hikes show a reminder if camps are missing.',
     'Summit routes: each peak can list several ways up, each with its own YDS rating.',
     'Print or save as PDF: Stats and the range checklist from the menu.',
-    'Installable on iPhone and desktop (Add to Home Screen). The app opens offline; map tiles still need a connection.'] }
+    'Installable on iPhone and desktop (Add to Home Screen). The app opens offline; map tiles still need a connection.',
+    'Offline terrain: save elevation and hillshade for the whole range or the current view (Low, Medium or High), with a size estimate.'] }
 ];
 
 // ================= State =================
@@ -1011,8 +1018,8 @@ function buildStyle() {
     sources['base-' + k] = { type: 'raster', tiles: b.tiles, tileSize: 256, maxzoom: b.max, attribution: b.attr };
     layers.push({ id: 'base-' + k, type: 'raster', source: 'base-' + k, layout: { visibility: base === k ? 'visible' : 'none' } });
   }
-  sources.dem = { type: 'raster-dem', tiles: [DEM_URL], tileSize: 256, encoding: 'terrarium', maxzoom: 15, attribution: 'Elevation: Mapzen Terrain Tiles (AWS)' };
-  sources['dem-hs'] = { type: 'raster-dem', tiles: [DEM_URL], tileSize: 256, encoding: 'terrarium', maxzoom: 15 };
+  sources.dem = { type: 'raster-dem', tiles: [DEM_PROTO + '{z}/{x}/{y}'], tileSize: 256, encoding: 'terrarium', maxzoom: 15, attribution: 'Elevation: Mapzen Terrain Tiles (AWS)' };
+  sources['dem-hs'] = { type: 'raster-dem', tiles: [DEM_PROTO + '{z}/{x}/{y}'], tileSize: 256, encoding: 'terrarium', maxzoom: 15 };
   sources.openmaptiles = { type: 'vector', url: OFM + '/planet', attribution: BASES.outdoor.attr };
   sources['omt-text'] = { type: 'vector', url: OFM + '/planet' };
   for (const l of outdoorLayers()) { if (l.type === 'background') delete l.source; l.layout = Object.assign({}, l.layout, { visibility: base === 'outdoor' ? 'visible' : 'none' }); layers.push(l); }
@@ -1448,7 +1455,7 @@ function goBack() {
 function renderSide() {
   const d = view.detail;
   if (d) {
-    const fn = { feature: pageFeature, route: pageRoute, track: pageTrack, pin: pagePin, editor: pageEditor, history: pageHistory, settings: pageSettings, help: pageHelp, ideas: pageIdeas }[d.type];
+    const fn = { feature: pageFeature, route: pageRoute, track: pageTrack, pin: pagePin, editor: pageEditor, history: pageHistory, settings: pageSettings, help: pageHelp, ideas: pageIdeas, offline: pageOffline }[d.type];
     if (fn) { body().innerHTML = fn(d); return; }
   }
   const q = $('q').value.trim().toLowerCase();
@@ -1972,6 +1979,8 @@ function onAction(act, el) {
       const p = { id: uid(), lon: +last[0].toFixed(6), lat: +last[1].toFixed(6), name: `Camp ${fmtDate(t.date)}`, type: 'camp', status: 'been', note: '', date: t.date, icon: '', color: '' };
       data.pins.push(p); t.camps = [...(t.camps || []), p.id]; touch(); toast('Camp added at the end of the hike. Rename it under Pins if you like.', 6000); break;
     }
+    case 'offDl': downloadOffline(el.dataset.level, el.dataset.area); break;
+    case 'offClear': if (confirm('Remove all saved offline terrain from this device?')) caches.delete(DEM_CACHE).then(() => { toast('Offline terrain removed.'); updateOffStatus(); }); break;
     case 'addPhoto': $('photoFile').click(); break;
     case 'delPhoto': { const list = d.id && data.photos[d.id]; if (list) { list.splice(+el.dataset.idx, 1); if (!list.length) delete data.photos[d.id]; touch(); } break; }
     case 'addSummitRoute': {
@@ -2059,7 +2068,7 @@ $('menu').addEventListener('click', e => {
   if (m === 'exportJson') { const { osm, ...rest } = data; download(`Teton Atlas backup ${today()}.json`, JSON.stringify(rest, null, 1), 'application/json'); }
   if (m === 'pngMap') exportMapPNG();
   if (m === 'printPdf') { if (editor) stopEditor(); view.detail = null; viewStack = []; setTab('stats'); setTimeout(() => window.print(), 350); }
-  if (['history', 'settings', 'help', 'ideas'].includes(m)) { if (editor) stopEditor(); openDetail({ type: m }); }
+  if (['history', 'settings', 'help', 'ideas', 'offline'].includes(m)) { if (editor) stopEditor(); openDetail({ type: m }); if (m === 'offline') setTimeout(updateOffStatus, 50); }
 });
 function exportMapPNG() {
   toast('Preparing the map image…', 3000);
@@ -2117,9 +2126,86 @@ function setCollapsed(on) {
 }
 $('collapseBtn').addEventListener('click', () => setCollapsed(!document.body.classList.contains('collapsed')));
 
+// ================= Offline terrain =================
+// Terrain (elevation and hillshade) tiles can be saved on the device. The base map's vector tiles are not
+// downloaded here (see the spec): the public vector server is not meant for bulk downloads.
+async function demProtocol(req) {
+  const m = req.url.match(/^teton-dem:\/\/(\d+)\/(\d+)\/(\d+)/);
+  if (!m) throw new Error('bad terrain tile address');
+  const url = DEM_URL.replace('{z}', m[1]).replace('{x}', m[2]).replace('{y}', m[3]);
+  try { const hit = await (await caches.open(DEM_CACHE)).match(url); if (hit) return { data: await hit.arrayBuffer() }; } catch (e) { /* cache not available here */ }
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('terrain tile ' + res.status);
+  return { data: await res.arrayBuffer() };
+}
+const lon2x = (lon, z) => Math.floor((lon + 180) / 360 * 2 ** z);
+const lat2y = (lat, z) => { const r = lat * Math.PI / 180; return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * 2 ** z); };
+function demTileUrls(b, zooms) {
+  const out = [];
+  for (const z of zooms) {
+    const x0 = lon2x(b.w, z), x1 = lon2x(b.e, z), y0 = lat2y(b.n, z), y1 = lat2y(b.s, z);
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) out.push(DEM_URL.replace('{z}', z).replace('{x}', x).replace('{y}', y));
+  }
+  return out;
+}
+function viewBounds() { if (!map) return BBOX; const b = map.getBounds(); return { s: b.getSouth(), w: b.getWest(), n: b.getNorth(), e: b.getEast() }; }
+let offBusy = false;
+function setOffStatus(t) { const el = $('offStatus'); if (el) el.textContent = t; }
+async function updateOffStatus() {
+  try {
+    const keys = await (await caches.open(DEM_CACHE)).keys();
+    const est = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
+    setOffStatus(keys.length ? `${keys.length.toLocaleString()} terrain tiles saved on this device${est ? ` · this site uses ${(est.usage / 1048576).toFixed(0)} MB of browser storage` : ''}.` : 'Nothing saved offline yet.');
+  } catch (e) { setOffStatus('Offline storage is not available here. Open the app over https (GitHub Pages) to use it.'); }
+}
+async function downloadOffline(level, area) {
+  if (offBusy) { toast('A download is already running.'); return; }
+  const L = OFF_LEVELS[level], bnd = area === 'view' ? viewBounds() : BBOX;
+  const urls = demTileUrls(bnd, L.zooms);
+  if (urls.length > OFF_MAX_TILES) { toast('That area is too big for one offline download. Zoom in, or pick a lower quality.', 8000); return; }
+  offBusy = true; let done = 0, fail = 0, next = 0;
+  setOffStatus(`Downloading ${urls.length.toLocaleString()} tiles… keep this page open until it says Done.`);
+  try {
+    const cache = await caches.open(DEM_CACHE);
+    const worker = async () => {
+      while (next < urls.length) {
+        const u = urls[next++];
+        try {
+          if (!(await cache.match(u))) {
+            const res = await fetch(u); if (!res.ok) throw new Error(res.status);
+            const buf = await res.arrayBuffer();
+            await cache.put(u, new Response(buf, { headers: { 'Content-Type': 'image/png' } }));
+          }
+        } catch (e) { fail++; }
+        done++;
+        if (done % 25 === 0 || done === urls.length) setOffStatus(`Downloaded ${done.toLocaleString()} of ${urls.length.toLocaleString()} tiles${fail ? ` (${fail} failed)` : ''}…`);
+      }
+    };
+    await Promise.all(Array.from({ length: 6 }, worker));
+    setOffStatus(`Done: ${(urls.length - fail).toLocaleString()} of ${urls.length.toLocaleString()} tiles saved${fail ? `, ${fail} failed. Run it again to retry those` : ''}.`);
+    toast(fail ? 'Saved with some failures. Run it again.' : 'Offline terrain saved.', 6000);
+  } catch (e) { setOffStatus('Download stopped: ' + e.message); toast('Download failed: ' + e.message, 7000); }
+  finally { offBusy = false; updateOffStatus(); }
+}
+function pageOffline() {
+  const rows = Object.entries(OFF_LEVELS).map(([k, L]) => {
+    const whole = demTileUrls(BBOX, L.zooms).length, here = demTileUrls(viewBounds(), L.zooms).length;
+    const row = (n, area, label) => `<button class="btn sm" data-act="offDl" data-level="${k}" data-area="${area}">${label}: ${n.toLocaleString()} tiles · ~${Math.round(n * OFF_TILE_KB / 1024)} MB</button>`;
+    return `<div class="visit" style="flex-direction:column;align-items:stretch"><b>${L.label}</b><span class="small muted">Zoom ${L.zooms[0]}–${L.zooms[L.zooms.length - 1]}</span><div class="row">${row(whole, 'range', 'Whole range')}${row(here, 'view', 'This view')}</div></div>`;
+  }).join('');
+  return `${backBtn()}<div class="d-title">Offline terrain</div>
+    <div class="d-sub">Saves elevation and hillshade for offline use. Trails, peaks, lakes and your hikes already work offline because they are stored in this file.</div>
+    <div class="small" id="offStatus">Checking…</div>
+    <h2 class="sec">Download</h2>
+    ${rows}
+    <div class="small muted" style="margin-top:8px">Size is an estimate (about ${OFF_TILE_KB} KB per tile). Keep this page open while it downloads. Limits: the base map's colors and labels and the contour lines still need a connection, and iPhones may clear site storage if the app is not added to the Home Screen.</div>
+    <div class="row"><button class="btn danger" data-act="offClear">Remove offline terrain</button></div>`;
+}
+
 // ================= Map init =================
 const HIT = ['poi', 'route-line', 'track-hit', 'trail-hit', 'lake-fill'];
 function initMap() {
+  maplibregl.addProtocol('teton-dem', demProtocol);
   map = new maplibregl.Map({ container: 'map', style: buildStyle(), center: [-110.80, 43.74], zoom: 10.3, maxPitch: 85, hash: true, attributionControl: { compact: true } });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
   map.addControl(new maplibregl.ScaleControl({ unit: 'imperial' }), 'bottom-left');
