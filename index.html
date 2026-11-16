@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Teton Atlas V11</title>
+<title>Teton Atlas V12</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/maplibre-contour@0.1.1/dist/index.min.js"></script>
+<script src="https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js"></script>
 <style>
 :root{--ink:#1b1b1b;--muted:#6b6f6b;--line:#e7e7e3;--bg:#fff;--soft:#f4f4f1;--green:#1f5e2c;--lime:#aef07f;--pill:#151515;--red:#d62828;--orange:#f77f00;--blue:#1e88e5}
 [hidden]{display:none!important}
@@ -230,12 +231,12 @@ details.set[open]{padding-bottom:6px}
 <body>
 <div id="topbar">
   <svg width="30" height="30" viewBox="0 0 34 34"><rect width="34" height="34" rx="9" fill="#fff" fill-opacity=".14"/><path d="M4 26 L13 12 L16 16 L20 7 L30 26 Z" fill="#fff"/><path d="M20 7 L17.5 12 L19.5 11 L21.5 13 Z" fill="#aef07f"/></svg>
-  <b>Teton Atlas</b><span class="chip-v">V11</span>
+  <b>Teton Atlas</b><span class="chip-v">V12</span>
 </div>
 <aside id="side">
   <header>
     <svg width="34" height="34" viewBox="0 0 34 34"><rect width="34" height="34" rx="9" fill="#1f5e2c"/><path d="M4 26 L13 12 L16 16 L20 7 L30 26 Z" fill="#fff"/><path d="M20 7 L17.5 12 L19.5 11 L21.5 13 Z" fill="#aef07f"/></svg>
-    <h1>Teton Atlas</h1><span class="chip-v">V11</span>
+    <h1>Teton Atlas</h1><span class="chip-v">V12</span>
   </header>
   <div id="syncBanner" class="banner" hidden></div>
   <div class="search">
@@ -302,7 +303,7 @@ details.set[open]{padding-bottom:6px}
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V11';
+const APP_VERSION = 'V12';
 const BBOX = { s: 43.40, w: -111.25, n: 44.15, e: -110.50 }; // whole Teton Range, WY + ID sides
 const OVERPASS_URLS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
@@ -411,7 +412,18 @@ const VERSIONS = [
     'Settings are grouped into collapsible sections (Hiking, Photos, Sync, Map data).',
     'iPhone: a green header fills the area behind the status bar and dynamic island.',
     'iPhone: the panel tab sits at the very bottom, and the panel opens full screen.',
-    'Map credits are tucked behind the (i) button.'] }
+    'Map credits are tucked behind the (i) button.'] },
+  { name: 'Teton Atlas V12', date: '2026-11-16', notes: [
+    'Draw areas (polygons) on the map. A hike through an area counts as a visit, and areas show on the map and in your lists.',
+    'Peak lists with progress: 12,000 ft, 11,000 ft, Top 10 and the Cathedral Group are built in, and you can make your own. Tick them off as you go.',
+    'Stats by year: miles, gain, days out and peaks per year, and what was new to you each year. A quiet "Maybe next" list of places you have not been sits at the bottom of Stats.',
+    'Trip report for any hike: map, numbers, elevation profile and photos, ready to print or save as PDF.',
+    'Trip planning card on planned trips: sunrise and sunset, moving time and latest start per day, weather forecast, permits, trail conditions and avalanche links.',
+    '"Add to planned trips" on a route; GPX export with day tracks and camp waypoints. The elevation chart now works by touch, with grade.',
+    'A banner warns when sync stops working or your GitHub token is about to expire.',
+    'Optional photo store (Settings → Photos): photos are kept as separate files, so the saved file and sync data stay small. Backups still include every photo.',
+    '1 m terrain from USGS 3DEP, downloaded for areas you choose (a High peaks preset or the current view): sharper 3D and hillshade.',
+    'Offline base map: install a .pmtiles file made with tools/build-offline-map.sh and the roads, water and place names work with no connection.'] }
 ];
 
 // ================= State =================
@@ -1040,8 +1052,97 @@ function shrinkImage(file) {
 function photosHTML(id) {
   const list = data.photos[id] || [];
   return `<h2 class="sec">Photos <span class="small muted">${list.length}</span></h2>
-    <div class="photos">${list.map((src, i) => `<div class="ph"><img src="${src}" alt=""><button class="ph-x" data-act="delPhoto" data-idx="${i}" title="Remove photo">×</button></div>`).join('')}</div>
+    <div class="photos">${list.map((src, i) => `<div class="ph">${photoImg(src)}<button class="ph-x" data-act="delPhoto" data-idx="${i}" title="Remove photo">×</button></div>`).join('')}</div>
     <div class="row"><button class="btn" data-act="addPhoto">📷 Add photo</button></div>`;
+}
+
+// ================= Photo store (opt-in) =================
+// Off: photos live inside the data as JPEG text, as before. On: each photo is saved once (in this browser, and as its own file in
+// your private data repo when sync is connected) and the data only holds a short reference like "ph:1a2b3c". This keeps the saved file small.
+const PH = new Map(), PH_PENDING = new Map();
+const PH_BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+function hashStr(s) {   // cyrb53: a quick 53-bit hash, plenty for telling personal photos apart
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < s.length; i++) { const ch = s.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+const isRef = s => typeof s === 'string' && s.startsWith('ph:');
+function photoSrc(s) { return isRef(s) ? (PH.get(s) || PH_BLANK) : s; }
+function photoImg(s) {
+  if (isRef(s) && !PH.has(s)) ensurePhoto(s);
+  return `<img src="${photoSrc(s)}"${isRef(s) ? ` data-ph="${s}" title="Loading photo…"` : ''} alt="">`;
+}
+function blobToDataURL(blob) { return new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.onerror = () => r(null); fr.readAsDataURL(blob); }); }
+async function fetchPhotoFromRepo(ref) {
+  try {
+    const dir = (sync.cfg.dir || 'data').replace(/^\/+|\/+$/g, '');
+    const res = await gh(`contents/${dir}/photos/${ref.slice(3)}.jpg?ref=${encodeURIComponent(sync.cfg.branch || 'main')}`, { headers: { Accept: 'application/vnd.github.raw+json' } });
+    if (!res.ok) return null;
+    return await blobToDataURL(new Blob([await res.blob()], { type: 'image/jpeg' }));
+  } catch (e) { return null; }
+}
+function ensurePhoto(ref) {
+  if (PH.has(ref)) return Promise.resolve(PH.get(ref));
+  if (PH_PENDING.has(ref)) return PH_PENDING.get(ref);
+  const pr = (async () => {
+    let url = await idbGet(ref);
+    if (!url && syncOn() && navigator.onLine) { url = await fetchPhotoFromRepo(ref); if (url) idbPut(ref, url); }
+    PH_PENDING.delete(ref);
+    if (url) { PH.set(ref, url); document.querySelectorAll('img[data-ph]').forEach(i => { if (i.dataset.ph === ref) { i.src = url; i.removeAttribute('title'); } }); }
+    return url || null;
+  })();
+  PH_PENDING.set(ref, pr);
+  return pr;
+}
+async function putPhoto(dataUrl) {
+  const ref = 'ph:' + hashStr(dataUrl);
+  PH.set(ref, dataUrl); await idbPut(ref, dataUrl); queuePhotoUpload(ref);
+  return ref;
+}
+function queuePhotoUpload(ref) {
+  if (!syncOn()) return;
+  const q = sync.st.photoQueue = sync.st.photoQueue || [];
+  if (!q.includes(ref)) { q.push(ref); syncSaveState(); }
+}
+function queueAllPhotoRefs() { for (const list of Object.values(data.photos)) for (const s of list) if (isRef(s)) queuePhotoUpload(s); syncMarkPending(); }
+// Photos in the data, as data URLs ready to print or back up (downloads any that are not on this device yet)
+async function resolvePhotos(id) { const out = []; for (const s of data.photos[id] || []) { const u = isRef(s) ? await ensurePhoto(s) : s; if (u) out.push(u); } return out; }
+async function migratePhotosToStore() {
+  let n = 0;
+  toast('Moving photos to the photo store…', 0);
+  for (const list of Object.values(data.photos)) for (let i = 0; i < list.length; i++) {
+    if (!list[i] || !list[i].startsWith('data:')) continue;
+    list[i] = await putPhoto(list[i]); n++;
+  }
+  data.settings.photoStore = true; touch();
+  toast(n ? `Moved ${n} photo${n === 1 ? '' : 's'} to the photo store.${syncOn() ? ' They upload in the background.' : ' Connect sync so they are also saved in your data repo.'}` : 'Photo store is on. New photos go there.', 7000);
+}
+async function bringPhotosBack() {
+  let n = 0, miss = 0;
+  toast('Bringing photos back into the file…', 0);
+  for (const list of Object.values(data.photos)) for (let i = 0; i < list.length; i++) {
+    if (!isRef(list[i])) continue;
+    const u = await ensurePhoto(list[i]); if (u) { list[i] = u; n++; } else miss++;
+  }
+  if (!miss) data.settings.photoStore = false;
+  touch();
+  toast(miss ? `${miss} photo${miss === 1 ? ' is' : 's are'} not on this device yet, so the photo store stays on. Connect to the internet and try again.` : `Brought ${n} photo${n === 1 ? '' : 's'} back into the file.`, 8000);
+}
+async function prefetchPhotos() {
+  const refs = [...new Set(Object.values(data.photos).flat().filter(isRef))]; let got = 0;
+  toast(`Downloading ${refs.length} photos…`, 0);
+  for (const r of refs) if (await ensurePhoto(r)) got++;
+  toast(`${got} of ${refs.length} photos are on this device.`, 5000);
+}
+async function exportBackup() {
+  const { osm, ...rest } = data;
+  const photos = {}; let miss = 0;
+  if (Object.values(data.photos).flat().some(isRef)) toast('Collecting photos for the backup…', 0);
+  for (const [id, list] of Object.entries(data.photos)) { photos[id] = []; for (const s of list) { const u = isRef(s) ? await ensurePhoto(s) : s; if (u) photos[id].push(u); else miss++; } }
+  download(`Teton Atlas backup ${today()}.json`, JSON.stringify(Object.assign({}, rest, { photos }), null, 1), 'application/json');
+  toast(miss ? `Backup saved, but ${miss} photo${miss === 1 ? '' : 's'} could not be fetched (not on this device yet).` : 'Backup saved.', 6000);
 }
 
 // ================= Saving =================
@@ -1055,7 +1156,11 @@ function touch(opts) {
 function updateSaveState() { const b = document.querySelector('[data-menu=save]'); if (b) b.innerHTML = dirty ? '<span>Save file<span class="sub">You have unsaved changes</span></span>' : '<span>Save file</span>'; }
 function saveLocal() {
   // Photos are large, so they stay out of the browser's small localStorage; they are kept in the saved file and JSON backups.
-  try { const { osm, photos, ...rest } = data; localStorage.setItem(LS_KEY, JSON.stringify({ savedAt: data.editedAt, data: rest })); } catch (e) { /* optional */ }
+  try {
+    const { osm, photos, ...rest } = data;
+    const refs = data.settings.photoStore ? Object.fromEntries(Object.entries(photos).map(([id, l]) => [id, l.filter(isRef)]).filter(([, l]) => l.length)) : null;
+    localStorage.setItem(LS_KEY, JSON.stringify({ savedAt: data.editedAt, data: rest, refs }));
+  } catch (e) { /* optional */ }
 }
 function buildHTML() {
   const json = JSON.stringify(data).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
@@ -1189,13 +1294,20 @@ function buildStyle() {
     sources['base-' + k] = { type: 'raster', tiles: b.tiles, tileSize: 256, maxzoom: b.max, attribution: b.attr };
     layers.push({ id: 'base-' + k, type: 'raster', source: 'base-' + k, layout: { visibility: base === k ? 'visible' : 'none' } });
   }
-  sources.dem = { type: 'raster-dem', tiles: [DEM_PROTO + '{z}/{x}/{y}'], tileSize: 256, encoding: 'terrarium', maxzoom: 15, attribution: 'Elevation: Mapzen Terrain Tiles (AWS)' };
-  sources['dem-hs'] = { type: 'raster-dem', tiles: [DEM_PROTO + '{z}/{x}/{y}'], tileSize: 256, encoding: 'terrarium', maxzoom: 15 };
-  sources.openmaptiles = { type: 'vector', url: OFM + '/planet', attribution: BASES.outdoor.attr };
-  sources['omt-text'] = { type: 'vector', url: OFM + '/planet' };
+  const demMax = hiRegions().length ? Math.max(...hiRegions().map(r => r.z)) : DEM_Z1;
+  sources.dem = { type: 'raster-dem', tiles: [DEM_PROTO + '{z}/{x}/{y}'], tileSize: 256, encoding: 'terrarium', maxzoom: demMax, attribution: 'Elevation: Mapzen Terrain Tiles (AWS)' + (demMax > DEM_Z1 ? ', USGS 3DEP' : '') };
+  sources['dem-hs'] = { type: 'raster-dem', tiles: [DEM_PROTO + '{z}/{x}/{y}'], tileSize: 256, encoding: 'terrarium', maxzoom: demMax };
+  if (PM) {                                              // offline map file installed and turned on
+    const pi = pmInfo() || {}, v = { type: 'vector', tiles: ['teton-pm://{z}/{x}/{y}'], minzoom: pi.minzoom || 0, maxzoom: pi.maxzoom || 14, bounds: pi.bounds };
+    sources.openmaptiles = Object.assign({}, v, { attribution: BASES.outdoor.attr + ' (offline copy)' });
+    sources['omt-text'] = v;
+  } else {
+    sources.openmaptiles = { type: 'vector', url: OFM + '/planet', attribution: BASES.outdoor.attr };
+    sources['omt-text'] = { type: 'vector', url: OFM + '/planet' };
+  }
   for (const l of outdoorLayers()) { if (l.type === 'background') delete l.source; l.layout = Object.assign({}, l.layout, { visibility: base === 'outdoor' ? 'visible' : 'none' }); layers.push(l); }
   layers.push({ id: 'hillshade', type: 'hillshade', source: 'dem-hs', layout: { visibility: layerOn('hillshade') && base !== 'outdoor' ? 'visible' : 'none' }, paint: { 'hillshade-exaggeration': 0.45, 'hillshade-shadow-color': '#3b3b3b' } });
-  return { version: 8, glyphs: OFM + '/fonts/{fontstack}/{range}.pbf', sources, layers };
+  return { version: 8, glyphs: 'teton-gl://{fontstack}/{range}', sources, layers };
 }
 function makeIcon(draw) {
   const c = document.createElement('canvas'); c.width = c.height = 44; const g = c.getContext('2d');
@@ -1889,7 +2001,7 @@ function reportBodyHTML(t, photos) {
     ${items.length ? `<h2>Places on this ${t.planned ? 'trip' : 'hike'}</h2><ul>${items.map(i => `<li>${esc(i.n)} <span style="color:#6b6f6b">${label[i.k]}${i.e ? ' · ' + fmtFt(i.e) + ' ft' : ''}</span></li>`).join('')}</ul>` : ''}
     ${camps.length ? `<h2>Camps</h2><ul>${camps.map(p => `<li>${esc(p.name || 'Camp')}</li>`).join('')}</ul>` : ''}
     ${t.notes ? `<h2>Notes</h2><div class="notes">${esc(t.notes)}</div>` : ''}
-    ${photos && photos.length ? `<h2>Photos</h2><div class="photos">${photos.map(s => `<img src="${s}" alt="">`).join('')}</div>` : ''}`;
+    ${photos && photos.length ? `<h2>Photos</h2><div class="photos">${photos.map(s => photoImg(s)).join('')}</div>` : ''}`;
 }
 function pageReport(d) {
   const t = findTrack(d.id); if (!t) return backBtn() + '<div class="empty">Trip not found.</div>';
@@ -1903,7 +2015,6 @@ async function printReport(t) {
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(t.name)}</title><style>@page{margin:12mm}body{margin:0}${REPORT_CSS}</style></head><body><div class="rep">${reportBodyHTML(t, photos)}</div><script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script></body></html>`);
   w.document.close();
 }
-async function resolvePhotos(id) { return (data.photos[id] || []).slice(); }
 
 // ================= Sidebar: navigation =================
 const body = () => $('sideBody');
@@ -2420,6 +2531,9 @@ function pageSettings() {
       <select id="sPhoto">${[800, 1200, 1600].map(px => `<option value="${px}" ${(s.photoMax || 1200) === px ? 'selected' : ''}>${px} px${px === 1200 ? ' (standard)' : px === 800 ? ' (smallest)' : ' (sharpest)'}</option>`).join('')}</select>
       <p class="muted small">${photoSummary()}</p>
       <div class="row"><button class="btn" data-act="recompressPhotos">Shrink existing photos</button></div>
+      <label class="toggle"><input type="checkbox" id="sPhotoStore" ${s.photoStore ? 'checked' : ''}> Keep photos in a separate photo store</label>
+      <p class="muted small">Recommended once you have many photos. Each photo is saved once on this device and, with sync connected, as its own file in your private data repo. The saved HTML file and JSON data then stay small. Backups (menu → Export full backup) still include every photo.</p>
+      ${s.photoStore ? `<div class="row"><button class="btn" data-act="photosPrefetch">Download all photos to this device</button></div>` : ''}
     </details>
     <details class="set" data-k="sync" ${setOpen('sync', !on)}><summary>Sync between devices<span class="sv" id="syncLine">${esc(sync.msg || syncIdle())}</span></summary>
       <p class="muted small">Keeps trips, pins, ideas, notes and photos the same on every device through a private GitHub repo.</p>
@@ -2565,6 +2679,7 @@ function onAction(act, el) {
     case 'exMore': view.explore.more = !view.explore.more; renderSide(); break;
     case 'exReset': Object.assign(view.explore, { recent: 'any', minEle: 'any', photo: false }); renderSide(); break;
     case 'parkOutline': fetchParkOutline().then(() => toast('Grand Teton NP outline loaded.')).catch(e => toast('Could not load the park outline: ' + e.message, 7000)); break;
+    case 'photosPrefetch': prefetchPhotos(); break;
     case 'recompressPhotos': recompressPhotos().catch(e => toast('Could not shrink photos: ' + e.message, 7000)); break;
     case 'planUp': case 'planDown': { const ids = plannedList().map(x => x.id), i = ids.indexOf(el.dataset.id); if (i >= 0) movePlanned(el.dataset.id, act === 'planUp' ? i - 1 : i + 1); break; }
     case 'newRoute': startEditor('route'); break;
@@ -2661,6 +2776,11 @@ function onAction(act, el) {
       const p = { id: uid(), lon: +last[0].toFixed(6), lat: +last[1].toFixed(6), name: `Camp ${fmtDate(t.date)}`, type: 'camp', status: 'been', note: '', date: t.date, icon: '', color: '' };
       data.pins.push(p); t.camps = [...(t.camps || []), p.id]; touch(); toast('Camp added at the end of the hike. Rename it under Pins if you like.', 6000); break;
     }
+    case 'pmPick': $('pmFile').click(); break;
+    case 'pmSite': pmDownloadFromSite(); break;
+    case 'pmDel': if (confirm('Remove the offline map from this device?')) pmRemove(); break;
+    case 'hiDl': download1m(el.dataset.key, +el.dataset.z); break;
+    case 'hiDel': remove1m(+el.dataset.i); break;
     case 'offDl': downloadOffline(el.dataset.level, el.dataset.area); break;
     case 'offClear': if (confirm('Remove all saved offline terrain from this device?')) caches.delete(DEM_CACHE).then(() => { toast('Offline terrain removed.'); updateOffStatus(); }); break;
     case 'addPhoto': $('photoFile').click(); break;
@@ -2701,7 +2821,7 @@ function onAction(act, el) {
       if (!cfg.owner || !cfg.repo || !token) { toast('Enter the username, repository and token.', 5000); break; }
       if (!sync.cfg || sync.cfg.owner !== cfg.owner || sync.cfg.repo !== cfg.repo || sync.cfg.dir !== cfg.dir) { sync.st.sha = {}; sync.st.photoSig = ''; sync.st.last = 0; }
       sync.cfg = cfg; try { localStorage.setItem(SYNC_KEY, JSON.stringify(cfg)); } catch (e) { toast('Could not save on this device.'); break; }
-      syncSaveState(); syncNow(true); renderSide(); break;
+      syncSaveState(); queueAllPhotoRefs(); syncNow(true); renderSide(); break;
     }
     case 'syncNow': syncNow(true); break;
     case 'syncOff': sync.cfg = null; sync.st = { sha: {}, pending: false, last: 0, photoSig: '' }; try { localStorage.removeItem(SYNC_KEY); localStorage.removeItem(SYNC_STATE_KEY); } catch (e) { /* ok */ } syncStatus('Not connected'); toast('This device is disconnected from sync. Your data stays here.'); renderSide(); break;
@@ -2727,6 +2847,9 @@ $('side').addEventListener('click', e => {
 });
 $('side').addEventListener('change', e => {
   const id = e.target.id;
+  if (id === 'pmFile' && e.target.files[0]) { const f = e.target.files[0]; pmInstall(f, f.name); e.target.value = ''; }
+  if (id === 'pmOn') pmToggle(e.target.checked);
+  if (id === 'sPhotoStore') { if (e.target.checked) { if (!syncOn() && !confirm('Sync is not connected, so photos in the store stay only in this browser until you connect it. Continue?')) { e.target.checked = false; return; } migratePhotosToStore(); } else if (confirm('Bring all photos back into the file?')) bringPhotosBack(); else e.target.checked = true; }
   if (id === 'exSt') { view.explore.st = e.target.value; renderSide(); }
   if (id === 'exSort') { view.explore.sort = e.target.value; renderSide(); }
   if (id === 'exRecent') { view.explore.recent = e.target.value; renderSide(); }
@@ -2771,7 +2894,7 @@ $('menu').addEventListener('click', e => {
   if (m === 'importJson') $('jsonFile').click();
   if (m === 'gpx') $('gpxFile').click();
   if (m === 'fetchAll' || m === 'fetchView') onAction(m);
-  if (m === 'exportJson') { const { osm, ...rest } = data; download(`Teton Atlas backup ${today()}.json`, JSON.stringify(rest, null, 1), 'application/json'); }
+  if (m === 'exportJson') exportBackup();
   if (m === 'pngMap') exportMapPNG();
   if (m === 'pdfMap') exportMapPDF();
   if (m === 'printPdf') { if (editor) stopEditor(); view.detail = null; viewStack = []; setTab('stats'); setTimeout(() => window.print(), 350); }
@@ -2779,9 +2902,9 @@ $('menu').addEventListener('click', e => {
 });
 // Photos: how much space they take in the file, shown in Settings
 function photoSummary() {
-  const all = Object.values(data.photos).flat(), bytes = all.reduce((a, s) => a + Math.round(s.length * 0.75), 0);
+  const all = Object.values(data.photos).flat(), inl = all.filter(s => !isRef(s)), refs = all.length - inl.length, bytes = inl.reduce((a, s) => a + Math.round(s.length * 0.75), 0);
   if (!all.length) return 'No photos yet.';
-  return `${all.length} photo${all.length === 1 ? '' : 's'}, about ${(bytes / 1048576).toFixed(1)} MB in this file.`;
+  return `${all.length} photo${all.length === 1 ? '' : 's'}${inl.length ? `, ${inl.length} inside this file (about ${(bytes / 1048576).toFixed(1)} MB)` : ''}${refs ? `, ${refs} in the photo store` : ''}.`;
 }
 function shrinkDataURL(src, max) {
   return new Promise(res => {
@@ -2801,6 +2924,7 @@ async function recompressPhotos() {
   let changed = 0, saved = 0;
   toast('Shrinking photos…', 0);
   for (const list of Object.values(data.photos)) for (let i = 0; i < list.length; i++) {
+    if (isRef(list[i])) continue;                       // photos in the photo store are not re-compressed
     const small = await shrinkDataURL(list[i], max);
     if (small && small.length < list[i].length) { saved += list[i].length - small.length; list[i] = small; changed++; }
   }
@@ -2837,7 +2961,7 @@ $('photoFile').addEventListener('change', async e => {
   if (!id || !files.length) return;
   toast('Adding photos…', 3000);
   let added = 0;
-  for (const f of files) { try { (data.photos[id] = data.photos[id] || []).push(await shrinkImage(f)); added++; } catch (err) { /* skip non-images */ } }
+  for (const f of files) { try { const src = await shrinkImage(f); (data.photos[id] = data.photos[id] || []).push(data.settings.photoStore ? await putPhoto(src) : src); added++; } catch (err) { /* skip non-images */ } }
   touch(); toast(added ? `Added ${added} photo${added > 1 ? 's' : ''}.` : 'Could not read that file as a photo.');
 });
 $('layers').addEventListener('change', e => {
@@ -2855,12 +2979,12 @@ $('layers').addEventListener('click', e => { const b = e.target.closest('[data-b
 $('gpxFile').addEventListener('change', async e => { const files = [...e.target.files]; e.target.value = ''; if (files.length) await importGPXFiles(files); });
 $('oldFile').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  try { const n = mergeData(extractEmbedded(await f.text())); for (const t of data.tracks) matchTrack(t); touch(); toast(`Imported ${n} items from ${f.name}.`, 6000); }
+  try { const n = mergeData(extractEmbedded(await f.text())); for (const t of data.tracks) matchTrack(t); touch(); if (data.settings.photoStore) migratePhotosToStore(); toast(`Imported ${n} items from ${f.name}.`, 6000); }
   catch (err) { toast('Could not import: ' + err.message, 7000); }
 });
 $('jsonFile').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  try { const n = mergeData(JSON.parse(await f.text())); touch(); toast(`Imported ${n} items.`); } catch (err) { toast('Could not import: ' + err.message, 7000); }
+  try { const n = mergeData(JSON.parse(await f.text())); touch(); if (data.settings.photoStore) migratePhotosToStore(); toast(`Imported ${n} items.`); } catch (err) { toast('Could not import: ' + err.message, 7000); }
 });
 document.addEventListener('keydown', e => {
   const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
@@ -2913,10 +3037,10 @@ function updateSyncBanner() {
   el.hidden = !msg;
   el.innerHTML = msg ? `<span>${esc(msg)}</span><button class="btn sm" data-act="${act}">${label}</button>` : '';
 }
-function syncIdle() { return !syncOn() ? 'Not connected' : sync.st.pending ? 'Changes waiting to upload' : sync.st.last ? 'Synced ' + syncClock() : 'Connected'; }
+function syncIdle() { const q = (sync.st.photoQueue || []).length; return !syncOn() ? 'Not connected' : sync.st.pending ? 'Changes waiting to upload' : q ? `Uploading photos (${q} left)` : sync.st.last ? 'Synced ' + syncClock() : 'Connected'; }
 function photoSig() {
-  let n = 0, len = 0; for (const l of Object.values(data.photos || {})) { n += l.length; for (const p of l) len += (p || '').length; }
-  return n + ':' + len;
+  let n = 0, len = 0, refs = ''; for (const [id, l] of Object.entries(data.photos || {})) { n += l.length; for (const p of l) { len += (p || '').length; if (isRef(p)) refs += id + p; } }
+  return n + ':' + len + (refs ? ':' + hashStr(refs) : '');
 }
 function hasLocalContent() {
   return !!(data.tracks.length || data.pins.length || data.routes.length || Object.keys(data.visits).length || Object.keys(data.names).length || Object.keys(data.wish).length || data.ideas.sooner.length || data.ideas.later.length || Object.keys(data.photos).length || data.areas.length || data.peakLists.length);
@@ -2975,6 +3099,18 @@ function syncAdopt(remote, remotePhotos) {
   next.editedAt = remote.savedAt || next.editedAt;
   data = next;
 }
+// Photos in the store go up as their own files (up to 15 per pass, so GitHub is not flooded); returns true when more are waiting
+async function uploadPhotoQueue(dir) {
+  const st = sync.st, c = sync.cfg; let n = 0;
+  while ((st.photoQueue || []).length && n < 15) {
+    const ref = st.photoQueue[0], url = PH.get(ref) || await idbGet(ref);
+    if (!url) { st.photoQueue.shift(); continue; }       // not on this device, nothing to upload
+    const res = await gh(`contents/${dir}/photos/${ref.slice(3)}.jpg`, { method: 'PUT', body: JSON.stringify({ message: 'Teton Atlas photo', content: url.slice(url.indexOf(',') + 1), branch: c.branch || 'main' }), headers: { 'Content-Type': 'application/json' } });
+    if (!res.ok && res.status !== 422 && res.status !== 409) throw new Error('Photo upload failed (' + res.status + ').');   // 422: already there
+    st.photoQueue.shift(); n++; syncSaveState();
+  }
+  return (st.photoQueue || []).length > 0;
+}
 async function syncOnce() {
   const { dir, shas } = await syncListing();
   const st = sync.st;
@@ -3004,6 +3140,7 @@ async function syncOnce() {
     if (na === null) return false;
     st.sha.atlas = na; st.pending = false;
   }
+  if ((st.photoQueue || []).length && await uploadPhotoQueue(dir)) setTimeout(() => syncNow(), 20000);
   return true;
 }
 async function syncNow(manual) {
@@ -3031,17 +3168,223 @@ function syncMarkPending() { if (syncOn()) { sync.st.pending = true; syncSaveSta
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(); });
 window.addEventListener('online', () => syncNow());
 
+// ================= Offline base map (PMTiles) =================
+// The roads, water, forests and labels of the base map normally come from a public server. A .pmtiles file made with tools/build-offline-map.sh
+// holds the same data for the Teton area; it is kept on this device and read directly, so the map works with no connection.
+const PM_KEY = 'teton-pm-v1', PM_IDB = 'pmfile', GL_CACHE = 'teton-glyphs';
+let PM = null;
+function pmInfo() { try { return JSON.parse(localStorage.getItem(PM_KEY) || 'null'); } catch (e) { return null; } }
+class BlobSource {
+  constructor(blob, key) { this.blob = blob; this.key = key; }
+  getKey() { return this.key; }
+  async getBytes(offset, length) { return { data: await this.blob.slice(offset, offset + length).arrayBuffer() }; }
+}
+async function pmLoad() {
+  const info = pmInfo(); PM = null;
+  if (!info || info.on === false || typeof pmtiles === 'undefined') return;
+  try {
+    const blob = await idbGet(PM_IDB); if (!blob || !blob.size) return;
+    const arc = new pmtiles.PMTiles(new BlobSource(blob, 'teton-offline')); await arc.getHeader(); PM = arc;
+  } catch (e) { console.warn('Offline map could not be opened', e); PM = null; }
+}
+async function pmProtocol(req) {
+  const m = req.url.match(/^teton-pm:\/\/(\d+)\/(\d+)\/(\d+)/);
+  const r = m && PM ? await PM.getZxy(+m[1], +m[2], +m[3]) : null;
+  return { data: r ? r.data : new ArrayBuffer(0) };
+}
+// Text for the map: remembered on this device once seen (or fetched ahead of time), so labels work offline
+async function glyphProtocol(req) {
+  const m = req.url.match(/^teton-gl:\/\/(.+)\/(\d+-\d+)$/);
+  if (!m) throw new Error('bad glyph address');
+  const url = `${OFM}/fonts/${encodeURIComponent(decodeURIComponent(m[1]))}/${m[2]}.pbf`;
+  try { const hit = await (await caches.open(GL_CACHE)).match(url); if (hit) return { data: await hit.arrayBuffer() }; } catch (e) { /* no cache */ }
+  const res = await fetch(url); if (!res.ok) throw new Error('glyphs ' + res.status);
+  const buf = await res.arrayBuffer();
+  try { (await caches.open(GL_CACHE)).put(url, new Response(buf.slice(0))); } catch (e) { /* ok */ }
+  return { data: buf };
+}
+async function prefetchGlyphs() {
+  let got = 0;
+  for (const f of ['Noto Sans Regular', 'Noto Sans Italic', 'Noto Sans Bold']) for (const r of ['0-255', '256-511']) {
+    try { await glyphProtocol({ url: `teton-gl://${encodeURIComponent(f)}/${r}` }); got++; } catch (e) { /* offline */ }
+  }
+  return got;
+}
+function pmStatusText() {
+  const i = pmInfo(); if (!i) return 'No offline map installed.';
+  return `${i.name || 'Offline map'}: ${(i.bytes / 1048576).toFixed(0)} MB, installed ${new Date(i.at).toLocaleDateString()}. ${i.on === false ? 'Currently turned off.' : PM ? 'In use.' : 'Reload the app to start using it.'}`;
+}
+async function pmInstall(blob, name) {
+  const st = t => { const el = $('pmStatus'); if (el) el.textContent = t; };
+  if (typeof pmtiles === 'undefined') { st('The map-file reader could not load. Connect to the internet once and reload.'); return; }
+  st('Checking the file…');
+  try {
+    const arc = new pmtiles.PMTiles(new BlobSource(blob, 'check')), h = await arc.getHeader();
+    if (h.tileType !== 1) throw new Error('This file does not hold vector map tiles.');
+    st('Saving on this device…');
+    const db = await idb();
+    await new Promise((res, rej) => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(blob, PM_IDB); tx.oncomplete = res; tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error || new Error('storage full?')); });
+    const back = await idbGet(PM_IDB); if (!back || back.size !== blob.size) throw new Error('The browser did not keep the file. It may be too big for this device\'s storage.');
+    localStorage.setItem(PM_KEY, JSON.stringify({ name, bytes: blob.size, at: Date.now(), on: true, minzoom: h.minZoom, maxzoom: h.maxZoom, bounds: [h.minLon, h.minLat, h.maxLon, h.maxLat] }));
+    st('Saved. Fetching label fonts…'); await prefetchGlyphs();
+    st('Done. Reloading to switch it on…'); setTimeout(() => location.reload(), 1200);
+  } catch (e) { st('Could not install: ' + (e.message || e)); toast('Offline map install failed: ' + (e.message || e), 8000); }
+}
+async function pmDownloadFromSite() {
+  const st = t => { const el = $('pmStatus'); if (el) el.textContent = t; };
+  try {
+    st('Downloading teton.pmtiles from the app\'s site…');
+    const res = await fetch('./teton.pmtiles', { cache: 'no-store' });
+    if (!res.ok) throw new Error(res.status === 404 ? 'No teton.pmtiles is published with the app yet. Use "Choose file" instead.' : 'Server said ' + res.status);
+    const total = +res.headers.get('content-length') || 0, rd = res.body.getReader(), parts = []; let got = 0;
+    for (;;) { const { done, value } = await rd.read(); if (done) break; parts.push(value); got += value.length; st(`Downloading… ${(got / 1048576).toFixed(0)}${total ? ' of ' + (total / 1048576).toFixed(0) : ''} MB`); }
+    await pmInstall(new Blob(parts), 'teton.pmtiles');
+  } catch (e) { st('Download failed: ' + (e.message || e)); }
+}
+async function pmRemove() {
+  localStorage.removeItem(PM_KEY); try { const db = await idb(); db.transaction('kv', 'readwrite').objectStore('kv').delete(PM_IDB); } catch (e) { /* ok */ }
+  toast('Offline map removed. Reloading…'); setTimeout(() => location.reload(), 900);
+}
+function pmToggle(on) { const i = pmInfo(); if (!i) return; i.on = on; localStorage.setItem(PM_KEY, JSON.stringify(i)); toast('Reloading…'); setTimeout(() => location.reload(), 600); }
+
 // ================= Offline terrain =================
 // Terrain (elevation and hillshade) tiles can be saved on the device. The base map's vector tiles are not
 // downloaded here (see the spec): the public vector server is not meant for bulk downloads.
+async function baseDemTile(z, x, y) {
+  const url = DEM_URL.replace('{z}', z).replace('{x}', x).replace('{y}', y);
+  try { const hit = await (await caches.open(DEM_CACHE)).match(url); if (hit) return await hit.arrayBuffer(); } catch (e) { /* cache not available here */ }
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('terrain tile ' + res.status);
+  return await res.arrayBuffer();
+}
 async function demProtocol(req) {
   const m = req.url.match(/^teton-dem:\/\/(\d+)\/(\d+)\/(\d+)/);
   if (!m) throw new Error('bad terrain tile address');
-  const url = DEM_URL.replace('{z}', m[1]).replace('{x}', m[2]).replace('{y}', m[3]);
-  try { const hit = await (await caches.open(DEM_CACHE)).match(url); if (hit) return { data: await hit.arrayBuffer() }; } catch (e) { /* cache not available here */ }
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('terrain tile ' + res.status);
-  return { data: await res.arrayBuffer() };
+  const z = +m[1], x = +m[2], y = +m[3];
+  if (z <= DEM_Z1) return { data: await baseDemTile(z, x, y) };
+  return { data: await hiresTile(z, x, y) };                  // finer than the public terrain: 1 m data where saved, otherwise stretched from the standard tile
+}
+
+// ---- 1 m terrain (USGS 3DEP) ----
+// The public terrain stops at about 4 m. For areas you save, 1 m elevation comes from the USGS 3DEP service as float images, is converted to
+// the same tile format the map already understands, and kept on the device. Outside saved areas the map just stretches the standard terrain.
+const HI_KEY = 'teton-1m-v1', HI_CACHE = 'teton-dem1m', DEM_Z1 = 15;
+const HI_URL = 'https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage';
+const HI_PRESETS = { peaks: { label: 'High peaks (Grand Teton, Owen, Teewinot, Moran, Cathedral Group)', w: -110.885, s: 43.690, e: -110.730, n: 43.775 } };
+function hiRegions() { try { return JSON.parse(localStorage.getItem(HI_KEY) || '[]'); } catch (e) { return []; } }
+function hiSave(list) { try { localStorage.setItem(HI_KEY, JSON.stringify(list)); } catch (e) { /* optional */ } }
+const tile2lon = (x, z) => x / 2 ** z * 360 - 180;
+const tile2lat = (y, z) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / 2 ** z))) * 180 / Math.PI;
+function tileBox(z, x, y) { return { w: tile2lon(x, z), e: tile2lon(x + 1, z), n: tile2lat(y, z), s: tile2lat(y + 1, z) }; }
+function tileMerc(z, x, y) { const R = 20037508.342789244, s = 2 * R / 2 ** z; return [-R + x * s, R - (y + 1) * s, -R + (x + 1) * s, R - y * s]; }
+function hiTiles(box, z) { const out = []; const x0 = lon2x(box.w, z), x1 = lon2x(box.e, z), y0 = lat2y(box.n, z), y1 = lat2y(box.s, z); for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) out.push([z, x, y]); return out; }
+function inHiRegion(z, x, y) { const b = tileBox(z, x, y); return hiRegions().some(r => r.z === z && b.w < r.e && b.e > r.w && b.s < r.n && b.n > r.s); }
+function terrariumEncode(el) {       // Float32Array(256*256) metres -> PNG bytes
+  const c = new OffscreenCanvas(256, 256), g = c.getContext('2d'), im = g.createImageData(256, 256), d = im.data;
+  for (let i = 0; i < el.length; i++) { const v = Math.min(65535.99, Math.max(0, el[i] + 32768)), f = Math.floor(v); d[i * 4] = f >> 8; d[i * 4 + 1] = f & 255; d[i * 4 + 2] = Math.floor((v - f) * 256); d[i * 4 + 3] = 255; }
+  g.putImageData(im, 0, 0);
+  return c.convertToBlob({ type: 'image/png' }).then(b => b.arrayBuffer());
+}
+async function terrariumDecode(buf) {
+  const bmp = await createImageBitmap(new Blob([buf], { type: 'image/png' }), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+  const c = new OffscreenCanvas(256, 256), g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(bmp, 0, 0);
+  const d = g.getImageData(0, 0, 256, 256).data, el = new Float32Array(65536);
+  for (let i = 0; i < 65536; i++) el[i] = d[i * 4] * 256 + d[i * 4 + 1] + d[i * 4 + 2] / 256 - 32768;
+  return el;
+}
+// The standard tile, stretched (smoothly) to cover a finer tile
+async function stretchedBase(z, x, y) {
+  const k = z - DEM_Z1, n = 2 ** k, base = await terrariumDecode(await baseDemTile(DEM_Z1, x >> k, y >> k));
+  const ox = (x & (n - 1)) * 256 / n, oy = (y & (n - 1)) * 256 / n, span = 256 / n, out = new Float32Array(65536);
+  for (let j = 0; j < 256; j++) {
+    const fy = Math.min(255, oy + (j + 0.5) * span / 256 - 0.5), y0 = Math.max(0, Math.floor(fy)), y1 = Math.min(255, y0 + 1), ty = Math.max(0, fy - y0);
+    for (let i = 0; i < 256; i++) {
+      const fx = Math.min(255, ox + (i + 0.5) * span / 256 - 0.5), x0 = Math.max(0, Math.floor(fx)), x1 = Math.min(255, x0 + 1), tx = Math.max(0, fx - x0);
+      out[j * 256 + i] = (base[y0 * 256 + x0] * (1 - tx) + base[y0 * 256 + x1] * tx) * (1 - ty) + (base[y1 * 256 + x0] * (1 - tx) + base[y1 * 256 + x1] * tx) * ty;
+    }
+  }
+  return out;
+}
+// Reads the float elevation image the USGS service returns (plain or deflate-compressed strips, or tiles)
+async function parseFloatTiff(buf) {
+  const dv = new DataView(buf), le = dv.getUint16(0) === 0x4949;
+  if (!(le || dv.getUint16(0) === 0x4d4d) || dv.getUint16(2, le) !== 42) throw new Error('not a TIFF image');
+  const g16 = o => dv.getUint16(o, le), g32 = o => dv.getUint32(o, le), ifd = g32(4), n = g16(ifd), tags = {};
+  const SZ = { 1: 1, 3: 2, 4: 4, 16: 8 };
+  for (let i = 0; i < n; i++) {
+    const o = ifd + 2 + i * 12, tag = g16(o), type = g16(o + 2), cnt = g32(o + 4), sz = (SZ[type] || 1) * cnt, vo = sz <= 4 ? o + 8 : g32(o + 8), vals = [];
+    for (let k = 0; k < cnt; k++) vals.push(type === 3 ? g16(vo + k * 2) : type === 4 ? g32(vo + k * 4) : type === 1 ? dv.getUint8(vo + k) : 0);
+    tags[tag] = vals;
+  }
+  const W = tags[256][0], H = tags[257][0], bps = (tags[258] || [32])[0], comp = (tags[259] || [1])[0], pred = (tags[317] || [1])[0];
+  if (bps !== 32 || (tags[339] && tags[339][0] !== 3)) throw new Error('not a 32-bit float image');
+  if (pred !== 1) throw new Error('unsupported TIFF predictor');
+  const out = new Float32Array(W * H), unpack = async (o, len) => {
+    let bytes = new Uint8Array(buf, o, len);
+    if (comp === 8 || comp === 32946) bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer());
+    else if (comp !== 1) throw new Error('unsupported TIFF compression ' + comp);
+    const tmp = new ArrayBuffer(bytes.length); new Uint8Array(tmp).set(bytes); return new DataView(tmp);
+  };
+  const put = (view, x0, y0, w, h, stride) => { for (let r = 0; r < h && y0 + r < H; r++) for (let c = 0; c < w && x0 + c < W; c++) out[(y0 + r) * W + x0 + c] = view.getFloat32((r * stride + c) * 4, le); };
+  if (tags[273]) { const rps = (tags[278] || [H])[0], offs = tags[273], lens = tags[279];
+    for (let s = 0; s < offs.length; s++) { const v = await unpack(offs[s], lens[s]); put(v, 0, s * rps, W, Math.min(rps, H - s * rps), W); } }
+  else if (tags[324]) { const tw = tags[322][0], th = tags[323][0], per = Math.ceil(W / tw);
+    for (let t = 0; t < tags[324].length; t++) { const v = await unpack(tags[324][t], tags[325][t]); put(v, (t % per) * tw, Math.floor(t / per) * th, tw, th, tw); } }
+  else throw new Error('unreadable TIFF layout');
+  return { W, H, data: out };
+}
+async function fetch1m(z, x, y) {
+  const [x0, y0, x1, y1] = tileMerc(z, x, y);
+  const q = new URLSearchParams({ bbox: [x0, y0, x1, y1].join(','), bboxSR: 3857, imageSR: 3857, size: '256,256', format: 'tiff', pixelType: 'F32', interpolation: 'RSP_BilinearInterpolation', compression: 'None', noData: -9999, f: 'image' });
+  const res = await fetch(HI_URL + '?' + q);
+  if (!res.ok) throw new Error('USGS elevation ' + res.status);
+  const t = await parseFloatTiff(await res.arrayBuffer());
+  if (t.W !== 256 || t.H !== 256) throw new Error('unexpected image size');
+  return t.data;
+}
+async function build1mTile(z, x, y) {
+  const el = await fetch1m(z, x, y); let holes = 0;
+  for (let i = 0; i < el.length; i++) if (!(el[i] > -500 && el[i] < 9000)) holes++;     // no-data pixels
+  if (holes) { const base = await stretchedBase(z, x, y); for (let i = 0; i < el.length; i++) if (!(el[i] > -500 && el[i] < 9000)) el[i] = base[i]; }
+  return terrariumEncode(el);
+}
+const hiKey = (z, x, y) => `https://teton-1m.local/${z}/${x}/${y}.png`;
+async function hiresTile(z, x, y) {
+  if (inHiRegion(z, x, y)) {
+    try { const c = await caches.open(HI_CACHE), hit = await c.match(hiKey(z, x, y)); if (hit) return await hit.arrayBuffer(); } catch (e) { /* no cache */ }
+    if (navigator.onLine) { try { const png = await build1mTile(z, x, y); try { (await caches.open(HI_CACHE)).put(hiKey(z, x, y), new Response(png.slice(0), { headers: { 'Content-Type': 'image/png' } })); } catch (e) { /* ok */ } return png; } catch (e) { /* fall through */ } }
+  }
+  return terrariumEncode(await stretchedBase(z, x, y));
+}
+let hiBusy = false;
+async function download1m(key, z) {
+  if (hiBusy) { toast('A download is already running.'); return; }
+  const box = key === 'view' ? viewBounds() : HI_PRESETS[key]; if (!box) return;
+  const tiles = hiTiles(box, z);
+  if (tiles.length > 1500) { toast('That area is too big for one 1 m download. Zoom in a bit.', 7000); return; }
+  hiBusy = true; let done = 0, fail = 0, next = 0; const cache = await caches.open(HI_CACHE);
+  const st = t => { const el = $('hiStatus'); if (el) el.textContent = t; };
+  st(`Downloading ${tiles.length.toLocaleString()} tiles from USGS… keep this page open until it says Done.`);
+  try {
+    const worker = async () => { while (next < tiles.length) {
+      const [tz, tx, ty] = tiles[next++];
+      try { if (!(await cache.match(hiKey(tz, tx, ty)))) { const png = await build1mTile(tz, tx, ty); await cache.put(hiKey(tz, tx, ty), new Response(png, { headers: { 'Content-Type': 'image/png' } })); } } catch (e) { fail++; console.warn('1 m tile failed', e); }
+      done++; if (done % 10 === 0 || done === tiles.length) st(`Downloaded ${done} of ${tiles.length} tiles${fail ? ` (${fail} failed)` : ''}…`);
+    } };
+    await Promise.all(Array.from({ length: 4 }, worker));
+    if (fail < tiles.length) {
+      const list = hiRegions().filter(r => !(r.key === key && r.z === z));
+      list.push({ key, z, name: key === 'view' ? 'Saved view ' + today() : HI_PRESETS[key].label.split(' (')[0], w: box.w, s: box.s, e: box.e, n: box.n, tiles: tiles.length - fail, at: Date.now() }); hiSave(list);
+      st(`Done: ${tiles.length - fail} of ${tiles.length} tiles saved${fail ? `, ${fail} failed. Run it again to retry those` : ''}. Reload the app to switch on the sharper terrain.`);
+      toast(fail ? 'Saved with some failures. Run it again.' : '1 m terrain saved. Reload the app to use it.', 7000);
+    } else { st('Nothing could be downloaded. The USGS service may be busy or unreachable. Try again later.'); toast('1 m download failed.', 6000); }
+  } catch (e) { st('Download stopped: ' + e.message); }
+  finally { hiBusy = false; }
+}
+async function remove1m(i) {
+  const list = hiRegions(); list.splice(i, 1); hiSave(list);
+  if (!list.length) await caches.delete(HI_CACHE);
+  toast('Removed. Reload the app to apply.'); renderSide();
 }
 const lon2x = (lon, z) => Math.floor((lon + 180) / 360 * 2 ** z);
 const lat2y = (lat, z) => { const r = lat * Math.PI / 180; return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * 2 ** z); };
@@ -3103,14 +3446,30 @@ function pageOffline() {
     <div class="small" id="offStatus">Checking…</div>
     <h2 class="sec">Download</h2>
     ${rows}
-    <div class="small muted" style="margin-top:8px">Size is an estimate (about ${OFF_TILE_KB} KB per tile). Keep this page open while it downloads. Contour lines use the saved terrain, so they work offline too. Limits: the base map's colors, roads and labels still need a connection (offline base maps are not built yet), and iPhones may clear site storage if the app is not added to the Home Screen.</div>
-    <div class="row"><button class="btn danger" data-act="offClear">Remove offline terrain</button></div>`;
+    <div class="small muted" style="margin-top:8px">Size is an estimate (about ${OFF_TILE_KB} KB per tile). Keep this page open while it downloads. Contour lines use the saved terrain, so they work offline too. Limits: the base map's colors, roads and labels need a connection unless you install an offline base map (below), and iPhones may clear site storage if the app is not added to the Home Screen.</div>
+    <div class="row"><button class="btn danger" data-act="offClear">Remove offline terrain</button></div>
+    <h2 class="sec">Offline base map</h2>
+    <div class="d-sub">Roads, water, forests and place names without a connection. Needs a map file made once on a computer with <b>tools/build-offline-map.sh</b> (see tools/README.md), then installed here.</div>
+    <div class="small" id="pmStatus">${esc(pmStatusText())}</div>
+    <div class="row"><button class="btn sm" data-act="pmPick">Choose .pmtiles file</button><button class="btn sm" data-act="pmSite">Download teton.pmtiles from the app's site</button></div>
+    <input type="file" id="pmFile" accept=".pmtiles,application/octet-stream" hidden>
+    ${pmInfo() ? `<label class="toggle"><input type="checkbox" id="pmOn" ${pmInfo().on === false ? '' : 'checked'}> Use the offline map</label><div class="row"><button class="btn sm danger" data-act="pmDel">Remove offline map</button></div>` : ''}
+    <div class="small muted">Place names are remembered on this device after they have been shown once, and the common ones are fetched when the map is installed.</div>
+    <h2 class="sec">1 m terrain (USGS 3DEP)</h2>
+    <div class="d-sub">Much sharper elevation for 3D and hillshade up close: ridges, couloirs and cliff bands show clearly. Downloaded per area, on request.</div>
+    <div class="small" id="hiStatus">${hiRegions().length ? 'Saved areas are listed below.' : 'Nothing saved yet.'}</div>
+    ${hiRegions().map((r, i) => `<div class="visit"><div><b>${esc(r.name)}</b><div class="small muted">${r.tiles} tiles · ${r.z === 17 ? 'fine (about 0.9 m)' : 'standard (about 1.7 m)'}</div></div><button class="btn sm danger" data-act="hiDel" data-i="${i}">Remove</button></div>`).join('')}
+    <div class="visit" style="flex-direction:column;align-items:stretch"><b>${esc(HI_PRESETS.peaks.label)}</b><span class="small muted">About ${hiTiles(HI_PRESETS.peaks, 16).length} tiles at standard quality, roughly ${Math.round(hiTiles(HI_PRESETS.peaks, 16).length * 0.13)} MB.</span><div class="row"><button class="btn sm" data-act="hiDl" data-key="peaks" data-z="16">Download standard</button></div></div>
+    <div class="visit" style="flex-direction:column;align-items:stretch"><b>This view</b><span class="small muted">${hiTiles(viewBounds(), 16).length} tiles at standard (about ${Math.round(hiTiles(viewBounds(), 16).length * 0.13)} MB), ${hiTiles(viewBounds(), 17).length} at fine (about ${Math.round(hiTiles(viewBounds(), 17).length * 0.13)} MB). Zoom in first to keep it small.</span><div class="row"><button class="btn sm" data-act="hiDl" data-key="view" data-z="16">Standard</button><button class="btn sm" data-act="hiDl" data-key="view" data-z="17">Fine</button></div></div>
+    <div class="small muted">Needs a connection while downloading. Outside saved areas the map still uses the standard terrain. Where USGS has no 1 m data, the standard terrain fills in.</div>`;
 }
 
 // ================= Map init =================
 const HIT = ['poi', 'route-line', 'track-hit', 'trail-hit', 'lake-fill', 'area-fill'];
 function initMap() {
   maplibregl.addProtocol('teton-dem', demProtocol);
+  maplibregl.addProtocol('teton-pm', pmProtocol);
+  maplibregl.addProtocol('teton-gl', glyphProtocol);
   map = new maplibregl.Map({ container: 'map', style: buildStyle(), center: [-110.80, 43.74], zoom: 10.3, maxPitch: 85, hash: true, attributionControl: { compact: true } });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
   map.addControl(new maplibregl.ScaleControl({ unit: 'imperial' }), 'bottom-left');
@@ -3179,12 +3538,13 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
   try {
     const local = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
     if (local && local.data && (local.savedAt || 0) > (data.editedAt || 0)) {
-      const osm = data.osm, photos = data.photos; data = normalize(Object.assign({}, local.data, { osm, photos })); dirty = true;
+      const osm = data.osm, photos = data.photos; data = normalize(Object.assign({}, local.data, { osm, photos: local.refs || photos })); dirty = true;
       setTimeout(() => toast(window.matchMedia('(max-width:800px)').matches ? 'Restored your latest changes on this device.' : 'Restored your latest changes from this browser. Save the file to keep them in it.', 7000), 800);
     }
   } catch (e) { /* ignore */ }
   if (!(data.osm && data.osm.features && data.osm.features.length)) { const cached = await idbGet('osm'); if (cached && cached.features) data.osm = cached; }
   indexFeatures();
+  await pmLoad();
   if (window.maplibregl) initMap(); else toast('The map engine could not load. Connect to the internet and reload.', 0);
   if (!data.parkOutline && FEATS.length && navigator.onLine) fetchParkOutline(true).catch(() => { /* Overpass unreachable: the rectangle stays until loaded */ });
   if (data.settings.collapsed === undefined && window.matchMedia('(max-width:800px)').matches) data.settings.collapsed = true;
