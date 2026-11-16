@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Teton Atlas V14</title>
+<title>Teton Atlas V15</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -64,6 +64,7 @@ body.collapsed #toolbar,body.collapsed #toast{left:50%}
 #side header{display:flex;align-items:center;gap:10px;padding:16px 20px 8px}
 #side header svg{flex:none}
 #side header h1{font-size:20px;margin:0;letter-spacing:-.01em}
+.hm{width:26px;height:26px;border-radius:50%;background:#2e7d32;color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);cursor:grab}.hm.b{background:#c62828}.hm.sel{outline:3px solid #ffeb3b}
 .chip-v{font-size:11px;background:var(--soft);border-radius:999px;padding:2px 8px;color:var(--muted)}
 .search{padding:6px 20px 10px;position:relative}
 .search input{border-radius:999px;padding:10px 16px 10px 38px;background:var(--soft);border-color:transparent}
@@ -247,12 +248,12 @@ details.set[open]{padding-bottom:6px}
 <body>
 <div id="topbar">
   <img src="icon-192.png" width="30" height="30" alt="" style="border-radius:8px;object-fit:cover;flex:none">
-  <b>Teton Atlas</b><span class="chip-v">V14</span>
+  <b>Teton Atlas</b><span class="chip-v">V15</span>
 </div>
 <aside id="side">
   <header>
     <img src="icon-192.png" width="34" height="34" alt="" style="border-radius:9px;object-fit:cover;flex:none">
-    <h1>Teton Atlas</h1><span class="chip-v">V14</span>
+    <h1>Teton Atlas</h1><span class="chip-v">V15</span>
   </header>
   <div id="syncBanner" class="banner" hidden></div>
   <div class="search">
@@ -315,7 +316,7 @@ details.set[open]{padding-bottom:6px}
 </div>
 
 <div id="toast" hidden></div>
-<input type="file" id="gpxFile" accept=".gpx" multiple hidden>
+<input type="file" id="gpxFile" accept=".gpx,application/gpx+xml,application/xml,text/xml,application/octet-stream" multiple hidden>
 <input type="file" id="oldFile" accept=".html,.htm" hidden>
 <input type="file" id="jsonFile" accept=".json" hidden>
 <input type="file" id="photoFile" accept="image/*" multiple hidden>
@@ -324,7 +325,7 @@ details.set[open]{padding-bottom:6px}
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V14';
+const APP_VERSION = 'V15';
 // Rough outline of the Teton Range (Teton Pass to Conant Pass, Jackson Hole side and Teton Valley side). Editable from the Layers panel.
 const RANGE_DEFAULT = [[-111.02, 43.48], [-110.88, 43.45], [-110.70, 43.58], [-110.62, 43.85], [-110.59, 44.05], [-110.68, 44.13], [-110.80, 44.12], [-110.93, 43.95], [-111.05, 43.78], [-111.10, 43.60], [-111.02, 43.48]];
 const BBOX = { s: 43.40, w: -111.25, n: 44.15, e: -110.50 }; // whole Teton Range, WY + ID sides
@@ -455,6 +456,14 @@ const VERSIONS = [
     'Teton Range outline you can edit, plus toggles for the Grand Teton NP border and the range outline (Layers → Borders). Stats count only what is inside the range outline (switchable), plus your own summit and lake pins.',
     'Markers shelf (new button beside Layers): filter by kind, original or mine, status, peak height and name; choose Clean or Classic marker looks and size.',
     'Nicer markers. Pins can be a pin, circle or square, in three sizes, any color, with the name shown on the map. Original markers and your pins are labeled as such.'] },
+  { name: 'Teton Atlas V15', date: '2026-11-16', notes: [
+    'Activity tab has an Import GPX button (and you can drop .gpx files onto the page). Bad or waypoint-only files give a clear message.',
+    'Every hike detail is editable: name, date, type, start and end time, rating, trip, people, conditions, notes.',
+    'Trim or add to a hike: cut off the start, the end or a middle part (kept aside in gray, restorable), or keep only a stretch. Undo and Back to original included.',
+    'Add to a hike: draw a section before the start, after the end, or between two markers. You must draw it, and a preview shows exactly which trails, peaks and lakes it will count.',
+    'Trails, peaks and lakes are only credited from the line that is recorded or drawn. Trimmed parts and the gaps between pieces never count.',
+    'The scissors button is explained: it is for a watch that stopped early. Cancel now fully undoes it.',
+    'Several robustness fixes: pending hikes can be split, cancel restores the hike, hike stats no longer count jumps across gaps.'] },
   { name: 'Teton Atlas V14', date: '2026-11-16', notes: [
     'The Teton photo is now the logo in the top left.',
     'Satellite and Sat + Topo stay as sharp as possible when zoomed out (tiles one zoom level deeper are used).',
@@ -924,15 +933,10 @@ function sampleGrid(samples) {
     return false;
   };
 }
-function matchTrack(t) {
-  for (const id of Object.keys(data.visits)) {
-    const kept = data.visits[id].filter(v => v.trackId !== t.id);
-    if (kept.length) data.visits[id] = kept; else delete data.visits[id];
-  }
-  const samples = trackSamples(t);
-  if (samples.length < 2) return [];
+// Pure: which places do these (already recorded or drawn) samples touch? Nothing is written.
+function matchHits(samples) {
   const near = sampleGrid(samples), tb = bboxOf(samples), hits = [];
-  const add = (id, extra) => { (data.visits[id] = data.visits[id] || []).push(Object.assign({ vid: uid(), date: t.date, src: 'track', trackId: t.id, status: 'been', note: '' }, extra)); hits.push(id); };
+  const add = (id, extra) => { hits.push(Object.assign({ id }, extra || {})); };
   for (const f of FEATS) {
     if (f.coord) {
       if (f.coord[0] < tb[0] - 0.002 || f.coord[0] > tb[2] + 0.002 || f.coord[1] < tb[1] - 0.002 || f.coord[1] > tb[3] + 0.002) continue;
@@ -961,11 +965,33 @@ function matchTrack(t) {
   }
   return hits;
 }
+// Writes visits for a hike. Only points that were recorded or drawn (never set-aside parts) are used.
+function matchTrack(t) {
+  for (const id of Object.keys(data.visits)) {
+    const kept = data.visits[id].filter(v => v.trackId !== t.id);
+    if (kept.length) data.visits[id] = kept; else delete data.visits[id];
+  }
+  const samples = trackSamples(t);
+  if (samples.length < 2) return [];
+  const hits = matchHits(samples);
+  for (const h of hits) {
+    const { id, ...extra } = h;
+    (data.visits[id] = data.visits[id] || []).push(Object.assign({ vid: uid(), date: t.date, src: 'track', trackId: t.id, status: 'been', note: '' }, extra));
+  }
+  return hits.map(h => h.id);
+}
+// Planned and still-pending hikes never count; for them this only clears any visits they might have logged.
+function matchIfCounted(t) {
+  if (!t.planned && t.approved !== false) return matchTrack(t).length;
+  matchTrack({ id: t.id, segments: [] });
+  return 0;
+}
 function rematchAll() { let n = 0; for (const t of data.tracks) if (!t.planned && t.approved !== false) n += matchTrack(t).length; return n; }
 
 // ================= GPX =================
 function parseGPX(text, filename) {
   const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) throw new Error('That file is not valid GPX/XML.');
   const kids = (el, n) => [...el.getElementsByTagName(n)];
   const read = (nodes) => {
     const pts = []; let t0 = null, t1 = null;
@@ -1039,9 +1065,12 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
 async function importGPXFiles(files) {
-  let added = 0, dup = 0, places = 0, lastId = null;
+  let added = 0, dup = 0, lastId = null; const bad = [], empty = [];
   for (const f of files) {
-    for (const t of parseGPX(await f.text(), f.name)) {
+    let list;
+    try { list = parseGPX(await f.text(), f.name || 'Hike.gpx'); } catch (err) { bad.push(f.name || 'a file'); continue; }
+    if (!list.length) { empty.push(f.name || 'a file'); continue; }
+    for (const t of list) {
       const n = t.segments.reduce((a, s) => a + s.pts.length, 0);
       if (data.tracks.some(o => o.name === t.name && o.date === t.date && o.segments.reduce((a, s) => a + s.pts.length, 0) === n)) { dup++; continue; }
       // Imports wait in Pending review; places are matched and stats counted once you approve them
@@ -1049,7 +1078,13 @@ async function importGPXFiles(files) {
     }
   }
   if (added) { touch(); if (added === 1) openDetail({ type: 'track', id: lastId }); else setTab('activity'); }
-  toast(added ? `Imported ${added} hike${added > 1 ? 's' : ''}${dup ? ` (${dup} duplicate skipped)` : ''}. Approve ${added > 1 ? 'them' : 'it'} in Activity to count ${added > 1 ? 'them' : 'it'}.` : (dup ? 'Already imported.' : 'No tracks found in that file.'), 8000);
+  const parts = [];
+  if (added) parts.push(`Imported ${added} hike${added > 1 ? 's' : ''}${dup ? ` (${dup} duplicate skipped)` : ''}. Approve ${added > 1 ? 'them' : 'it'} in Activity to count ${added > 1 ? 'them' : 'it'}. You can trim or add to ${added > 1 ? 'each' : 'it'} first.`);
+  else if (dup) parts.push('Already imported.');
+  if (empty.length) parts.push(`No recorded track in ${empty.slice(0, 2).join(', ')}${empty.length > 2 ? '…' : ''} (waypoint-only files cannot be imported).`);
+  if (bad.length) parts.push(`Could not read ${bad.slice(0, 2).join(', ')}${bad.length > 2 ? '…' : ''}. It may not be a GPX file.`);
+  if (!parts.length) parts.push('No tracks found.');
+  toast(parts.join(' '), 9000);
 }
 
 // ================= Track helpers =================
@@ -1479,11 +1514,11 @@ function addOverlays() {
   map.addLayer({ id: 'track-hit', type: 'line', source: 'tracks', paint: { 'line-width': 14, 'line-opacity': 0 } });
   // Hike status (ts): done = taken and approved, planned = future trip, pending = imported and waiting for approval
   const isDone = ['==', ['get', 'ts'], 'done'];
-  map.addLayer({ id: 'track-ignored', type: 'line', source: 'tracks', filter: ['all', ['==', ['get', 'src'], 'ignored'], isDone], paint: { 'line-color': '#9e9e9e', 'line-width': 2, 'line-dasharray': [1, 2] } });
+  map.addLayer({ id: 'track-ignored', type: 'line', source: 'tracks', filter: ['==', ['get', 'src'], 'ignored'], paint: { 'line-color': '#9e9e9e', 'line-width': 2.5, 'line-dasharray': [1, 2] } });
   map.addLayer({ id: 'track-garmin', type: 'line', source: 'tracks', filter: ['all', ['==', ['get', 'src'], 'garmin'], isDone], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#1e88e5', 'line-width': ['case', ['get', 'sel'], 6, 3.5] } });
   map.addLayer({ id: 'track-manual', type: 'line', source: 'tracks', filter: ['all', ['==', ['get', 'src'], 'manual'], isDone], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#8e24aa', 'line-width': ['case', ['get', 'sel'], 6, 3.5], 'line-dasharray': [2, 1] } });
-  map.addLayer({ id: 'track-planned', type: 'line', source: 'tracks', filter: ['==', ['get', 'ts'], 'planned'], layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: { 'line-color': '#fbc02d', 'line-width': ['case', ['get', 'sel'], 6, 3.5], 'line-dasharray': [4, 2] } });
-  map.addLayer({ id: 'track-pending', type: 'line', source: 'tracks', filter: ['==', ['get', 'ts'], 'pending'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#e65100', 'line-width': ['case', ['get', 'sel'], 6, 3.5], 'line-dasharray': [0.5, 1.5] } });
+  map.addLayer({ id: 'track-planned', type: 'line', source: 'tracks', filter: ['all', ['==', ['get', 'ts'], 'planned'], ['!=', ['get', 'src'], 'ignored']], layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: { 'line-color': '#fbc02d', 'line-width': ['case', ['get', 'sel'], 6, 3.5], 'line-dasharray': [4, 2] } });
+  map.addLayer({ id: 'track-pending', type: 'line', source: 'tracks', filter: ['all', ['==', ['get', 'ts'], 'pending'], ['!=', ['get', 'src'], 'ignored']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#e65100', 'line-width': ['case', ['get', 'sel'], 6, 3.5], 'line-dasharray': [0.5, 1.5] } });
   map.addLayer({ id: 'sel-fill', type: 'fill', source: 'sel', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': '#aef07f', 'fill-opacity': 0.35 } });
   map.addLayer({ id: 'sel-case', type: 'line', source: 'sel', filter: ['!=', ['geometry-type'], 'Point'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#151515', 'line-width': 9, 'line-opacity': 0.8 } });
   map.addLayer({ id: 'sel-line', type: 'line', source: 'sel', filter: ['!=', ['geometry-type'], 'Point'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#aef07f', 'line-width': 5 } });
@@ -1871,6 +1906,7 @@ function segHTML(name, color, s) {
 
 // ================= Route / hike editor =================
 function startEditor(kind, opts) {
+  stopHed(true);
   stopEditor(true);
   opts = opts || {};
   const r = opts.route;
@@ -1882,15 +1918,21 @@ function startEditor(kind, opts) {
     wps: r ? r.wps.map(w => Object.assign({}, w, { c: w.c.slice() })) : [],
     legs: r ? r.legs.map(l => ({ off: l.off, pts: l.pts.map(p => p.slice()) })) : [], markers: [], prof: null
   };
-  if (opts.start) addPoint(opts.start, true);
+  if (opts.start) { addPoint(opts.start, true); editor.wps[0].c = [opts.start[0], opts.start[1]]; editor.wps[0].snap = false; }
+  editor.mode = opts.mode || null; editor.anchorPt = opts.anchorPt || null; editor.endPt = opts.endPt || null; editor.aIdx = opts.aIdx; editor.bIdx = opts.bIdx; editor.snapshot = opts.snapshot || null; editor.closed = false;
+  if (editor.endPt && mapReady) { const el = document.createElement('div'); el.className = 'hm b'; el.textContent = 'B'; el.title = 'Your drawn section must end here'; editor.endMarker = new maplibregl.Marker({ element: el }).setLngLat([editor.endPt[0], editor.endPt[1]]).addTo(map); }
   setMode(kind === 'route' ? 'route' : 'track', true);
   redrawEditor();
   view.detail = { type: 'editor' }; viewStack = []; renderSide();
 }
 function stopEditor(silent) {
   if (!editor) return;
-  for (const m of editor.markers) m.remove();
+  const e = editor;
+  for (const m of e.markers) m.remove();
+  if (e.endMarker) e.endMarker.remove();
   editor = null;
+  // Leaving without saving puts the hike back exactly as it was before the scissors cut
+  if (e.snapshot && !e.saved) { const t = findTrack(e.trackId); if (t) { t.segments = JSON.parse(e.snapshot); hedStack(t.id).pop(); matchIfCounted(t); touch({ noRender: true }); if (mapReady) updateSources(); } }
   if (mapReady) map.getSource('edit').setData(fc([]));
   if (!silent) { setMode('browse', true); }
 }
@@ -1913,13 +1955,16 @@ function computeLeg(i) {
   }
 }
 function addPoint(c, quiet) {
+  if (editor.closed) { toast('This section already ends at B. Undo the last point to keep drawing.', 3000); return; }
   const wp = { c: snapPoint([+c[0].toFixed(6), +c[1].toFixed(6)]), brk: false, snap: editor.snap };
   editor.wps.push(wp);
   if (editor.wps.length > 1) computeLeg(editor.wps.length - 2);
   if (!quiet) { redrawEditor(); renderSide(); }
 }
-function undoPoint() { if (!editor || !editor.wps.length) return; editor.wps.pop(); editor.legs.length = Math.max(0, editor.wps.length - 1); redrawEditor(); renderSide(); }
+function undoPoint() { if (!editor || !editor.wps.length) return; if (editor.kind === 'extend' && editor.wps.length <= 1) return; editor.closed = false; editor.wps.pop(); editor.legs.length = Math.max(0, editor.wps.length - 1); redrawEditor(); renderSide(); }
 function removePoint(i) {
+  if (editor.kind === 'extend' && i === 0) { toast('That start point is where the recorded line ends, so it stays.', 3000); return; }
+  if (editor.closed && i === editor.wps.length - 1) editor.closed = false;
   const old = editor.legs; editor.wps.splice(i, 1);
   const L = [];
   for (let k = 0; k < editor.wps.length - 1; k++) L[k] = k < i - 1 ? old[k] : k >= i ? old[k + 1] : null;
@@ -1928,6 +1973,7 @@ function removePoint(i) {
   redrawEditor(); renderSide();
 }
 function moveWaypoint(i, c) {
+  if (editor.kind === 'extend' && (i === 0 || (editor.closed && i === editor.wps.length - 1))) { redrawEditor(); toast('That point is fixed. It joins the drawn part to the recorded line.', 3000); return; }
   editor.wps[i].c = snapPoint(c);
   if (i > 0) computeLeg(i - 1);
   if (i < editor.wps.length - 1) computeLeg(i);
@@ -1965,6 +2011,7 @@ function redrawEditor() {
     const line = editorLine();
     editor.prof = line.length > 1 ? await profileOf(line) : null;
     const box = $('edProfile'); if (box && editor) box.innerHTML = editorStatsHTML();
+    const cb = $('edCredit'); if (cb && editor) cb.innerHTML = creditHTML();
   }, 350);
 }
 function editorStatsHTML() {
@@ -1975,9 +2022,57 @@ function editorStatsHTML() {
   return `<div class="stats">${statHTML(fmtMi(len), 'mi', 'Length')}${statHTML(prof ? fmtFt(c.gain) : '…', 'ft', 'Elev. gain')}${statHTML(estTime(len, c.gain), 'hr', 'Est. time')}${statHTML(breaks.length + 1, '', editor.kind === 'route' ? 'Days' : 'Points')}</div>
     ${line.length > 1 ? (prof ? chartHTML(prof, breaks) : '<div class="empty small">Loading elevation…</div>') : ''}`;
 }
+// What will the line being drawn count toward? Same matching as a saved hike, but nothing is written.
+function creditHTML() {
+  if (!editor || editor.kind === 'route') return '';
+  const line = editorLine();
+  if (line.length < 2) return '<div class="small muted" style="margin:8px 0">Draw at least two points to see which places this part will count toward.</div>';
+  const hits = matchHits(resample(line.map(q => [q[0], q[1]]), 15)), seen = new Set(), items = [];
+  for (const h of hits) {
+    const gid = WAY2GROUP[h.id] || h.id; if (seen.has(gid)) continue; seen.add(gid);
+    const g = GROUPS[gid], f = FEAT[h.id], a = f || g ? null : findArea(h.id);
+    if (g || f) { const k = g ? 'trail' : f.kind; items.push(`${KIND_INFO[k].icon} ${esc(g ? g.name : (nameOf(f) || 'Unnamed ' + KIND_INFO[k].label.toLowerCase()))}`); }
+    else if (a) items.push(`📐 ${esc(a.name || 'Area')}`);
+  }
+  const tt = editor.trackId && findTrack(editor.trackId), wait = tt && (tt.approved === false || tt.planned) ? ' They count once the hike is approved.' : '';
+  return `<div class="small" style="background:var(--soft);border-radius:12px;padding:10px 12px;margin:8px 0"><b>This drawn line will count toward ${items.length} place${items.length === 1 ? '' : 's'}</b>${items.length ? ': ' + items.slice(0, 10).join(' · ') + (items.length > 10 ? ' · …' : '') : '. No mapped trail, peak or lake is touched by it.'}<br><span class="muted">Only the line you draw or record counts, so draw the trail you actually walked.${wait}</span></div>`;
+}
+// Drawn elevations come from the map; line them up with the watch at the join (and at B when the section ends on recorded track)
+function alignDrawn(pts, anchorEle, endEle) {
+  if (anchorEle != null && pts[0] && pts[0][2] != null) { const off = anchorEle - pts[0][2]; for (const q of pts) if (q[2] != null) q[2] = +(q[2] + off).toFixed(1); }
+  const last = pts[pts.length - 1];
+  if (endEle != null && last && last[2] != null && pts.length > 2) {
+    const drift = endEle - last[2], tot = lineLen(pts) || 1; let acc = 0;
+    for (let i = 1; i < pts.length; i++) { acc += dist(pts[i - 1][1], pts[i - 1][0], pts[i][1], pts[i][0]); if (pts[i][2] != null) pts[i][2] = +(pts[i][2] + drift * acc / tot).toFixed(1); }
+  }
+}
+// Put a drawn part into a hike (after the end, before the start, or between A and B), as real recorded-by-hand points
+function insertDrawn(t, pts, e) {
+  return applyOps(t, (F, act) => {
+    if (!act.length) return 'This hike has no active path to attach to.';
+    const mk = (q, i, gapFirst) => ({ p: [q[0], q[1], q[2] == null ? null : q[2]], src: 'manual', ig: false, gap: i === 0 && gapFirst });
+    if (e.mode === 'before') {
+      const f0 = act[0], items = pts.slice().reverse().slice(0, -1).map((q, i) => mk(q, i, f0 > 0));
+      F.splice(f0, 0, ...items); F[f0 + items.length].gap = false;
+    } else if (e.mode === 'gap') {
+      const ia = act[e.aIdx], ib = act[e.bIdx];
+      if (ia == null || ib == null || ib <= ia) return 'The A and B markers changed. Start again from the Trim or add page.';
+      for (let k = ia + 1; k < ib; k++) F[k].ig = true;
+      const items = pts.slice(1).map((q, i) => mk(q, i, false)); if (!items.length) return 'Draw at least one point between A and B.';
+      F.splice(ia + 1, 0, ...items);
+      const nx = F[ia + 1 + items.length]; if (nx && nx.ig) nx.gap = true;
+    } else {
+      const L = act[act.length - 1], items = pts.slice(1).map((q, i) => mk(q, i, false));
+      F.splice(L + 1, 0, ...items);
+      const nx = F[L + 1 + items.length]; if (nx) nx.gap = true;
+    }
+    return null;
+  });
+}
 async function saveEditor() {
   const e = editor; if (!e) return;
   if (e.wps.length < 2) { toast('Add at least two points on the map first.'); return; }
+  if (e.kind === 'extend' && e.endPt && !e.closed) { toast('Press "Finish at B" so the drawn section joins the recorded line again.', 5000); return; }
   toast('Saving…', 0);
   const legs = e.legs.filter(Boolean);
   for (const l of legs) await fillElevation(l.pts);
@@ -1992,26 +2087,289 @@ async function saveEditor() {
     const pts = joinLegs(legs);
     let t;
     if (e.kind === 'extend' && (t = findTrack(e.trackId))) {
-      // Line drawn elevations up with the watch's altimeter at the cut point
-      const g = t.segments.filter(s => s.src === 'garmin').pop(), end = g && g.pts[g.pts.length - 1];
-      if (end && end[2] != null && pts[0] && pts[0][2] != null) { const off = end[2] - pts[0][2]; for (const q of pts) if (q[2] != null) q[2] = +(q[2] + off).toFixed(1); }
-      t.segments.push({ src: 'manual', pts });
+      const dp = pts.map(q => [q[0], q[1], q[2] == null ? null : q[2]]);
+      if (e.endPt) { dp[dp.length - 1] = [e.endPt[0], e.endPt[1], e.endPt[2] == null ? null : e.endPt[2]]; }
+      alignDrawn(dp, e.anchorPt && e.anchorPt[2], e.endPt && e.endPt[2]);
+      if (!insertDrawn(t, dp, e)) { toast(null); return; }
+      e.saved = true;
     }
     else {
       t = { id: uid(), name: ($('edName') && $('edName').value.trim()) || e.name || 'Hike', date: ($('edDate') && $('edDate').value) || today(), trip: '', notes: '', segments: [{ src: 'manual', pts }] };
       data.tracks.push(t);
     }
-    const n = matchTrack(t).length;
+    const n = matchIfCounted(t);
+    e.saved = true;
     stopEditor(); touch({ noRender: true }); openDetail({ type: 'track', id: t.id }, true);
     toast(`Hike saved${n ? `, matched ${n} places` : ''}.`);
   }
 }
+
+// ================= Hike path editor (trim, restore, add) =================
+// A hike's path is a list of points. Each point is either active (recorded or drawn, so it counts) or set aside (gray, never counts, restorable).
+const eqPt = (a, b) => !!a && !!b && a[0] === b[0] && a[1] === b[1];
+function flatTrack(t) {
+  const F = [], segs = t.segments;
+  segs.forEach((s, k) => {
+    const ig = s.src === 'ignored', src = ig ? (s.was || 'garmin') : s.src;
+    const pts = s.pts.slice(); if (!pts.length) return;
+    let joined = false;
+    if (F.length && eqPt(F[F.length - 1].p, pts[0])) { pts.shift(); joined = true; }
+    const nx = segs[k + 1];
+    if (ig && nx && nx.src !== 'ignored' && nx.pts.length && pts.length && eqPt(pts[pts.length - 1], nx.pts[0])) pts.pop();
+    pts.forEach((pt, i) => F.push({ p: pt, src, ig, gap: i === 0 && !joined && F.length > 0 }));
+  });
+  return F;
+}
+// gap = no recorded connection to the previous point, so no line (and no credit) is ever drawn across it
+function rebuildSegments(F) {
+  F = F.map(f => Object.assign({}, f));
+  for (let i = 0; i < F.length;) {
+    if (F[i].ig) { i++; continue; }
+    let j = i; while (j + 1 < F.length && !F[j + 1].ig && !F[j + 1].gap) j++;
+    if (j === i) F[i].ig = true;   // one lonely point cannot be a line
+    i = j + 1;
+  }
+  const key = f => (f.ig ? 'i:' : 'a:') + f.src, segs = [];
+  for (let i = 0; i < F.length;) {
+    let j = i; while (j + 1 < F.length && !F[j + 1].gap && key(F[j + 1]) === key(F[i])) j++;
+    let pts = F.slice(i, j + 1).map(f => f.p);
+    const ig = F[i].ig, src = F[i].src;
+    const prev = i > 0 && !F[i].gap ? F[i - 1] : null, next = j + 1 < F.length && !F[j + 1].gap ? F[j + 1] : null;
+    if (ig) { if (prev) pts = [prev.p].concat(pts); if (next && !next.ig) pts = pts.concat([next.p]); }
+    else if (prev && !prev.ig) pts = [prev.p].concat(pts);
+    if (pts.length > 1) segs.push(ig ? { src: 'ignored', was: src, pts } : { src, pts });
+    i = j + 1;
+  }
+  return segs;
+}
+function hasGap(t) {
+  const segs = t.segments.filter(s => s.src !== 'ignored' && s.pts.length > 1);
+  return segs.some((s, i) => i > 0 && !eqPt(segs[i - 1].pts[segs[i - 1].pts.length - 1], s.pts[0]));
+}
+function trackStats(t) {
+  const o = { len: 0, gain: 0, loss: 0 };
+  for (const s of t.segments) if (s.src !== 'ignored' && s.pts.length > 1) { const x = lineStats(s.pts); o.len += x.len; o.gain += x.gain; o.loss += x.loss; }
+  return o;
+}
+const trackStatsSafe = t => hasGap(t) ? trackStats(t) : lineStats(trackLine(t));
+function ensureOrig(t) { if (!t.orig) t.orig = JSON.parse(JSON.stringify(t.segments)); }
+const hedUndoStacks = {};
+const hedStack = tid => hedUndoStacks[tid] = hedUndoStacks[tid] || [];
+function hedPush(t) { const s = hedStack(t.id); s.push(JSON.stringify({ seg: t.segments, ed: !!t.edited })); if (s.length > 12) s.shift(); }
+// Run an edit on the flat point list; nothing changes unless it leaves a valid hike
+function applyOps(t, fn) {
+  const F = flatTrack(t), act = []; F.forEach((f, i) => { if (!f.ig) act.push(i); });
+  const err = fn(F, act); if (err) { toast(err, 4500); return false; }
+  const segs = rebuildSegments(F);
+  if (segs.filter(s => s.src !== 'ignored').reduce((n, s) => n + s.pts.length, 0) < 2) { toast('A hike needs at least two points left, so nothing was changed.', 4500); return false; }
+  ensureOrig(t); hedPush(t); t.segments = segs; t.edited = true;
+  return true;
+}
+let hed = null;
+function hedLoad(t) {
+  const pts = [], cum = []; let d = 0;
+  for (const f of flatTrack(t)) if (!f.ig) { if (pts.length) { const q = pts[pts.length - 1]; d += dist(q[1], q[0], f.p[1], f.p[0]); } pts.push(f.p); cum.push(d); }
+  hed.pts = pts; hed.cum = cum;
+  hed.a = Math.max(0, Math.min(hed.a, pts.length - 1)); hed.b = Math.max(hed.a, Math.min(hed.b, pts.length - 1));
+}
+// Straight stretches may have only two points (recorded tracks are simplified), which would make cutting too coarse.
+// Adding points along the same straight line changes nothing about the shape, but lets A and B land anywhere.
+function densifyTrack(t, step) {
+  step = step || 30;
+  const total = t.segments.reduce((n, s) => n + s.pts.length, 0); if (total > 40000) return;
+  for (const s of t.segments) {
+    if (s.pts.length < 2) continue;
+    const out = [s.pts[0]];
+    for (let i = 1; i < s.pts.length; i++) {
+      const a = s.pts[i - 1], b = s.pts[i], d = dist(a[1], a[0], b[1], b[0]);
+      if (d > step * 1.5) {
+        const n = Math.ceil(d / step);
+        for (let k = 1; k < n; k++) { const u = k / n; out.push([+(a[0] + (b[0] - a[0]) * u).toFixed(6), +(a[1] + (b[1] - a[1]) * u).toFixed(6), a[2] != null && b[2] != null ? +(a[2] + (b[2] - a[2]) * u).toFixed(1) : null]); }
+      }
+      out.push(b);
+    }
+    if (out.length !== s.pts.length) s.pts = out;
+  }
+}
+function startHed(t) {
+  stopHed(true);
+  densifyTrack(t);
+  hed = { tid: t.id, a: 0, b: 0, act: 'a', markers: [] };
+  hedLoad(t); hed.b = Math.max(0, hed.pts.length - 1);
+  hedDraw(true);
+}
+function stopHed() {
+  if (!hed) return;
+  for (const m of hed.markers) if (m) m.remove();
+  hed = null;
+  if (mapReady && !editor) map.getSource('edit').setData(fc([]));
+}
+function hedDraw(fit) {
+  if (!hed || !mapReady) return;
+  const mk = (i, w, cls) => {
+    const p = hed.pts[i]; if (!p) return;
+    if (!hed.markers[w]) {
+      const el = document.createElement('div'); el.className = 'hm ' + cls; el.textContent = cls.toUpperCase();
+      el.addEventListener('click', ev => { ev.stopPropagation(); hed.act = cls; hedRefreshPage(); });
+      const m = new maplibregl.Marker({ element: el, draggable: true }).setLngLat([p[0], p[1]]).addTo(map);
+      m.on('dragend', () => { const ll = m.getLngLat(); hedSet(cls, hedNearest(ll.lng, ll.lat)); });
+      hed.markers[w] = m;
+    } else hed.markers[w].setLngLat([p[0], p[1]]);
+  };
+  mk(hed.a, 0, 'a'); mk(hed.b, 1, 'b');
+  const seg = hed.pts.slice(hed.a, hed.b + 1).map(q => [q[0], q[1]]);
+  map.getSource('edit').setData(fc(seg.length > 1 ? [{ type: 'Feature', properties: { color: '#ff6f00', off: false }, geometry: { type: 'LineString', coordinates: seg } }] : []));
+  if (fit && hed.pts.length > 1) fitTo(hed.pts.map(q => [q[0], q[1]]), 15);
+}
+function hedNearest(lng, lat) {
+  const k = Math.cos(lat * Math.PI / 180); let best = 0, bd = Infinity;
+  for (let i = 0; i < hed.pts.length; i++) { const dx = (hed.pts[i][0] - lng) * k, dy = hed.pts[i][1] - lat, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = i; } }
+  return best;
+}
+function hedSet(w, i) {
+  if (!hed) return;
+  i = Math.max(0, Math.min(hed.pts.length - 1, i | 0));
+  if (w === 'a') { hed.a = i; if (hed.b < i) hed.b = i; } else { hed.b = i; if (hed.a > i) hed.a = i; }
+  hed.act = w; hedDraw(); hedRefreshPage();
+}
+function hedMapClick(ll) {
+  if (!hed.pts.length) return;
+  const i = hedNearest(ll[0], ll[1]), q = hed.pts[i], a = map.project(ll), b = map.project([q[0], q[1]]);
+  if (Math.hypot(a.x - b.x, a.y - b.y) > 40) { toast('Click right on the hike line, or drag the A and B markers.', 3000); return; }
+  hedSet(hed.act, i);
+}
+function hedRefreshPage() {
+  if (!hed || !view.detail || view.detail.type !== 'hikeEdit') return;
+  const N = hed.pts.length, f = i => fmtMi(hed.cum[i] || 0) + ' mi from the start';
+  if ($('hedA')) $('hedA').value = hed.a; if ($('hedB')) $('hedB').value = hed.b;
+  if ($('hedAl')) $('hedAl').textContent = f(hed.a);
+  if ($('hedBl')) $('hedBl').textContent = f(hed.b);
+  if ($('hedSel')) $('hedSel').textContent = `Selected stretch (orange on the map): ${fmtMi((hed.cum[hed.b] || 0) - (hed.cum[hed.a] || 0))} mi of ${fmtMi(hed.cum[N - 1] || 0)} mi`;
+  document.querySelectorAll('[data-act=hedPick]').forEach(b => b.classList.toggle('on', b.dataset.w === hed.act));
+  hed.markers.forEach((m, k) => m && m.getElement().classList.toggle('sel', (k === 0 ? 'a' : 'b') === hed.act));
+}
+function hedAfter(t, msg) {
+  matchIfCounted(t); touch({ noRender: true });
+  if (hed) { hedLoad(t); }
+  if (mapReady) updateSources();
+  renderSide(); hedDraw(); hedRefreshPage();
+  if (msg) toast(msg, 6000);
+}
+function hedOp(kind) {
+  const t = hed && findTrack(hed.tid); if (!t) return;
+  const a = hed.a, b = hed.b, N = hed.pts.length, total = hed.cum[N - 1] || 0;
+  if (kind === 'start' && a === 0) return toast('Move the green A marker forward first. Everything before A would be cut off.', 4000);
+  if (kind === 'end' && b === N - 1) return toast('Move the red B marker back first. Everything after B would be cut off.', 4000);
+  if (kind === 'mid' && b - a < 2) return toast('Move A and B further apart first. Everything between them would be cut out.', 4000);
+  if (kind === 'keep' && a === 0 && b === N - 1) return toast('A and B are at the ends already, so there is nothing to cut.', 4000);
+  const ok = applyOps(t, (F, act) => {
+    const ia = act[a], ib = act[b];
+    if (kind === 'start' || kind === 'keep') for (let k = 0; k < ia; k++) F[k].ig = true;
+    if (kind === 'end' || kind === 'keep') for (let k = ib + 1; k < F.length; k++) F[k].ig = true;
+    if (kind === 'mid') for (let k = ia + 1; k < ib; k++) F[k].ig = true;
+    return null;
+  });
+  if (!ok) return;
+  hedLoad(t);
+  const left = hed.cum[hed.pts.length - 1] || 0;
+  if (kind === 'mid') { hed.b = Math.min(hed.pts.length - 1, a + 1); } else { hed.a = 0; hed.b = hed.pts.length - 1; }
+  hedAfter(t, `Cut off ${fmtMi(Math.max(0, total - left))} mi. Places only on that part no longer count. It is kept aside in gray, and you can restore it below.`);
+}
+function hedAdd(kind) {
+  const t = hed && findTrack(hed.tid); if (!t || !hed.pts.length) return;
+  let anchor, end = null;
+  if (kind === 'after') anchor = hed.pts[hed.pts.length - 1];
+  else if (kind === 'before') anchor = hed.pts[0];
+  else { if (hed.b <= hed.a) return toast('Move B ahead of A first. The new section runs from A to B.', 4000); anchor = hed.pts[hed.a]; end = hed.pts[hed.b]; }
+  const o = { trackId: t.id, start: [anchor[0], anchor[1]], mode: kind, anchorPt: anchor.slice(), endPt: end ? end.slice() : null, aIdx: hed.a, bIdx: hed.b };
+  stopHed(true);
+  startEditor('extend', o);
+  toast(kind === 'gap' ? 'Click along where you really walked from A, then press Finish at B.' : 'Click along the trail you actually walked. Only what you draw counts.', 6000);
+}
+function removedParts(F) {
+  const first = F.findIndex(f => !f.ig); let last = -1; F.forEach((f, i) => { if (!f.ig) last = i; });
+  const out = []; let i = 0;
+  while (i < F.length) {
+    if (!F[i].ig) { i++; continue; }
+    let j = i; while (j + 1 < F.length && F[j + 1].ig && !F[j + 1].gap) j++;
+    out.push({ from: i, to: j, n: j - i + 1, len: lineLen(F.slice(i, j + 1).map(f => f.p)), where: first < 0 || j < first ? 'start' : i > last ? 'end' : 'middle' });
+    i = j + 1;
+  }
+  return out;
+}
+function hedParts(act, el) {
+  const t = hed && findTrack(hed.tid); if (!t) return;
+  const from = +el.dataset.from, to = +el.dataset.to;
+  if (act === 'hedDrop' && !confirm('Delete this cut-away part for good? It cannot be brought back.')) return;
+  const ok = applyOps(t, F => {
+    if (act === 'hedRestoreAll') { for (const f of F) f.ig = false; return null; }
+    if (!(from >= 0 && to < F.length && F.slice(from, to + 1).every(f => f.ig))) return 'The hike changed. Please try again.';
+    if (act === 'hedRestore') { for (let k = from; k <= to; k++) F[k].ig = false; return null; }
+    const firstAct = F.findIndex(f => !f.ig), lastAct = F.length - 1 - [...F].reverse().findIndex(f => !f.ig);
+    if (to < firstAct) F.splice(0, to + 1); else if (from > lastAct) F.splice(from); else return 'Only cut-away parts at the very start or end can be deleted. Restore this one, or leave it aside.';
+    return null;
+  });
+  if (!ok) return;
+  hed.a = 0; hed.b = Infinity;
+  hedAfter(t, act === 'hedDrop' ? 'Deleted for good.' : 'Restored. It counts again, since it was recorded or drawn.');
+}
+function hedUndo() {
+  const t = hed && findTrack(hed.tid); if (!t) return;
+  const s = hedStack(t.id), last = s.pop(); if (!last) return toast('Nothing to undo.', 2500);
+  const o = JSON.parse(last); t.segments = o.seg; t.edited = o.ed;
+  hed.a = 0; hed.b = Infinity;
+  hedAfter(t, 'Undone.');
+}
+function hedRevert() {
+  const t = hed && findTrack(hed.tid); if (!t || !t.orig) return;
+  if (!confirm('Go back to the hike as it was imported? This removes every trim and every part you drew.')) return;
+  hedPush(t); t.segments = t.orig; delete t.orig; t.edited = false;
+  hed.a = 0; hed.b = Infinity;
+  hedAfter(t, 'Back to the original.');
+}
+function pageHikeEdit(d) {
+  const t = findTrack(d.id); if (!t) return backBtn() + '<div class="empty">Hike not found.</div>';
+  if (!hed || hed.tid !== t.id) startHed(t);
+  const N = hed.pts.length, F = flatTrack(t), parts = removedParts(F), stack = hedStack(t.id);
+  const where = { start: 'Cut off the start', end: 'Cut off the end', middle: 'Cut out of the middle' };
+  return `${backBtn()}
+    <div class="d-title">Trim or add to this hike</div><div class="d-sub">${esc(t.name)}</div>
+    ${t.approved === false ? '<div class="small" style="background:#fff4e5;border-radius:12px;padding:10px 12px;margin:8px 0">Good time to fix it: this hike is still waiting for your approval, and nothing counts yet.</div>' : ''}
+    <div class="small muted">Move the green A and red B markers (sliders, dragging them, or clicking the hike line). The stretch between them turns orange. Only the line that is still recorded or drawn counts toward trails, peaks and lakes.</div>
+    <div class="chips"><button data-act="hedPick" data-w="a" class="${hed.act === 'a' ? 'on' : ''}">Moving A</button><button data-act="hedPick" data-w="b" class="${hed.act === 'b' ? 'on' : ''}">Moving B</button></div>
+    <label class="f">A (green): <span id="hedAl"></span></label><input type="range" id="hedA" min="0" max="${Math.max(0, N - 1)}" value="${hed.a}" style="width:100%">
+    <label class="f">B (red): <span id="hedBl"></span></label><input type="range" id="hedB" min="0" max="${Math.max(0, N - 1)}" value="${hed.b}" style="width:100%">
+    <div class="small" id="hedSel" style="margin:6px 0"></div>
+    <h2 class="sec">Cut away</h2>
+    <div class="row"><button class="btn" data-act="hedCutStart">Cut off the start (before A)</button><button class="btn" data-act="hedCutEnd">Cut off the end (after B)</button></div>
+    <div class="row"><button class="btn" data-act="hedRemMid">Cut out the part between A and B</button><button class="btn" data-act="hedKeep">Keep only A to B</button></div>
+    <h2 class="sec">Add to this hike</h2>
+    <div class="small muted">You draw the new part on the map, following the trail you really walked. A preview shows what it will count toward before you save.</div>
+    <div class="row"><button class="btn" data-act="hedAddBefore">Draw before the start</button><button class="btn" data-act="hedAddAfter">Draw after the end</button></div>
+    <div class="row"><button class="btn" data-act="hedAddGap">Draw from A to B (replaces what is between)</button></div>
+    <h2 class="sec">Cut-away parts <span class="small muted">${parts.length}</span></h2>
+    ${parts.map(x => `<div class="visit"><div class="tx"><b>${where[x.where]}</b> <span class="muted small">${fmtMi(x.len)} mi</span></div><button class="btn sm" data-act="hedRestore" data-from="${x.from}" data-to="${x.to}">Restore</button>${x.where !== 'middle' ? `<button class="btn sm danger" data-act="hedDrop" data-from="${x.from}" data-to="${x.to}">Delete</button>` : ''}</div>`).join('') || '<div class="empty small">Nothing cut away.</div>'}
+    ${parts.length > 1 ? '<div class="row"><button class="btn sm" data-act="hedRestoreAll">Restore all</button></div>' : ''}
+    <div class="row"><button class="btn" data-act="hedUndo" ${stack.length ? '' : 'disabled'}>↶ Undo last change</button><button class="btn" data-act="hedRevert" ${t.orig ? '' : 'disabled'}>Back to original</button></div>
+    <div class="row"><button class="btn primary" style="flex:1;padding:12px" data-act="hedDone">Done</button></div>`;
+}
+document.addEventListener('input', e => {
+  if (!hed) return;
+  if (e.target.id === 'hedA') hedSet('a', +e.target.value);
+  if (e.target.id === 'hedB') hedSet('b', +e.target.value);
+});
+['dragover', 'drop'].forEach(ev => window.addEventListener(ev, e => {
+  if (!e.dataTransfer || !Array.from(e.dataTransfer.types || []).includes('Files')) return;
+  e.preventDefault();
+  if (ev === 'drop') { const fs = [...e.dataTransfer.files].filter(f => /\.gpx$/i.test(f.name)); if (fs.length) importGPXFiles(fs); else toast('Drop .gpx files here to import hikes.', 4000); }
+}));
 
 // ================= Areas (polygons you draw) =================
 let areaEd = null;
 const findArea = id => data.areas.find(a => a.id === id);
 const ringPerim = r => lineLen(closeRing(r));
 function startAreaEditor(area, purpose) {
+  stopHed(true);
   if (editor) stopEditor(true);
   stopAreaEditor(true);
   areaEd = { id: area ? area.id : null, name: area ? area.name : '', type: area ? area.type : 'basin', pts: area ? area.ring.map(q => q.slice()) : [], markers: [], purpose: purpose || 'area',
@@ -2288,7 +2646,7 @@ const REPORT_CSS = `.rep{font:14px/1.45 -apple-system,system-ui,Segoe UI,Roboto,
 function reportBodyHTML(t, photos) {
   const segs = t.segments.filter(s => s.src !== 'ignored' && s.pts.length > 1), line = joinLegs(segs.map(s => ({ pts: s.pts }))), prof = profileSync(line), len = lineLen(line), c = climb(prof);
   const breaks = []; let acc = 0; segs.forEach((s, i) => { acc += lineLen(s.pts); if (i < segs.length - 1) breaks.push(acc); });
-  const dur = t.start && t.end && !t.segments.some(s => s.src === 'manual') ? fmtDur(t.end - t.start) : null;
+  const dur = t.start && t.end && t.end > t.start && (t.timesSet || (!t.edited && !t.segments.some(s => s.src === 'manual'))) ? fmtDur(t.end - t.start) : null;
   const ids = [...new Set(Object.entries(data.visits).filter(([, l]) => l.some(v => v.trackId === t.id)).map(([id]) => WAY2GROUP[id] || id))];
   const items = ids.map(id => { const g = GROUPS[id], f = FEAT[id], a = findArea(id); if (g) return { k: 'trail', n: g.name }; if (f && f.kind !== 'trail') return { k: f.kind, n: nameOf(f) || '', e: f.ele }; if (a) return { k: 'area', n: a.name }; return null; }).filter(x => x && x.n);
   const order = { peak: 0, pass: 1, lake: 2, waterfall: 3, area: 4, trail: 5 }; items.sort((a, b) => (order[a.k] - order[b.k]) || (b.e || 0) - (a.e || 0));
@@ -2319,6 +2677,7 @@ async function printReport(t) {
 // ================= Sidebar: navigation =================
 const body = () => $('sideBody');
 function setTab(t) {
+  stopHed();
   if (editor) stopEditor();
   if (areaEd) stopAreaEditor();
   view = { tab: t, detail: null }; viewStack = []; selectedPinId = null;
@@ -2326,6 +2685,8 @@ function setTab(t) {
   renderSide(); updateSources();
 }
 function openDetail(d, replace) {
+  if (hed && d.type !== 'hikeEdit') stopHed();
+  if (d.type === 'hikeEdit' && !hed) { const tt = findTrack(d.id); if (tt) startHed(tt); }
   if (view.detail && !replace && view.detail.type !== 'editor' && view.detail.type !== 'areaEditor') viewStack.push(view.detail);
   view.detail = d;
   selectedPinId = d.type === 'pin' ? d.id : null;
@@ -2334,6 +2695,7 @@ function openDetail(d, replace) {
   body().scrollTop = 0;
 }
 function goBack() {
+  stopHed();
   if (editor) { stopEditor(); }
   if (areaEd) { stopAreaEditor(); }
   view.detail = viewStack.pop() || null; selectedPinId = view.detail && view.detail.type === 'pin' ? view.detail.id : null;
@@ -2342,7 +2704,7 @@ function goBack() {
 function renderSide() {
   const d = view.detail;
   if (d) {
-    const fn = { feature: pageFeature, route: pageRoute, track: pageTrack, pin: pagePin, editor: pageEditor, history: pageHistory, settings: pageSettings, help: pageHelp, ideas: pageIdeas, offline: pageOffline, report: pageReport, area: pageArea, areaEditor: pageAreaEditor, list: pageList, trash: pageTrash }[d.type];
+    const fn = { feature: pageFeature, route: pageRoute, track: pageTrack, pin: pagePin, editor: pageEditor, history: pageHistory, settings: pageSettings, help: pageHelp, ideas: pageIdeas, offline: pageOffline, report: pageReport, area: pageArea, areaEditor: pageAreaEditor, list: pageList, trash: pageTrash, hikeEdit: pageHikeEdit }[d.type];
     if (fn) { body().innerHTML = fn(d); return; }
   }
   const q = $('q').value.trim().toLowerCase();
@@ -2460,7 +2822,7 @@ function pageActivity() {
   if (pending.length) extra += `<h2 class="sec">Pending review <span class="small muted">${pending.length}</span></h2>
     <div class="small muted">Imported hikes count toward your map and stats only after you approve them.</div>
     <div class="row"><button class="btn primary" data-act="approveAll">Approve all</button></div>
-    ${pending.map(t => { const st = lineStats(trackLine(t)); return cardHTML({ title: t.name, icon: '⌚', sub: `${fmtDate(t.date)} · ${fmtMi(st.len)} mi · ${fmtFt(st.gain)} ft · waiting`, open: { type: 'track', id: t.id } }); }).join('')}`;
+    ${pending.map(t => { const st = trackStatsSafe(t); return cardHTML({ title: t.name, icon: '⌚', sub: `${fmtDate(t.date)} · ${fmtMi(st.len)} mi · ${fmtFt(st.gain)} ft · waiting`, open: { type: 'track', id: t.id } }); }).join('')}`;
   if (planned.length) extra += `<h2 class="sec">Planned trips <span class="small muted">${planned.length}</span></h2>
     <div class="small muted">Drag a trip to reorder it, or use the Up and Down buttons. Dates show on each card.</div>
     <div class="row"><button class="btn sm" data-act="gpxPlanned">Export all planned trips (GPX)</button></div>
@@ -2512,16 +2874,16 @@ $('side').addEventListener('drop', e => {
 $('side').addEventListener('dragend', () => { dragId = null; document.querySelectorAll('.dragrow.dragging,.dragrow.dragover').forEach(x => x.classList.remove('dragging', 'dragover')); });
 function pageActivityList(extra) {
   const list = data.tracks.filter(t => inFilter(t.date) && t.approved !== false && !t.planned).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  let html = `<button class="btn" style="width:100%;margin:16px 0 4px;padding:12px" data-act="drawHike">✏️ Draw a hike on the map</button>${extra || ''}`;
+  let html = `<div class="row" style="margin:16px 0 4px"><button class="btn primary" style="flex:1;padding:12px" data-act="gpx">⬆ Import GPX</button><button class="btn" style="flex:1;padding:12px" data-act="drawHike">✏️ Draw a hike</button></div><div class="small muted" style="margin-bottom:6px">You can also drop .gpx files anywhere on the page.</div>${extra || ''}`;
   if (list.length) html += `<h2 class="sec">Taken hikes <span class="small muted">${list.length}</span></h2>`;
   let yr = null;
   for (const t of list) {
     const y = (t.date || '').slice(0, 4);
     if (y !== yr) { yr = y; html += `<h2 class="sec">${y || 'Undated'}</h2>`; }
-    const st = lineStats(trackLine(t)), mixed = t.segments.some(s => s.src === 'manual') && t.segments.some(s => s.src === 'garmin');
+    const st = trackStatsSafe(t), mixed = t.segments.some(s => s.src === 'manual') && t.segments.some(s => s.src === 'garmin');
     html += cardHTML({ title: t.name, icon: t.planned ? '🗓️' : mixed ? '🔀' : t.segments.some(s => s.src === 'garmin') ? '⌚' : '✏️', sub: `${fmtDate(t.date)} · ${tripLabel(t)} · ${t.planned ? '' : fmtMi(st.len) + ' mi · ' + fmtFt(st.gain) + ' ft'}${t.trip ? ' · ' + esc(t.trip) : ''}`, open: { type: 'track', id: t.id } });
   }
-  return html + (list.length ? '' : '<div class="empty">No hikes yet. To bring in Garmin hikes, open the menu (☰, top right) → Import GPX hikes.</div>');
+  return html + (list.length ? '' : '<div class="empty">No hikes yet. Tap Import GPX above to bring in hikes from your Garmin or phone, or draw one on the map.</div>');
 }
 function filterSelects() {
   const ys = new Set(); data.tracks.forEach(t => ys.add((t.date || '').slice(0, 4))); Object.values(data.visits).flat().forEach(v => ys.add((v.date || '').slice(0, 4))); data.pins.forEach(p => ys.add((p.date || '').slice(0, 4)));
@@ -2532,7 +2894,7 @@ function filterSelects() {
 function pageStats() {
   const tracks = data.tracks.filter(t => inFilter(t.date) && !t.planned && t.approved !== false);
   let miles = 0, gain = 0;
-  for (const t of tracks) { const st = lineStats(trackLine(t)); miles += st.len; gain += st.gain; }
+  for (const t of tracks) { const st = trackStatsSafe(t); miles += st.len; gain += st.gain; }
   const ro = rangeOnly(), kinds = k => FEATS.filter(f => f.kind === k && (!ro || inRangeF(f)));
   const been = list => list.filter(f => statusOf(f.id) === 'been').length;
   const peaks = kinds('peak'), lakes = kinds('lake'), passes = kinds('pass'), falls = kinds('waterfall');
@@ -2573,7 +2935,7 @@ function yearData() {
   for (const t of data.tracks) {
     if (t.planned || t.approved === false) continue;
     const k = (t.date || '').slice(0, 4); if (!k) continue;
-    const st = lineStats(trackLine(t)), r = y(k); r.hikes++; r.m += st.len; r.gainM += st.gain; r.nights += t.nights || 0;
+    const st = trackStatsSafe(t), r = y(k); r.hikes++; r.m += st.len; r.gainM += st.gain; r.nights += t.nights || 0;
   }
   for (const [id, list] of Object.entries(data.visits)) {
     const f = FEAT[id] || null, a = f ? null : findArea(id);
@@ -2740,26 +3102,33 @@ function pageRoute(d) {
     <div class="row"><button class="btn primary" data-act="saveRoute">Save details</button></div>`;
 }
 function fmtDur(ms) { const m = Math.round(ms / 60000); return Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm'; }
+const clockOf = ms => { if (!ms) return ''; const d = new Date(ms); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
 function pageTrack(d) {
   const t = findTrack(d.id); if (!t) return backBtn() + '<div class="empty">Hike not found.</div>';
   const segs = t.segments.filter(s => s.src !== 'ignored' && s.pts.length > 1);
-  const line = joinLegs(segs.map(s => ({ pts: s.pts }))), prof = profileSync(line), len = lineLen(line), c = climb(prof);
+  const line = joinLegs(segs.map(s => ({ pts: s.pts }))), prof = line.length > 1 ? profileSync(line) : [];
+  let len = lineLen(line), c = prof.length > 1 ? climb(prof) : { gain: 0 };
+  if (hasGap(t)) { const x = trackStats(t); len = x.len; c = { gain: x.gain }; }   // never count the jump across a gap
   const breaks = []; let acc = 0; segs.forEach((s, i) => { acc += lineLen(s.pts); if (i < segs.length - 1) breaks.push(acc); });
-  const sstats = segmentStats(prof, len, breaks);
+  const sstats = prof.length > 1 ? segmentStats(prof, lineLen(line), breaks) : [];
   const places = [...new Set(Object.entries(data.visits).filter(([, l]) => l.some(v => v.trackId === t.id)).map(([id]) => WAY2GROUP[id] || id))];
-  const hasSplit = t.segments.some(s => s.src === 'ignored' || s.src === 'manual') && t.segments.some(s => s.src === 'garmin');
-  const dur = t.start && t.end && !t.segments.some(s => s.src === 'manual') ? fmtDur(t.end - t.start) : null;
+  const hasSplit = !t.planned && (!!t.orig || (t.segments.some(s => s.src === 'ignored' || s.src === 'manual') && t.segments.some(s => s.src === 'garmin' || s.src === 'ignored')));
+  const dur = t.start && t.end && t.end > t.start && (t.timesSet || (!t.edited && !t.segments.some(s => s.src === 'manual'))) ? fmtDur(t.end - t.start) : null;
   return `${backBtn()}
     <div class="d-title">${esc(t.name)}</div>
-    <div class="d-sub">${fmtDate(t.date)} · ${tripLabel(t)}${t.trip ? ' · ' + esc(t.trip) : ''}</div>
+    <div class="d-sub">${fmtDate(t.date)} · ${tripLabel(t)}${t.kind ? ' · ' + esc(t.kind) : ''}${t.trip ? ' · ' + esc(t.trip) : ''}${t.rating ? ' · ' + '★'.repeat(t.rating) : ''}</div>
     ${t.approved === false ? `<div class="small" style="background:#fff4e5;border-radius:12px;padding:10px 12px;margin:8px 0">Waiting for your review. Its places and stats count after you approve it.</div><div class="row"><button class="btn primary" data-act="approveTrack">Approve hike</button><button class="btn danger" data-act="rejectTrack">Delete</button></div>` : ''}
     <div class="stats">${statHTML(fmtMi(len), 'mi', 'Length')}${statHTML(fmtFt(c.gain), 'ft', 'Elev. gain')}${dur ? statHTML(dur, '', 'Time') : statHTML(estTime(len, c.gain), 'hr', 'Est. time')}${statHTML(places.length, '', 'Places')}</div>
-    ${chartHTML(prof, breaks)}
+    ${prof.length > 1 ? chartHTML(prof, breaks) : '<div class="empty small">This hike has no active path right now. Open Trim or add and restore the cut-away parts.</div>'}
     <div class="row"><button class="btn" data-act="openReport">📄 ${t.planned ? 'Trip plan' : 'Trip report'}</button></div>
     ${planCardHTML(t)}
+    ${t.planned ? '' : `<h2 class="sec">Fix the path</h2>
+    <div class="small muted" style="margin-bottom:6px">Left your watch on by accident, or did it stop early? Trim it, add to it, or fill in a missing middle. Only the line that was recorded or that you draw counts toward trails, peaks and lakes.</div>
+    <div class="row"><button class="btn primary" data-act="editHike">✂️ Trim or add to this hike</button></div>
+    ${t.segments.some(s => s.src === 'garmin') ? '<div class="small muted">The scissors button below is a shortcut for a watch that stopped early: click where it stopped, and you draw the rest.</div>' : ''}`}
     <div class="actions">
-      ${t.segments.some(s => s.src === 'garmin') ? actionBtn('split', 'Mark where Garmin stopped, then draw the rest', SVG.scissors) : ''}
-      ${hasSplit ? actionBtn('unsplit', 'Undo Garmin split and remove manual parts', SVG.undo) : ''}
+      ${t.segments.some(s => s.src === 'garmin') ? actionBtn('split', 'Watch stopped early? Click where it stopped, then draw the rest', SVG.scissors) : ''}
+      ${hasSplit ? actionBtn('unsplit', 'Undo all my path edits (back to the original)', SVG.undo) : ''}
       ${actionBtn('gpxTrack', 'Export GPX', SVG.share)}
       ${actionBtn('rematch', 'Re-match places', SVG.refresh)}
       ${actionBtn('delTrack', 'Delete hike', SVG.trash)}
@@ -2770,6 +3139,11 @@ function pageTrack(d) {
     <h2 class="sec">Details</h2>
     <label class="f">Name</label><input id="tName" value="${esc(t.name)}">
     <div class="row"><div style="flex:1"><label class="f">Date</label><input type="date" id="tDate" value="${esc(t.date)}"></div><div style="flex:1"><label class="f">Trip</label><input id="tTrip" value="${esc(t.trip || '')}" placeholder="e.g. Teton Crest 2026"></div></div>
+    <div class="row"><div style="flex:1"><label class="f">Activity type</label><select id="tKind"><option value="">—</option>${['Day hike', 'Backpacking trip', 'Scramble or climb', 'Trail run', 'Ski or snowshoe', 'Other'].map(k => `<option ${t.kind === k ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
+      <div style="flex:1"><label class="f">Rating</label><select id="tRating"><option value="0">—</option>${[1, 2, 3, 4, 5].map(n => `<option value="${n}" ${t.rating === n ? 'selected' : ''}>${'★'.repeat(n)}</option>`).join('')}</select></div></div>
+    <div class="row"><div style="flex:1"><label class="f">Start time</label><input type="time" id="tStartT" value="${clockOf(t.start)}" data-o="${clockOf(t.start)}"></div><div style="flex:1"><label class="f">End time</label><input type="time" id="tEndT" value="${clockOf(t.end)}" data-o="${clockOf(t.end)}"></div></div>
+    <label class="f">Hiked with</label><input id="tWith" value="${esc(t.with || '')}" placeholder="Names">
+    <label class="f">Conditions</label><input id="tCond" value="${esc(t.cond || '')}" placeholder="e.g. clear, windy, snow above 10,000 ft">
     <label class="f">Notes</label><textarea id="tNotes" rows="3">${esc(t.notes || '')}</textarea>
     <label class="toggle"><input type="checkbox" id="tPlanned" ${t.planned ? 'checked' : ''}> Planned trip (not done yet, kept out of stats)</label>
     ${campsHTML(t)}
@@ -2797,15 +3171,22 @@ function pagePin(d) {
 }
 function pageEditor() {
   const e = editor; if (!e) return '';
-  const title = { route: e.routeId ? 'Edit route' : 'Build a route', track: 'Draw a hike', extend: 'Draw the rest of this hike' }[e.kind];
-  const help = e.kind === 'extend' ? 'Click where your manual tracking began, then keep clicking along where you went.' : 'Click the map to add points. Drag points to adjust. Click a point to remove it' + (e.kind === 'route' ? ' or end a day there.' : '.');
+  const title = e.kind === 'extend' ? ({ before: 'Draw the start of this hike', gap: 'Draw the missing section' }[e.mode] || 'Draw the rest of this hike') : { route: e.routeId ? 'Edit route' : 'Build a route', track: 'Draw a hike' }[e.kind];
+  const help = e.kind === 'extend' ? ({
+    before: 'The first point is where the recorded line begins. Click outward from it, back along the way you really started.',
+    gap: 'The first point is A. Click along where you really walked, then press Finish at B to join the recorded line again.',
+    after: 'The first point is where the recorded line ends. Click along where you went after that.',
+    split: 'The first point is where the watch stopped. Click along where you actually went after that.'
+  }[e.mode] || 'Click along where you went.') : 'Click the map to add points. Drag points to adjust. Click a point to remove it' + (e.kind === 'route' ? ' or end a day there.' : '.');
   return `${backBtn()}
     <div class="d-title">${title}</div><div class="d-sub">${help}</div>
     ${e.kind !== 'extend' ? `<label class="f">Name</label><input id="edName" value="${esc(e.name)}">` : ''}
     ${e.kind === 'track' ? `<label class="f">Date hiked</label><input type="date" id="edDate" value="${esc(e.date)}">` : ''}
     <label class="toggle"><input type="checkbox" id="edSnap" ${e.snap ? 'checked' : ''}> Follow trails${GRAPH && GRAPH.lon.length ? '' : ' (download map data to enable)'}</label>
     ${e.kind === 'route' ? `<div class="swatches" style="margin:6px 0">${COLORS.map(cl => `<button data-ecolor="${cl}" class="${e.color === cl ? 'on' : ''}" style="background:${cl}"></button>`).join('')}</div>` : ''}
+    ${e.endPt ? `<div class="row" style="align-items:center"><span class="small" style="flex:1">${e.closed ? 'The section ends at B.' : 'End the section at the red B marker.'}</span><button class="btn" data-act="edFinishB" ${e.closed ? 'disabled' : ''}>Finish at B</button></div>` : ''}
     <div id="edProfile">${editorStatsHTML()}</div>
+    <div id="edCredit">${creditHTML()}</div>
     <div class="row"><button class="btn" data-act="edUndo">↶ Undo point</button><button class="btn" data-act="edClear">Clear</button>${e.kind === 'route' && e.wps.length > 1 ? `<button class="btn" data-act="edDay">End day at last point</button>` : ''}</div>
     <div class="row"><button class="btn primary" style="flex:1;padding:12px" data-act="edSave">Save ${e.kind === 'route' ? 'route' : 'hike'}</button><button class="btn" data-act="edCancel">Cancel</button></div>
     <h3 class="sec">Points</h3>
@@ -2886,7 +3267,7 @@ function setMode(m, keepEditor) {
   if (map) { map.getCanvas().style.cursor = m === 'browse' ? '' : 'crosshair'; if (m === 'browse') map.doubleClickZoom.enable(); else map.doubleClickZoom.disable(); }
   if (m === 'pin') toast('Click the map to drop a pin.', 0);
   else if (m === 'area') toast(null);
-  else if (m === 'split') toast('Click the blue Garmin line where the watch stopped recording.', 0);
+  else if (m === 'split') toast('Watch stopped early? Click the hike line at the spot where it stopped recording. Everything after that spot is set aside, and you draw the rest yourself. Press Esc to cancel.', 0);
   else if (m === 'browse') toast(null);
 }
 function splitAt(tid, si, lng, lat) {
@@ -2904,20 +3285,28 @@ function splitAt(tid, si, lng, lat) {
   const A = s.pts[best - 1], B = s.pts[best];
   const cut = [+(A[0] + (B[0] - A[0]) * bt).toFixed(6), +(A[1] + (B[1] - A[1]) * bt).toFixed(6), A[2] != null && B[2] != null ? +(A[2] + (B[2] - A[2]) * bt).toFixed(1) : null];
   const before = s.pts.slice(0, best).concat([cut]), after = [cut].concat(s.pts.slice(best));
-  t.segments.splice(si, 1, { src: 'garmin', pts: before }, ...(after.length > 1 ? [{ src: 'ignored', pts: after }] : []));
-  matchTrack(t); touch({ noRender: true });
-  startEditor('extend', { trackId: tid, start: [cut[0], cut[1]] });
-  toast('Garmin part ends here. Now click along where you actually went, then Save.', 6000);
+  if (after.length < 2 || before.length < 2) { toast('Pick a spot a little further along the line.', 3000); return; }
+  const snapshot = JSON.stringify(t.segments);
+  ensureOrig(t); hedPush(t);
+  t.segments.splice(si, 1, { src: 'garmin', pts: before }, { src: 'ignored', was: 'garmin', pts: after });
+  // Everything recorded or drawn after the cut is set aside too, so nothing past the stopping point counts
+  for (let q = si + 2; q < t.segments.length; q++) { const g = t.segments[q]; if (g.src !== 'ignored') { g.was = g.src; g.src = 'ignored'; } }
+  t.edited = true;
+  matchIfCounted(t); touch({ noRender: true }); updateSources();
+  startEditor('extend', { trackId: tid, start: [cut[0], cut[1]], mode: 'split', anchorPt: cut, snapshot });
+  toast('Recording ends here. Now click along where you actually went, then Save. The rest of the watch line is set aside and does not count.', 7000);
 }
 function unsplit(t) {
+  // Back to how the hike was before any path edits (trims, drawn parts); older splits fall back to merging the set-aside part
+  if (t.orig) { t.segments = t.orig; delete t.orig; t.edited = false; return; }
   const out = [];
   for (const s of t.segments) {
-    if (s.src === 'manual') continue;
+    if (s.src === 'manual' || (s.src === 'ignored' && s.was === 'manual')) continue;
     const last = out[out.length - 1];
     if (s.src === 'ignored' && last) last.pts = last.pts.concat(s.pts.slice(1));
     else out.push({ src: 'garmin', pts: s.pts.slice() });
   }
-  t.segments = out;
+  t.segments = out; t.edited = false;
 }
 
 // ================= Route preview flythrough =================
@@ -2984,7 +3373,7 @@ function renderLayers() {
 // ================= Events =================
 function onAction(act, el) {
   const d = view.detail || {};
-  const t = d.type === 'track' ? findTrack(d.id) : null, r = d.type === 'route' ? findRoute(d.id) : null, p = d.type === 'pin' ? findPin(d.id) : null;
+  const t = (d.type === 'track' || d.type === 'hikeEdit') ? findTrack(d.id) : null, r = d.type === 'route' ? findRoute(d.id) : null, p = d.type === 'pin' ? findPin(d.id) : null;
   switch (act) {
     case 'back': goBack(); break;
     case 'fetchAll': fetchArea(BBOX.s, BBOX.w, BBOX.n, BBOX.e, 5).catch(e => toast('Download failed: ' + e.message + '. Check your connection and try again.', 8000)); break;
@@ -3026,6 +3415,19 @@ function onAction(act, el) {
     case 'yrPick': view.yr = el.dataset.k; renderSide(); break;
     case 'bannerFix': { view.setOpen = Object.assign(view.setOpen || {}, { sync: true }); if (editor) stopEditor(); if (areaEd) stopAreaEditor(); openDetail({ type: 'settings' }); break; }
     case 'drawHike': startEditor('track'); break;
+    case 'editHike': if (t && !t.planned) openDetail({ type: 'hikeEdit', id: t.id }); break;
+    case 'hedPick': if (hed) { hed.act = el.dataset.w; hedRefreshPage(); } break;
+    case 'hedCutStart': hedOp('start'); break;
+    case 'hedCutEnd': hedOp('end'); break;
+    case 'hedRemMid': hedOp('mid'); break;
+    case 'hedKeep': hedOp('keep'); break;
+    case 'hedAddBefore': hedAdd('before'); break;
+    case 'hedAddAfter': hedAdd('after'); break;
+    case 'hedAddGap': hedAdd('gap'); break;
+    case 'hedRestore': case 'hedDrop': case 'hedRestoreAll': hedParts(act, el); break;
+    case 'hedUndo': hedUndo(); break;
+    case 'hedRevert': hedRevert(); break;
+    case 'hedDone': goBack(); break;
     case 'gpx': $('gpxFile').click(); break;
     case 'importOld': $('oldFile').click(); break;
     case 'been': case 'seen': {
@@ -3078,7 +3480,7 @@ function onAction(act, el) {
     case 'delRoute': if (confirm('Delete this route? You can restore it from Deleted items.')) { trashPut('route', r); touch({ noRender: true }); goBack(); } break;
     case 'saveRoute': r.name = $('rName').value.trim() || r.name; r.notes = $('rNotes').value; touch(); toast('Saved.'); break;
     case 'split': setMode('split'); break;
-    case 'unsplit': if (confirm('Undo the split? This removes the parts you drew and restores the full Garmin line.')) { unsplit(t); matchTrack(t); touch(); } break;
+    case 'unsplit': if (confirm('Undo all path edits? This removes the parts you drew, brings back everything that was cut off, and returns the hike to how it was imported.')) { hedPush(t); unsplit(t); matchIfCounted(t); touch(); } break;
     case 'gpxTrack': {
       const lines = t.segments.filter(s => s.src !== 'ignored').map(s => s.pts);
       const wp = t.planned ? tripWaypoints(lines, (t.camps || []).map(findPin).filter(Boolean)) : null;
@@ -3087,7 +3489,7 @@ function onAction(act, el) {
     case 'openReport': openDetail({ type: 'report', id: d.id }); break;
     case 'reportPrint': { const tt = findTrack(d.id); if (tt) printReport(tt); break; }
     case 'loadForecast': { const tt = findTrack(d.id); if (tt) loadForecast(tt); break; }
-    case 'rematch': { if (t.approved === false) { toast('Approve this hike first.'); break; } const n = matchTrack(t).length; touch(); toast(`Matched ${n} places.`); break; }
+    case 'rematch': { if (t.approved === false || t.planned) { toast(t.planned ? 'Planned trips do not count until they are done.' : 'Approve this hike first.'); break; } const n = matchIfCounted(t); touch(); toast(`Matched ${n} places.`); break; }
     case 'approveTrack': approveTrack(t); break;
     case 'approveAll': { const pend = data.tracks.filter(x => x.approved === false); pend.forEach(approveTrack); toast(`Approved ${pend.length} hike${pend.length === 1 ? '' : 's'}.`); break; }
     case 'rejectTrack': if (confirm('Delete this imported hike? It is not counted anywhere. You can restore it from Deleted items.')) { trashPut('track', t); touch({ noRender: true }); goBack(); } break;
@@ -3130,9 +3532,24 @@ function onAction(act, el) {
       navigator.clipboard.writeText(txt).then(() => toast('Copied to clipboard.'), () => toast('Could not copy here. Select the text and copy it manually.', 6000)); break;
     }
     case 'saveTrack': {
-      t.name = $('tName').value.trim() || t.name; t.trip = $('tTrip').value.trim(); t.notes = $('tNotes').value; t.planned = $('tPlanned').checked; t.nights = Math.max(0, Math.min(60, +($('tNights') && $('tNights').value) || 0));
+      t.name = $('tName').value.trim() || t.name; t.trip = $('tTrip').value.trim(); t.notes = $('tNotes').value; t.nights = Math.max(0, Math.min(60, +($('tNights') && $('tNights').value) || 0));
+      t.kind = $('tKind').value; t.rating = Math.max(0, Math.min(5, parseInt($('tRating').value, 10) || 0)); t.with = $('tWith').value.trim(); t.cond = $('tCond').value.trim();
+      const wasPlanned = !!t.planned; t.planned = $('tPlanned').checked;
       const nd = $('tDate').value;
-      if (nd && nd !== t.date) { t.date = nd; for (const l of Object.values(data.visits)) for (const v of l) if (v.trackId === t.id) v.date = nd; }
+      if (nd && nd !== t.date) {
+        const dd = Math.round((Date.parse(nd + 'T12:00:00') - Date.parse((t.date || nd) + 'T12:00:00')) / 864e5) * 864e5;
+        if (dd && t.start && t.end) { t.start += dd; t.end += dd; }
+        t.date = nd; for (const l of Object.values(data.visits)) for (const v of l) if (v.trackId === t.id) v.date = nd;
+      }
+      const sEl = $('tStartT'), eEl = $('tEndT');
+      if (sEl && eEl && (sEl.value !== sEl.dataset.o || eEl.value !== eEl.dataset.o)) {
+        if (!sEl.value && !eEl.value) { t.start = t.end = null; t.timesSet = false; }
+        else if (sEl.value && eEl.value && t.date) {
+          const s0 = Date.parse(`${t.date}T${sEl.value}:00`); let e0 = Date.parse(`${t.date}T${eEl.value}:00`);
+          if (!isNaN(s0) && !isNaN(e0)) { if (e0 <= s0) e0 += 864e5; t.start = s0; t.end = e0; t.timesSet = true; }
+        } else toast('Fill in both the start and end time, or clear both.', 4000);
+      }
+      if (wasPlanned !== t.planned) matchIfCounted(t);
       touch(); toast('Saved.'); break;
     }
     case 'savePin': {
@@ -3141,8 +3558,12 @@ function onAction(act, el) {
     }
     case 'delPin': if (confirm('Delete this pin? You can restore it from Deleted items.')) { trashPut('pin', p); selectedPinId = null; touch({ noRender: true }); goBack(); } break;
     case 'edUndo': undoPoint(); break;
-    case 'edClear': editor.wps = []; editor.legs = []; redrawEditor(); renderSide(); break;
+    case 'edClear': editor.wps = editor.kind === 'extend' ? editor.wps.slice(0, 1) : []; editor.legs = []; editor.closed = false; redrawEditor(); renderSide(); break;
     case 'edDay': { const w = editor.wps[editor.wps.length - 1]; w.brk = !w.brk; redrawEditor(); renderSide(); break; }
+    case 'edFinishB': {
+      if (!editor || !editor.endPt || editor.closed || !editor.wps.length) break;
+      editor.wps.push({ c: [editor.endPt[0], editor.endPt[1]], brk: false, snap: editor.snap }); computeLeg(editor.wps.length - 2); editor.closed = true; redrawEditor(); renderSide(); break;
+    }
     case 'edSave': if (editor && $('edName')) editor.name = $('edName').value; saveEditor(); break;
     case 'edCancel': { const back = editor && editor.kind === 'extend' ? { type: 'track', id: editor.trackId } : null; stopEditor(); view.detail = back; renderSide(); break; }
     case 'syncSave': {
@@ -3856,11 +4277,12 @@ function initMap() {
       return;
     }
     if (areaEd) { addAreaPt(ll); return; }
+    if (hed) { hedMapClick(ll); return; }
     if (editor) { addPoint(ll); return; }
     const box = [[e.point.x - 7, e.point.y - 7], [e.point.x + 7, e.point.y + 7]];
     if (mode === 'split') {
-      const h = map.queryRenderedFeatures(box, { layers: ['track-garmin'] });
-      if (h.length) splitAt(h[0].properties.tid, +h[0].properties.si, ll[0], ll[1]); else toast('Click right on a blue Garmin line.', 3000);
+      const h = map.queryRenderedFeatures(box, { layers: ['track-hit'] }).filter(f => f.properties.src === 'garmin').sort((a, b) => (b.properties.sel ? 1 : 0) - (a.properties.sel ? 1 : 0));
+      if (h.length) splitAt(h[0].properties.tid, +h[0].properties.si, ll[0], ll[1]); else toast('Click right on the hike line recorded by your watch.', 3000);
       return;
     }
     for (const l of HIT) {
