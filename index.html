@@ -2,13 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Teton Atlas V7</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Teton Atlas V8</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#1f5e2c">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Teton Atlas">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -19,7 +21,8 @@
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#ddd}
 #map{position:absolute;top:0;bottom:0;left:400px;right:0;transition:left .25s ease}
-button{font:inherit;color:inherit;cursor:pointer}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%;overscroll-behavior:none}
 input,select,textarea{font:inherit;color:var(--ink);width:100%;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;outline:none}
 input:focus,select:focus,textarea:focus{border-color:var(--green)}
 label.f{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
@@ -158,18 +161,36 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 .wpm.first{border-color:var(--green)}
 .wpm.brk{border-color:var(--orange);width:20px;height:20px}
 .maplibregl-ctrl-bottom-right{bottom:0}
+#toast .tact{margin-left:10px;border:0;border-radius:999px;background:var(--lime);color:#111;font-weight:700;padding:5px 12px}
+#toast .tx{display:inline-block;margin-left:8px;opacity:.7;font-size:16px;vertical-align:middle}
 @media (max-width:800px){
-  #side{top:auto;bottom:0;width:100%;height:46vh;border-right:0;border-top:1px solid var(--line);border-radius:18px 18px 0 0}
-  #map{left:0;bottom:46vh;transition:bottom .25s ease}
-  #toolbar{left:50%;bottom:calc(46vh + 12px)}
-  #toast{left:50%}
-  #collapseBtn{top:auto;left:50%;bottom:46vh;transform:translateX(-50%);width:56px;height:24px;border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;transition:bottom .25s ease}
+  :root{--sheet:46vh;--sab:env(safe-area-inset-bottom,0px);--sat:env(safe-area-inset-top,0px)}
+  @supports (height:1dvh){:root{--sheet:46dvh}}
+  html,body{height:100%}
+  @supports (height:1dvh){html,body{height:100dvh}}
+  #side{top:auto;bottom:0;width:100%;height:var(--sheet);border-right:0;border-top:1px solid var(--line);border-radius:18px 18px 0 0}
+  #map{left:0;bottom:var(--sheet);transition:bottom .25s ease}
+  #sideBody{padding-bottom:calc(120px + var(--sab))}
+  /* The tool bar sits well above the handle so it never covers the hide/show arrow */
+  #toolbar{left:50%;bottom:calc(var(--sheet) + 40px);gap:8px;padding:7px 9px}
+  #toolbar button{width:46px;height:46px}
+  .mapbtn{top:calc(12px + var(--sat))}
+  .pop{top:calc(66px + var(--sat));max-height:calc(100vh - 90px - var(--sat) - var(--sab))}
+  @supports (height:1dvh){.pop{max-height:calc(100dvh - 90px - var(--sat) - var(--sab))}}
+  #layers{width:min(300px,calc(100vw - 28px))}
+  #toast{left:50%;top:calc(68px + var(--sat));max-width:88vw;border-radius:18px}
+  /* Handle: a larger tap target that sits on the top edge of the sheet */
+  #collapseBtn{top:auto;left:50%;bottom:var(--sheet);transform:translateX(-50%);width:72px;height:30px;border:1px solid var(--line);border-bottom:0;border-radius:14px 14px 0 0;transition:bottom .25s ease;z-index:7}
   #collapseBtn svg{transform:rotate(-90deg)}
   body.collapsed #side{transform:translateY(100%)}
   body.collapsed #map{left:0;bottom:0}
-  body.collapsed #collapseBtn{left:50%;bottom:0}
+  body.collapsed #collapseBtn{left:50%;bottom:var(--sab)}
   body.collapsed #collapseBtn svg{transform:rotate(90deg)}
-  body.collapsed #toolbar{bottom:34px}
+  body.collapsed #toolbar{bottom:calc(var(--sab) + 44px)}
+  /* 16px inputs stop iOS from zooming the page when a field is focused */
+  input,select,textarea{font-size:16px}
+  nav.tabs button{padding:12px 10px 13px}
+  #side header{padding-top:12px}
 }
 /* V6: drag to reorder, filter panel, recency legend */
 .dragrow{border-radius:14px;transition:outline-color .1s}
@@ -184,7 +205,7 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 <aside id="side">
   <header>
     <svg width="34" height="34" viewBox="0 0 34 34"><rect width="34" height="34" rx="9" fill="#1f5e2c"/><path d="M4 26 L13 12 L16 16 L20 7 L30 26 Z" fill="#fff"/><path d="M20 7 L17.5 12 L19.5 11 L21.5 13 Z" fill="#aef07f"/></svg>
-    <h1>Teton Atlas</h1><span class="chip-v">V7</span>
+    <h1>Teton Atlas</h1><span class="chip-v">V8</span>
   </header>
   <div class="search">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b6f6b" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
@@ -248,7 +269,7 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V7';
+const APP_VERSION = 'V8';
 const BBOX = { s: 43.40, w: -111.25, n: 44.15, e: -110.50 }; // whole Teton Range, WY + ID sides
 const OVERPASS_URLS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
@@ -335,7 +356,13 @@ const VERSIONS = [
     'Menu → Map view as PDF opens the print dialog with the map image; choose "Save as PDF".'] },
   { name: 'Teton Atlas V7', date: '2026-11-16', notes: [
     'New app icon: the Tetons, cropped from your photo. Home-screen icons on iPhone and desktop use the new PNG files.',
-    'Under the hood: the offline cache is updated so the new icon and files load on the next visit.'] }
+    'Under the hood: the offline cache is updated so the new icon and files load on the next visit.'] },
+  { name: 'Teton Atlas V8', date: '2026-11-16', notes: [
+    'iPhone: the tool bar now sits above the hide/show arrow, which is larger and no longer covered.',
+    'iPhone: the "No trail data" notice now has a Download now button and stays until you close it (tap it or the x).',
+    'iPhone: layout respects the notch and home bar, the panel height follows the visible screen, and fields no longer zoom the page when tapped.',
+    'iPhone: the empty-state Download button is at the top of the panel so it is visible without scrolling.',
+    'Asks the browser to keep this app\'s saved map data from being cleared.'] }
 ];
 
 // ================= State =================
@@ -439,10 +466,18 @@ function simplify(pts, tol) {
   }
   return pts.filter((_, i) => keep[i]);
 }
-function toast(msg, ms) {
+function toast(msg, ms, action) {
+  // action = { label, run }: shows a button that runs it. Tapping the message itself, or the x, closes the notice.
   const t = $('toast');
   if (!msg) { t.hidden = true; return; }
   t.textContent = msg; t.hidden = false;
+  if (action) {
+    const b = document.createElement('button'); b.className = 'tact'; b.textContent = action.label;
+    b.addEventListener('click', e => { e.stopPropagation(); t.hidden = true; action.run(); });
+    t.appendChild(b);
+  }
+  const x = document.createElement('span'); x.className = 'tx'; x.textContent = '✕'; t.appendChild(x);
+  t.onclick = () => { t.hidden = true; };
   clearTimeout(toast.tm);
   if (ms !== 0) toast.tm = setTimeout(() => { t.hidden = true; }, ms || 4000);
 }
@@ -1568,9 +1603,9 @@ function featureItems() {
 }
 function noDataHTML() {
   return `<div style="padding:28px 0;text-align:center">
-    <div style="font-size:44px">🗺️</div><h2 style="margin:8px 0">Download the Teton map data</h2>
-    <p class="muted">One download (a minute or two) loads every trail, peak, pass, waterfall and lake in the range from OpenStreetMap. It is then cached here and saved inside this file.</p>
+    <div style="font-size:34px">🗺️</div><h2 style="margin:6px 0 10px">Download the Teton map data</h2>
     <button class="btn primary" data-act="fetchAll">Download map data</button>
+    <p class="muted" style="margin-top:12px">One download (a minute or two, best on Wi-Fi) loads every trail, peak, pass, waterfall and lake in the range from OpenStreetMap. It is then kept on this device.</p>
     <p class="muted small" style="margin-top:22px">Coming from an older version? Menu (☰, top right) → Import from an older version.</p></div>`;
 }
 function pageExplore() {
@@ -2457,7 +2492,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
     const local = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
     if (local && local.data && (local.savedAt || 0) > (data.editedAt || 0)) {
       const osm = data.osm, photos = data.photos; data = normalize(Object.assign({}, local.data, { osm, photos })); dirty = true;
-      setTimeout(() => toast('Restored your latest changes from this browser. Save the file to keep them in it.', 7000), 800);
+      setTimeout(() => toast(window.matchMedia('(max-width:800px)').matches ? 'Restored your latest changes on this device.' : 'Restored your latest changes from this browser. Save the file to keep them in it.', 7000), 800);
     }
   } catch (e) { /* ignore */ }
   if (!(data.osm && data.osm.features && data.osm.features.length)) { const cached = await idbGet('osm'); if (cached && cached.features) data.osm = cached; }
@@ -2466,7 +2501,8 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
   if (!data.parkOutline && FEATS.length && navigator.onLine) fetchParkOutline(true).catch(() => { /* Overpass unreachable: the rectangle stays until loaded */ });
   if (data.settings.collapsed) setCollapsed(true);
   updateSaveState(); renderSide();
-  if (!FEATS.length) setTimeout(() => toast('No trail data in this file yet. Open the menu (top right) and choose "Download trails & places".', 12000), 1500);
+  if (!FEATS.length) setTimeout(() => { if (!FEATS.length) toast('No trail data on this device yet.', 0, { label: 'Download now', run: () => onAction('fetchAll') }); }, 1500);
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* optional */ }
 })();
 </script>
 </body>
