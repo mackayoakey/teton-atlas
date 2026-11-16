@@ -1,0 +1,2013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Teton Atlas V4</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/maplibre-contour@0.1.1/dist/index.min.js"></script>
+<style>
+:root{--ink:#1b1b1b;--muted:#6b6f6b;--line:#e7e7e3;--bg:#fff;--soft:#f4f4f1;--green:#1f5e2c;--lime:#aef07f;--pill:#151515;--red:#d62828;--orange:#f77f00;--blue:#1e88e5}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#ddd}
+#map{position:absolute;top:0;bottom:0;left:400px;right:0;transition:left .25s ease}
+button{font:inherit;color:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:var(--ink);width:100%;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--green)}
+label.f{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+
+/* Sidebar */
+#side{position:absolute;top:0;bottom:0;left:0;width:400px;background:var(--bg);display:flex;flex-direction:column;border-right:1px solid var(--line);z-index:5;transition:transform .25s ease}
+#collapseBtn{position:absolute;z-index:6;top:50%;left:400px;transform:translateY(-50%);width:24px;height:56px;border:1px solid var(--line);border-left:0;border-radius:0 12px 12px 0;background:#fff;box-shadow:3px 0 8px rgba(0,0,0,.08);display:flex;align-items:center;justify-content:center;transition:left .25s ease;padding:0}
+#collapseBtn svg{transition:transform .25s ease}
+body.collapsed #side{transform:translateX(-100%)}
+body.collapsed #map{left:0}
+body.collapsed #collapseBtn{left:0}
+body.collapsed #collapseBtn svg{transform:rotate(180deg)}
+body.collapsed #toolbar,body.collapsed #toast{left:50%}
+#menu .sub{display:block;font-size:11.5px;color:var(--muted);font-weight:400;margin-top:1px}
+#menu .mh{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:6px 12px 2px}
+#side header{display:flex;align-items:center;gap:10px;padding:16px 20px 8px}
+#side header svg{flex:none}
+#side header h1{font-size:20px;margin:0;letter-spacing:-.01em}
+.chip-v{font-size:11px;background:var(--soft);border-radius:999px;padding:2px 8px;color:var(--muted)}
+.search{padding:6px 20px 10px;position:relative}
+.search input{border-radius:999px;padding:10px 16px 10px 38px;background:var(--soft);border-color:transparent}
+.search svg{position:absolute;left:34px;top:18px}
+nav.tabs{display:flex;gap:4px;padding:0 16px;border-bottom:1px solid var(--line)}
+nav.tabs button{background:none;border:0;padding:10px 10px 12px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent}
+nav.tabs button.on{color:var(--ink);border-bottom-color:var(--ink)}
+#sideBody{flex:1;overflow:auto;padding:0 20px 120px}
+
+/* Generic pieces */
+.btn{border:1px solid var(--line);background:#fff;border-radius:999px;padding:9px 16px;font-weight:600}
+.btn:hover{background:var(--soft)}
+.btn.primary{background:var(--green);border-color:var(--green);color:#fff}
+.btn.primary:hover{background:#174a22}
+.btn.lime{background:var(--lime);border-color:var(--lime);color:#111}
+.btn.wide{display:block;width:100%;text-align:center;background:#e9e9e6;border:0;padding:14px;font-size:16px;margin:14px 0}
+.btn.wide:hover{background:#dededa}
+.btn.danger{color:var(--red)}
+.btn.sm{padding:5px 11px;font-size:13px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:12px 0 6px}
+.chips button{flex:none;border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600}
+.chips button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+h2.sec{font-size:20px;margin:22px 0 8px;display:flex;justify-content:space-between;align-items:center}
+h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:18px 0 6px}
+.empty{color:var(--muted);padding:18px 0}
+
+/* List cards */
+.card{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.card:hover{background:linear-gradient(90deg,transparent,var(--soft),transparent)}
+.card .ic{flex:none;width:42px;height:42px;border-radius:12px;background:var(--soft);display:flex;align-items:center;justify-content:center;font-size:20px}
+.card .tx{flex:1;min-width:0}
+.card .t{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .s{color:var(--muted);font-size:13px}
+.badge{flex:none;font-size:11px;font-weight:700;border-radius:999px;padding:3px 8px}
+.badge.been{background:#e5f6e8;color:#1b7a34}
+.badge.seen{background:#fff1e0;color:#b45309}
+.badge.want{background:#fde8ec;color:#c2185b}
+
+/* Detail page */
+.back{display:inline-flex;align-items:center;gap:6px;border:0;background:none;padding:14px 0 4px;color:var(--muted);font-weight:600}
+.d-title{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:6px 0 2px;line-height:1.15}
+.d-sub{color:var(--muted);margin-bottom:14px}
+.stats{display:grid;grid-template-columns:repeat(4,auto);justify-content:space-between;gap:10px;margin:16px 0 34px}
+.stats.three{grid-template-columns:repeat(3,auto)}
+.stat b{font-size:24px;font-weight:800;letter-spacing:-.02em}
+.stat b small{font-size:15px;font-weight:600;margin-left:3px}
+.stat div{color:var(--muted);font-size:13px;margin-top:2px}
+.chart{position:relative;margin:4px 0 0}
+.chart svg{width:100%;height:190px;display:block;overflow:visible}
+.chart .tip{position:absolute;top:-6px;background:var(--pill);color:#fff;font-size:12px;border-radius:8px;padding:3px 8px;pointer-events:none;white-space:nowrap;transform:translateX(-50%)}
+.seg{display:flex;gap:12px;padding:12px 0}
+.seg i{flex:none;width:5px;border-radius:4px}
+.seg .n{font-size:17px;font-weight:600}
+.seg .m{display:flex;flex-wrap:wrap;gap:14px;color:#444;margin-top:2px}
+.actions{display:flex;justify-content:center;gap:14px;background:var(--pill);border-radius:999px;padding:10px 16px;margin:14px auto;width:max-content}
+.actions button{width:52px;height:52px;border-radius:50%;border:0;background:#2a2a2a;color:#fff;display:flex;align-items:center;justify-content:center}
+.actions button:hover{background:#3a3a3a}
+.actions button.on,.actions button.go{background:var(--lime);color:#111}
+.visit{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.visit .tx{flex:1}
+.x{border:0;background:none;color:var(--muted);font-size:18px;padding:0 6px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.tile{background:var(--soft);border-radius:14px;padding:14px}
+.tile b{font-size:24px;font-weight:800;display:block}
+.tile span{font-size:12px;color:var(--muted)}
+.yr{display:grid;grid-template-columns:44px 1fr 56px;gap:8px;align-items:center;margin:6px 0;font-size:13px}
+.bar{height:10px;background:var(--soft);border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--green);border-radius:6px}
+.wp{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}
+.wp .num{width:22px;height:22px;border-radius:50%;background:var(--ink);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;flex:none}
+.wp .num.brk{background:var(--orange)}
+.toggle{display:flex;align-items:center;gap:8px;margin:8px 0;font-weight:500}
+.toggle input{width:auto}
+.swatches{display:flex;gap:6px;flex-wrap:wrap}
+.swatches button{width:26px;height:26px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
+.swatches button.on{box-shadow:0 0 0 2px var(--ink)}
+.history li{margin:4px 0}
+
+/* Map overlays */
+.mapbtn{position:absolute;z-index:6;top:14px;width:44px;height:44px;border-radius:50%;border:0;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center}
+.mapbtn:hover{background:var(--soft)}
+#menuBtn{right:14px}
+#layersBtn{right:66px}
+.pop{position:absolute;z-index:7;top:66px;right:14px;background:#fff;border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.2);padding:14px;max-height:calc(100vh - 90px);overflow:auto}
+#menu{width:260px;padding:8px}
+#menu button{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;border:0;background:none;padding:10px 12px;border-radius:10px;font-weight:500}
+#menu button:hover{background:var(--soft)}
+#menu hr{border:0;border-top:1px solid var(--line);margin:6px 0}
+#layers{width:300px}
+.bases{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.bases button{border:2px solid var(--line);border-radius:12px;background:#fff;padding:0 0 6px;font-size:12px;font-weight:600;overflow:hidden}
+.bases button i{display:block;height:46px;margin-bottom:5px}
+.bases button.on{border-color:var(--green)}
+#toolbar{position:absolute;z-index:6;bottom:22px;left:calc(200px + 50%);transform:translateX(-50%);transition:left .25s ease;display:flex;gap:10px;background:var(--pill);border-radius:999px;padding:9px 12px;box-shadow:0 6px 24px rgba(0,0,0,.3)}
+#toolbar button{width:50px;height:50px;border-radius:50%;border:0;background:#2a2a2a;color:#fff;display:flex;align-items:center;justify-content:center;position:relative}
+#toolbar button:hover{background:#3a3a3a}
+#toolbar button.on{background:var(--lime);color:#111}
+#toolbar button span{position:absolute;bottom:-26px;font-size:11px;color:#fff;background:var(--pill);padding:1px 6px;border-radius:6px;opacity:0;pointer-events:none;white-space:nowrap}
+#toolbar button:hover span{opacity:1}
+#toast{position:absolute;z-index:8;top:16px;left:calc(200px + 50%);transform:translateX(-50%);background:var(--pill);color:#fff;border-radius:999px;padding:9px 18px;font-size:13px;max-width:60vw;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.25)}
+.pin{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer}
+.pin span{transform:rotate(45deg);font-size:15px;line-height:1}
+.pin.sel{outline:3px solid var(--lime)}
+.wpm{width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid var(--ink);cursor:grab}
+.wpm.first{border-color:var(--green)}
+.wpm.brk{border-color:var(--orange);width:20px;height:20px}
+.maplibregl-ctrl-bottom-right{bottom:0}
+@media (max-width:800px){
+  #side{top:auto;bottom:0;width:100%;height:46vh;border-right:0;border-top:1px solid var(--line);border-radius:18px 18px 0 0}
+  #map{left:0;bottom:46vh;transition:bottom .25s ease}
+  #toolbar{left:50%;bottom:calc(46vh + 12px)}
+  #toast{left:50%}
+  #collapseBtn{top:auto;left:50%;bottom:46vh;transform:translateX(-50%);width:56px;height:24px;border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;transition:bottom .25s ease}
+  #collapseBtn svg{transform:rotate(-90deg)}
+  body.collapsed #side{transform:translateY(100%)}
+  body.collapsed #map{left:0;bottom:0}
+  body.collapsed #collapseBtn{left:50%;bottom:0}
+  body.collapsed #collapseBtn svg{transform:rotate(90deg)}
+  body.collapsed #toolbar{bottom:34px}
+}
+</style>
+</head>
+<body>
+<aside id="side">
+  <header>
+    <svg width="34" height="34" viewBox="0 0 34 34"><rect width="34" height="34" rx="9" fill="#1f5e2c"/><path d="M4 26 L13 12 L16 16 L20 7 L30 26 Z" fill="#fff"/><path d="M20 7 L17.5 12 L19.5 11 L21.5 13 Z" fill="#aef07f"/></svg>
+    <h1>Teton Atlas</h1><span class="chip-v">V4</span>
+  </header>
+  <div class="search">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b6f6b" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+    <input id="q" placeholder="Search trails, peaks, lakes, routes" autocomplete="off">
+  </div>
+  <nav class="tabs">
+    <button data-tab="explore" class="on">Explore</button>
+    <button data-tab="routes">Routes</button>
+    <button data-tab="activity">Activity</button>
+    <button data-tab="stats">Stats</button>
+  </nav>
+  <div id="sideBody"></div>
+</aside>
+
+<button id="collapseBtn" title="Hide panel"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1b1b1b" stroke-width="2.6" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+<div id="map"></div>
+
+<button id="layersBtn" class="mapbtn" title="Map layers"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1b1b1b" stroke-width="2"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg></button>
+<button id="menuBtn" class="mapbtn" title="Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1b1b1b" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+
+<div id="menu" class="pop" hidden>
+  <button data-menu="save"><span>💾</span><span>Save file</span></button>
+  <hr>
+  <div class="mh">Import</div>
+  <button data-menu="gpx"><span>⬆️</span><span>Import GPX hikes<span class="sub">Garmin Connect: open an activity → ⚙ → Export to GPX</span></span></button>
+  <button data-menu="importOld"><span>📂</span><span>Import from an older version<span class="sub">Pick your old Teton Atlas file (V1, V2, V3…)</span></span></button>
+  <button data-menu="importJson"><span>📥</span><span>Import a backup (JSON)</span></button>
+  <hr>
+  <div class="mh">Map data</div>
+  <button data-menu="fetchAll"><span>🗺️</span><span>Download trails &amp; places (whole range)</span></button>
+  <button data-menu="fetchView"><span>🔍</span><span>Add trails &amp; places for this view</span></button>
+  <hr>
+  <button data-menu="exportJson"><span>📤</span><span>Export backup (JSON)</span></button>
+  <button data-menu="settings"><span>⚙️</span><span>Settings</span></button>
+  <button data-menu="history"><span>🕘</span><span>Version history</span></button>
+  <button data-menu="help"><span>❔</span><span>How to use</span></button>
+</div>
+
+<div id="layers" class="pop" hidden></div>
+
+<div id="toolbar">
+  <button data-mode="browse" class="on" title="Browse"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l7 16 2-7 7-2z"/></svg><span>Browse</span></button>
+  <button data-mode="route" title="Build a route"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 000-6H9a3 3 0 010-6h6.5"/></svg><span>Build route</span></button>
+  <button data-mode="track" title="Log a hike by drawing it"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></svg><span>Draw hike</span></button>
+  <button data-mode="pin" title="Drop a pin"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.5-7-12a7 7 0 0114 0c0 5.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg><span>Drop pin</span></button>
+  <button id="btn3d" title="3D view"><b style="font-size:15px">3D</b><span>3D terrain</span></button>
+</div>
+
+<div id="toast" hidden></div>
+<input type="file" id="gpxFile" accept=".gpx" multiple hidden>
+<input type="file" id="oldFile" accept=".html,.htm" hidden>
+<input type="file" id="jsonFile" accept=".json" hidden>
+
+<script type="application/json" id="embedded-data">{"version":3,"editedAt":0,"visits":{},"names":{},"tracks":[],"pins":[],"routes":[],"wish":{},"settings":{},"osm":null}</script>
+<script>
+'use strict';
+// ================= Config =================
+const APP_VERSION = 'V4';
+const BBOX = { s: 43.40, w: -111.25, n: 44.15, e: -110.50 }; // whole Teton Range, WY + ID sides
+const OVERPASS_URLS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
+const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+const DEM_Z = 14;
+const LS_KEY = 'teton-atlas-v1'; // shared with V1/V2 so unsaved data carries forward
+const IDB_NAME = 'teton-atlas';
+const FONT = ['Noto Sans Bold'];
+const FONT_REG = ['Noto Sans Regular'], FONT_IT = ['Noto Sans Italic'];
+const OFM = 'https://tiles.openfreemap.org';
+const M_PER_MI = 1609.344, FT_PER_M = 3.28084;
+const PIN_TYPES = {
+  summit: { label: 'Summit', icon: '⛰️', color: '#d62828' },
+  lake: { label: 'Lake', icon: '💧', color: '#1e88e5' },
+  camp: { label: 'Campsite', icon: '⛺', color: '#2e7d32' },
+  trailhead: { label: 'Trailhead', icon: '🥾', color: '#6d4c41' },
+  view: { label: 'Viewpoint', icon: '📷', color: '#8e24aa' },
+  water: { label: 'Water source', icon: '🚰', color: '#0097a7' },
+  wildlife: { label: 'Wildlife', icon: '🦌', color: '#f57c00' },
+  hazard: { label: 'Hazard', icon: '⚠️', color: '#fbc02d' },
+  other: { label: 'Other', icon: '📍', color: '#455a64' }
+};
+const COLORS = ['#ff6d00', '#d62828', '#8e24aa', '#1e88e5', '#00897b', '#2e7d32', '#6d4c41', '#111111'];
+const DAY_COLORS = ['#9be15d', '#72d6e0', '#7b6cf6', '#f6a76c', '#f06292', '#ffd54f', '#4db6ac'];
+const KIND_INFO = {
+  peak: { label: 'Peak', icon: '⛰️' }, pass: { label: 'Pass', icon: '🏔️' }, waterfall: { label: 'Waterfall', icon: '🌊' },
+  lake: { label: 'Lake', icon: '💧' }, trail: { label: 'Trail', icon: '🥾' }
+};
+const BASES = {
+  outdoor: { label: 'Outdoor', vector: true, attr: '© OpenFreeMap © OpenMapTiles © OpenStreetMap', sw: 'linear-gradient(135deg,#f2efe6 0%,#cfe3bf 55%,#a8d3f0 100%)' },
+  topo: { label: 'Topo', tiles: ['https://a.tile.opentopomap.org/{z}/{x}/{y}.png', 'https://b.tile.opentopomap.org/{z}/{x}/{y}.png', 'https://c.tile.opentopomap.org/{z}/{x}/{y}.png'], max: 17, attr: '© OpenTopoMap (CC-BY-SA), © OpenStreetMap', sw: 'linear-gradient(135deg,#e8e4c9,#b9c79a)' },
+  usgs: { label: 'USGS Topo', tiles: ['https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}'], max: 16, attr: 'USGS The National Map', sw: 'linear-gradient(135deg,#f3efe2,#c9d8b6)' },
+  sat: { label: 'Satellite', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], max: 19, attr: 'Imagery © Esri', sw: 'linear-gradient(135deg,#2f4f3a,#6b7f5a)' },
+  hybrid: { label: 'Sat + Topo', tiles: ['https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}'], max: 16, attr: 'USGS The National Map', sw: 'linear-gradient(135deg,#3d5a40,#a8b48a)' },
+  esritopo: { label: 'Esri Topo', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'], max: 19, attr: 'Map © Esri', sw: 'linear-gradient(135deg,#f1ede4,#d4dcc0)' }
+};
+const VERSIONS = [
+  { name: 'Planning (spec v0.1)', date: '2026-11-15', notes: ['Defined goals, data sources (OpenStreetMap), GPX and manual logging, storage, and heatmap scope.'] },
+  { name: 'Teton Atlas V1', date: '2026-11-15', notes: ['First working app: base maps, OpenStreetMap trails, peaks and lakes, GPX import and matching.', 'Visit logging, custom pins, naming, Garmin split, heatmap, stats, elevation profile, optional 3D, saves into the HTML file.'] },
+  { name: 'Teton Atlas V2', date: '2026-11-15', notes: ['Hamburger menu with version history.', 'One-click 3D preset.', 'Files named "Teton Atlas V#".'] },
+  { name: 'Teton Atlas V3', date: '2026-11-15', notes: [
+    'New AllTrails-style layout: sidebar with Explore, Routes, Activity and Stats; detail pages with big stats and elevation charts.',
+    'Route builder that follows the trail network, with off-trail legs, multi-day segments, distance, gain, loss and time estimates, and GPX export.',
+    'Trail pages with length, elevation gain and time estimate from elevation data.',
+    'Fixed GPX matching: lakes now register when you reach the shore, and crossing a trail no longer marks it hiked. Trails show how much you have covered.',
+    'Added passes, waterfalls, and lakes mapped as multipolygons (for example large lakes with islands).',
+    '"Been", "Seen" and "Want to go" for any place; Saved list.',
+    'Custom pins with icons, colors and status; drag to move.',
+    'Draw a hike along trails; Garmin split now continues straight into drawing; undo split.',
+    'More base maps (USGS Topo, USGS imagery, Esri Topo); sharper 3D terrain; labels fixed.',
+    'Import data from an older version file; JSON backup; map data cached in the browser; unsaved-changes warning.',
+    'Feet and miles throughout; year and season filters.'] },
+  { name: 'Teton Atlas V4', date: '2026-11-15', notes: [
+    'New default "Outdoor" map in an AllTrails-like style: free vector map data with forests, park boundaries, water, roads and towns, plus hillshading and contour lines labeled in feet.',
+    'Arrow on the edge of the side panel hides it for a full-screen map and brings it back.',
+    'All imports (GPX hikes, older versions, backups) moved into the menu, with Garmin export steps shown there.',
+    'Map labels now use the same free font service as the Outdoor map.'] }
+];
+
+// ================= State =================
+const ORIGINAL_HTML = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+const EMPTY = () => ({ version: 3, editedAt: 0, visits: {}, names: {}, tracks: [], pins: [], routes: [], wish: {}, settings: {}, osm: null });
+let data = normalize(JSON.parse(document.getElementById('embedded-data').textContent || '{}'));
+let dirty = false, fileHandle = null, map = null, mapReady = false;
+let mode = 'browse', view = { tab: 'explore' }, viewStack = [];
+let filter = { year: 'all', season: 'all' };
+let FEAT = {}, FEATS = [], GROUPS = {}, WAY2GROUP = {}, PGRID = new Map(), GRAPH = null;
+let pinMarkers = new Map(), selectedPinId = null;
+let editor = null; // route / hike editor state
+let hoverPt = null;
+
+function normalize(d) {
+  d = Object.assign(EMPTY(), d || {});
+  for (const k of ['visits', 'names', 'wish', 'settings']) if (!d[k] || typeof d[k] !== 'object') d[k] = {};
+  for (const k of ['tracks', 'pins', 'routes']) if (!Array.isArray(d[k])) d[k] = [];
+  for (const list of Object.values(d.visits)) for (const v of list) { if (!v.status) v.status = 'been'; if (!v.vid) v.vid = uid(); }
+  for (const p of d.pins) {
+    if (!PIN_TYPES[p.type]) p.type = ({ peak: 'summit', viewpoint: 'view' })[p.type] || (p.type === 'lake' || p.type === 'camp' || p.type === 'trailhead' ? p.type : 'other');
+    if (!p.status) p.status = 'been';
+  }
+  for (const t of d.tracks) { if (!t.notes) t.notes = ''; for (const s of t.segments || []) s.pts = s.pts || []; }
+  d.settings = Object.assign({ pace: 2.0, base: 'outdoor' }, d.settings);
+  if (!d.settings.v4) { d.settings.v4 = true; d.settings.base = 'outdoor'; }
+  if (!d.editedAt) d.editedAt = d.savedAt || 0;
+  d.version = 3;
+  return d;
+}
+
+// ================= Helpers =================
+function uid() { return Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4); }
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const r5 = v => Math.round(v * 1e5) / 1e5;
+const fc = a => ({ type: 'FeatureCollection', features: a });
+const localDate = ms => { const d = new Date(ms); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const today = () => localDate(Date.now());
+const $ = id => document.getElementById(id);
+const fmtMi = m => (m / M_PER_MI).toFixed(m < 16093 ? 2 : 1);
+const fmtFt = m => Math.round(m * FT_PER_M).toLocaleString();
+const fmtDate = s => { if (!s) return ''; const d = new Date(s + 'T12:00:00'); return isNaN(d) ? s : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); };
+function dist(lat1, lon1, lat2, lon2) {
+  const dy = (lat2 - lat1) * 111320, dx = (lon2 - lon1) * 111320 * Math.cos((lat1 + lat2) * Math.PI / 360);
+  return Math.sqrt(dx * dx + dy * dy);
+}
+function lineLen(c) { let d = 0; for (let i = 1; i < c.length; i++) d += dist(c[i - 1][1], c[i - 1][0], c[i][1], c[i][0]); return d; }
+function bboxOf(coords) { let a = 1e9, b = 1e9, c = -1e9, e = -1e9; for (const p of coords) { if (p[0] < a) a = p[0]; if (p[1] < b) b = p[1]; if (p[0] > c) c = p[0]; if (p[1] > e) e = p[1]; } return [a, b, c, e]; }
+function bboxHit(A, B, padDeg) { return A[0] - padDeg <= B[2] && A[2] + padDeg >= B[0] && A[1] - padDeg <= B[3] && A[3] + padDeg >= B[1]; }
+function pointInRing(x, y, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function ringCentroid(ring) { let x = 0, y = 0; for (const p of ring) { x += p[0]; y += p[1]; } return [x / ring.length, y / ring.length]; }
+// Resample a polyline every `step` metres (keeps 3rd value e.g. elevation, interpolated)
+function resample(coords, step) {
+  if (coords.length < 2) return coords.slice();
+  const out = [coords[0]];
+  let carry = 0;
+  for (let i = 1; i < coords.length; i++) {
+    const a = coords[i - 1], b = coords[i], d = dist(a[1], a[0], b[1], b[0]);
+    let pos = step - carry;
+    while (pos < d) {
+      const t = pos / d, p = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+      if (a[2] != null && b[2] != null) p.push(a[2] + (b[2] - a[2]) * t);
+      out.push(p); pos += step;
+    }
+    carry = d - (pos - step);
+  }
+  const last = coords[coords.length - 1];
+  if (out[out.length - 1] !== last) out.push(last);
+  return out;
+}
+function perpDist(p, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy;
+  if (!L) return Math.hypot(p[0] - a[0], p[1] - a[1]);
+  let t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L; t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+}
+function simplify(pts, tol) {
+  if (pts.length < 3) return pts;
+  const keep = new Uint8Array(pts.length); keep[0] = keep[pts.length - 1] = 1;
+  const stack = [[0, pts.length - 1]];
+  while (stack.length) {
+    const [a, b] = stack.pop(); let max = 0, idx = -1;
+    for (let i = a + 1; i < b; i++) { const d = perpDist(pts[i], pts[a], pts[b]); if (d > max) { max = d; idx = i; } }
+    if (max > tol) { keep[idx] = 1; stack.push([a, idx], [idx, b]); }
+  }
+  return pts.filter((_, i) => keep[i]);
+}
+function toast(msg, ms) {
+  const t = $('toast');
+  if (!msg) { t.hidden = true; return; }
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.tm);
+  if (ms !== 0) toast.tm = setTimeout(() => { t.hidden = true; }, ms || 4000);
+}
+function inFilter(date) {
+  if (!date) return filter.year === 'all' && filter.season === 'all';
+  if (filter.year !== 'all' && !date.startsWith(filter.year)) return false;
+  if (filter.season !== 'all') {
+    const m = +date.slice(5, 7);
+    const s = m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'fall' : 'winter';
+    if (s !== filter.season) return false;
+  }
+  return true;
+}
+
+// ================= Elevation (free Terrarium DEM tiles) =================
+const demTiles = new Map();
+function demTile(x, y) {
+  const key = x + '/' + y;
+  if (!demTiles.has(key)) demTiles.set(key, new Promise(res => {
+    const img = new Image(); img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas'); c.width = c.height = 256;
+        const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+        res(g.getImageData(0, 0, 256, 256).data);
+      } catch (e) { res(null); }
+    };
+    img.onerror = () => res(null);
+    img.src = DEM_URL.replace('{z}', DEM_Z).replace('{x}', x).replace('{y}', y);
+  }));
+  return demTiles.get(key);
+}
+function tileXY(lon, lat) {
+  const n = 2 ** DEM_Z, lr = lat * Math.PI / 180;
+  return [(lon + 180) / 360 * n, (1 - Math.log(Math.tan(lr) + 1 / Math.cos(lr)) / Math.PI) / 2 * n];
+}
+function demRead(px, i, j) { const k = (j * 256 + i) * 4; return px[k] * 256 + px[k + 1] + px[k + 2] / 256 - 32768; }
+// Returns elevation in metres (or null) for each [lon,lat]
+async function elevations(coords) {
+  const need = new Map();
+  const pos = coords.map(c => { const [fx, fy] = tileXY(c[0], c[1]); const tx = Math.floor(fx), ty = Math.floor(fy); need.set(tx + '/' + ty, [tx, ty]); return [tx, ty, (fx - tx) * 256, (fy - ty) * 256]; });
+  const tiles = {};
+  await Promise.all([...need.entries()].map(async ([k, [x, y]]) => { tiles[k] = await demTile(x, y); }));
+  return pos.map(([tx, ty, px, py]) => {
+    const t = tiles[tx + '/' + ty]; if (!t) return null;
+    const i = Math.min(254, Math.max(0, Math.floor(px - 0.5))), j = Math.min(254, Math.max(0, Math.floor(py - 0.5)));
+    const u = Math.min(1, Math.max(0, px - 0.5 - i)), v = Math.min(1, Math.max(0, py - 0.5 - j));
+    return demRead(t, i, j) * (1 - u) * (1 - v) + demRead(t, i + 1, j) * u * (1 - v) + demRead(t, i, j + 1) * (1 - u) * v + demRead(t, i + 1, j + 1) * u * v;
+  });
+}
+// Build a profile [{d, e}] for a line. Uses the line's own elevations when present, else DEM.
+async function profileOf(coords) {
+  let pts = resample(coords, 25);
+  if (pts.length > 4000) pts = resample(coords, lineLen(coords) / 4000);
+  const hasOwn = pts.filter(p => p[2] != null).length > pts.length * 0.8;
+  let el = hasOwn ? pts.map(p => p[2] == null ? null : p[2]) : await elevations(pts);
+  const out = []; let d = 0;
+  for (let i = 0; i < pts.length; i++) {
+    if (i) d += dist(pts[i - 1][1], pts[i - 1][0], pts[i][1], pts[i][0]);
+    if (el[i] != null && isFinite(el[i])) out.push({ d, e: el[i], c: pts[i] });
+  }
+  return out;
+}
+// Gain / loss with light smoothing and a small threshold so noise does not inflate totals
+function climb(prof, from, to) {
+  const p = prof.filter(q => q.d >= (from || 0) - 0.01 && q.d <= (to == null ? Infinity : to) + 0.01);
+  if (p.length < 2) return { gain: 0, loss: 0, min: p[0] ? p[0].e : 0, max: p[0] ? p[0].e : 0 };
+  const sm = p.map((q, i) => { let s = 0, n = 0; for (let k = Math.max(0, i - 2); k <= Math.min(p.length - 1, i + 2); k++) { s += p[k].e; n++; } return s / n; });
+  let gain = 0, loss = 0, ref = sm[0], min = Infinity, max = -Infinity;
+  for (const e of sm) {
+    if (e < min) min = e; if (e > max) max = e;
+    if (e - ref > 3) { gain += e - ref; ref = e; } else if (ref - e > 3) { loss += ref - e; ref = e; }
+  }
+  return { gain, loss, min, max };
+}
+function estTime(meters, gainM) {
+  const pace = +data.settings.pace || 2;
+  const h = meters / M_PER_MI / pace + gainM * FT_PER_M / 2000;
+  const lo = Math.max(0.5, Math.round(h * 0.9 * 2) / 2), hi = Math.max(lo + 0.5, Math.round(h * 1.1 * 2) / 2);
+  return h < 0.05 ? '—' : lo + '–' + hi;
+}
+
+// ================= OpenStreetMap data =================
+function stitchRings(lines) {
+  const rings = [], pool = lines.map(l => l.slice());
+  const same = (a, b) => Math.abs(a[0] - b[0]) < 1e-7 && Math.abs(a[1] - b[1]) < 1e-7;
+  while (pool.length) {
+    let cur = pool.shift();
+    let guard = 0;
+    while (!same(cur[0], cur[cur.length - 1]) && guard++ < 5000) {
+      const end = cur[cur.length - 1];
+      const i = pool.findIndex(l => same(l[0], end) || same(l[l.length - 1], end));
+      if (i < 0) break;
+      let nx = pool.splice(i, 1)[0];
+      if (!same(nx[0], end)) nx = nx.slice().reverse();
+      cur = cur.concat(nx.slice(1));
+    }
+    if (cur.length > 3) { if (!same(cur[0], cur[cur.length - 1])) cur.push(cur[0]); rings.push(cur); }
+  }
+  return rings;
+}
+function buildFeatures(els) {
+  const out = [];
+  const geom = g => (g || []).map(p => [r5(p.lon), r5(p.lat)]);
+  for (const el of els) {
+    const t = el.tags || {}, id = el.type + '/' + el.id, name = t.name || null;
+    if (el.type === 'node') {
+      const coord = [r5(el.lon), r5(el.lat)], ele = parseFloat(t.ele) || null;
+      if (t.natural === 'peak' || t.natural === 'volcano') out.push({ id, kind: 'peak', name, ele, coord });
+      else if (t.natural === 'saddle' || t.mountain_pass === 'yes') out.push({ id, kind: 'pass', name, ele, coord });
+      else if (t.waterway === 'waterfall') out.push({ id, kind: 'waterfall', name, ele, coord });
+    } else if (el.type === 'way' && t.highway) {
+      const c = geom(el.geometry);
+      if (c.length > 1) out.push({ id, kind: 'trail', name, hw: t.highway, sac: t.sac_scale || null, coords: c });
+    } else if (el.type === 'way' && t.natural === 'water') {
+      const c = geom(el.geometry);
+      if (c.length > 3) { const r = stitchRings([c]); if (r.length) out.push({ id, kind: 'lake', name, polys: r }); }
+    } else if (el.type === 'relation' && t.natural === 'water') {
+      const outers = (el.members || []).filter(m => m.type === 'way' && m.role !== 'inner' && m.geometry).map(m => geom(m.geometry));
+      const r = stitchRings(outers);
+      if (r.length) out.push({ id, kind: 'lake', name, polys: r });
+    }
+  }
+  return out;
+}
+async function overpass(q) {
+  let lastErr;
+  for (const url of OVERPASS_URLS) {
+    try {
+      const r = await fetch(url, { method: 'POST', body: 'data=' + encodeURIComponent(q) });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return await r.json();
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr;
+}
+function overpassQuery(s, w, n, e) {
+  const bb = `(${s.toFixed(4)},${w.toFixed(4)},${n.toFixed(4)},${e.toFixed(4)})`;
+  const wf = '["water"!~"^(river|stream|canal|ditch|wastewater|stream_pool)$"]';
+  return `[out:json][timeout:240];(` +
+    `way["highway"~"^(path|footway|track|bridleway|steps)$"]["footway"!~"^(sidewalk|crossing)$"]["access"!~"^(private|no)$"]${bb};` +
+    `node["natural"~"^(peak|volcano|saddle)$"]${bb};node["mountain_pass"="yes"]${bb};node["waterway"="waterfall"]${bb};` +
+    `way["natural"="water"]${wf}${bb};relation["natural"="water"]${wf}${bb};` +
+    `);out geom;`;
+}
+async function fetchArea(s, w, n, e, bands) {
+  const h = (n - s) / bands, byId = new Map();
+  for (let i = 0; i < bands; i++) {
+    toast(`Downloading map data… ${i + 1} of ${bands}`, 0);
+    const json = await overpass(overpassQuery(s + i * h, w, s + (i + 1) * h, e));
+    for (const el of json.elements) byId.set(el.type + '/' + el.id, el);
+  }
+  const fresh = buildFeatures([...byId.values()]);
+  const merged = new Map(((data.osm && data.osm.features) || []).map(f => [f.id, f]));
+  for (const f of fresh) merged.set(f.id, f);
+  data.osm = { fetchedAt: Date.now(), features: [...merged.values()] };
+  indexFeatures();
+  for (const t of data.tracks) matchTrack(t);
+  await idbPut('osm', data.osm);
+  touch();
+  toast(`Map data ready: ${FEATS.length.toLocaleString()} trails, peaks, lakes and more.`);
+}
+
+// ================= IndexedDB cache (so map data survives reloads before saving) =================
+function idb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(IDB_NAME, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+async function idbPut(k, v) { try { const db = await idb(); await new Promise((res, rej) => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); } catch (e) { /* cache is optional */ } }
+async function idbGet(k) { try { const db = await idb(); return await new Promise((res) => { const r = db.transaction('kv').objectStore('kv').get(k); r.onsuccess = () => res(r.result); r.onerror = () => res(null); }); } catch (e) { return null; } }
+
+// ================= Indexing, trail groups, routing graph =================
+const nameOf = f => (data.names[f.id] || f.name || '');
+function indexFeatures() {
+  FEAT = {}; FEATS = []; PGRID = new Map();
+  for (const f of (data.osm && data.osm.features) || []) {
+    if (f.kind === 'lake' && !f.polys && f.ring) f.polys = [f.ring]; // V1/V2 cached format
+    if (f.kind === 'lake') { f.bb = bboxOf(f.polys.flat()); f.center = ringCentroid(f.polys[0]); }
+    if (f.kind === 'trail') { f.bb = bboxOf(f.coords); f.len = lineLen(f.coords); }
+    FEAT[f.id] = f; FEATS.push(f);
+  }
+  buildGroups();
+  buildGraph();
+}
+// Group connected trail ways that share a name, so a named trail behaves as one trail
+function buildGroups() {
+  GROUPS = {}; WAY2GROUP = {};
+  const byName = {};
+  for (const f of FEATS) if (f.kind === 'trail') { const n = nameOf(f); if (n) (byName[n] = byName[n] || []).push(f); }
+  for (const [name, ways] of Object.entries(byName)) {
+    const parent = ways.map((_, i) => i);
+    const find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
+    const endKey = new Map();
+    ways.forEach((w, i) => {
+      for (const p of [w.coords[0], w.coords[w.coords.length - 1]]) {
+        const k = p[0] + ',' + p[1];
+        if (endKey.has(k)) parent[find(i)] = find(endKey.get(k)); else endKey.set(k, i);
+      }
+    });
+    const clusters = {};
+    ways.forEach((w, i) => (clusters[find(i)] = clusters[find(i)] || []).push(w));
+    for (const list of Object.values(clusters)) {
+      const id = 'tg:' + list.map(w => w.id).sort()[0];
+      GROUPS[id] = { id, name, ways: list, len: list.reduce((a, w) => a + w.len, 0), bb: bboxOf(list.flatMap(w => [[w.bb[0], w.bb[1]], [w.bb[2], w.bb[3]]])) };
+      for (const w of list) WAY2GROUP[w.id] = id;
+    }
+  }
+}
+// Try to order a group's ways into one continuous line (for a single elevation profile)
+function chainGroup(g) {
+  if (g.chain !== undefined) return g.chain;
+  const ways = g.ways.map(w => w.coords);
+  if (ways.length === 1) return (g.chain = ways[0]);
+  const deg = new Map(), key = p => p[0] + ',' + p[1];
+  for (const w of ways) for (const p of [w[0], w[w.length - 1]]) deg.set(key(p), (deg.get(key(p)) || 0) + 1);
+  let startIdx = ways.findIndex(w => deg.get(key(w[0])) === 1 || deg.get(key(w[w.length - 1])) === 1);
+  if (startIdx < 0) return (g.chain = null);
+  const pool = ways.slice(); let cur = pool.splice(startIdx, 1)[0];
+  if (deg.get(key(cur[0])) !== 1) cur = cur.slice().reverse();
+  while (pool.length) {
+    const end = key(cur[cur.length - 1]);
+    const i = pool.findIndex(w => key(w[0]) === end || key(w[w.length - 1]) === end);
+    if (i < 0) return (g.chain = null);
+    let nx = pool.splice(i, 1)[0]; if (key(nx[0]) !== end) nx = nx.slice().reverse();
+    cur = cur.concat(nx.slice(1));
+  }
+  return (g.chain = cur);
+}
+function buildGraph() {
+  const idx = new Map(), lon = [], lat = [], adj = [];
+  const node = p => { const k = p[0] + ',' + p[1]; let i = idx.get(k); if (i === undefined) { i = lon.length; idx.set(k, i); lon.push(p[0]); lat.push(p[1]); adj.push([]); } return i; };
+  for (const f of FEATS) {
+    if (f.kind !== 'trail') continue;
+    let prev = node(f.coords[0]);
+    for (let i = 1; i < f.coords.length; i++) {
+      const cur = node(f.coords[i]);
+      if (cur !== prev) { const w = dist(lat[prev], lon[prev], lat[cur], lon[cur]); adj[prev].push(cur, w); adj[cur].push(prev, w); }
+      prev = cur;
+    }
+  }
+  const grid = new Map();
+  for (let i = 0; i < lon.length; i++) { const k = Math.floor(lat[i] / 0.002) + ',' + Math.floor(lon[i] / 0.002); let c = grid.get(k); if (!c) grid.set(k, c = []); c.push(i); }
+  GRAPH = { lon, lat, adj, grid };
+}
+function nearestNode(lon, lat, maxM) {
+  if (!GRAPH) return -1;
+  const ci = Math.floor(lat / 0.002), cj = Math.floor(lon / 0.002); let best = -1, bd = maxM;
+  for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) {
+    for (const i of GRAPH.grid.get((ci + a) + ',' + (cj + b)) || []) { const d = dist(lat, lon, GRAPH.lat[i], GRAPH.lon[i]); if (d < bd) { bd = d; best = i; } }
+  }
+  return best;
+}
+// Dijkstra along the trail network between two clicked points
+function routeBetween(a, b) {
+  const s = nearestNode(a[0], a[1], 250), t = nearestNode(b[0], b[1], 250);
+  if (s < 0 || t < 0) return null;
+  if (s === t) return [[GRAPH.lon[s], GRAPH.lat[s]]];
+  const n = GRAPH.lon.length, D = new Float64Array(n).fill(Infinity), P = new Int32Array(n).fill(-1);
+  const heap = [[0, s]]; D[s] = 0;
+  const push = it => { heap.push(it); let i = heap.length - 1; while (i) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  const limit = dist(a[1], a[0], b[1], b[0]) * 6 + 5000;
+  while (heap.length) {
+    const [d, u] = pop();
+    if (u === t) break;
+    if (d > D[u] || d > limit) continue;
+    const e = GRAPH.adj[u];
+    for (let k = 0; k < e.length; k += 2) { const v = e[k], nd = d + e[k + 1]; if (nd < D[v]) { D[v] = nd; P[v] = u; push([nd, v]); } }
+  }
+  if (P[t] < 0) return null;
+  const path = []; for (let v = t; v >= 0; v = P[v]) path.push([GRAPH.lon[v], GRAPH.lat[v]]);
+  return path.reverse();
+}
+
+// ================= Visits ("been", "seen") and saved list =================
+const isGroup = id => id && id.startsWith('tg:');
+const idsOf = id => isGroup(id) ? (GROUPS[id] ? GROUPS[id].ways.map(w => w.id) : []) : [id];
+function visitsFor(id) {
+  const seen = new Set(), out = [];
+  for (const fid of idsOf(id)) for (const v of data.visits[fid] || []) {
+    const k = v.trackId ? 'trk:' + v.trackId : (v.vid || (v.date + v.src + (v.note || '')));
+    if (!seen.has(k)) { seen.add(k); out.push(v); }
+  }
+  return out.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+}
+function statusOf(id) {
+  let st = null;
+  for (const fid of idsOf(id)) for (const v of data.visits[fid] || []) {
+    if (!inFilter(v.date)) continue;
+    if (v.status === 'been') return 'been';
+    st = 'seen';
+  }
+  return st;
+}
+function addVisit(id, status, date, note) {
+  const vid = uid();
+  for (const fid of idsOf(id)) (data.visits[fid] = data.visits[fid] || []).push({ vid, date: date || today(), src: 'log', status, note: note || '' });
+}
+function delVisit(id, vid) {
+  for (const fid of idsOf(id)) {
+    const kept = (data.visits[fid] || []).filter(v => v.vid !== vid);
+    if (kept.length) data.visits[fid] = kept; else delete data.visits[fid];
+  }
+}
+function wayCoverage(wid) {
+  let c = 0;
+  for (const v of data.visits[wid] || []) {
+    if (v.status !== 'been' || !inFilter(v.date)) continue;
+    c = Math.max(c, v.src === 'track' ? (v.cov || 0) : 1);
+  }
+  return c;
+}
+const isWish = id => !!data.wish[id];
+
+// ================= Matching tracks to places =================
+function trackSamples(t) {
+  const out = [];
+  for (const s of t.segments) if (s.src !== 'ignored' && s.pts.length > 1) out.push(...resample(s.pts, 15));
+  return out;
+}
+function sampleGrid(samples) {
+  const g = new Map();
+  for (const p of samples) { const k = Math.floor(p[1] / 0.0005) + ',' + Math.floor(p[0] / 0.0005); let c = g.get(k); if (!c) g.set(k, c = []); c.push(p); }
+  return (lon, lat, r) => {
+    const ci = Math.floor(lat / 0.0005), cj = Math.floor(lon / 0.0005), n = Math.ceil(r / 38);
+    for (let a = -n; a <= n; a++) for (let b = -n; b <= n; b++) for (const p of g.get((ci + a) + ',' + (cj + b)) || []) if (dist(lat, lon, p[1], p[0]) <= r) return true;
+    return false;
+  };
+}
+function matchTrack(t) {
+  for (const id of Object.keys(data.visits)) {
+    const kept = data.visits[id].filter(v => v.trackId !== t.id);
+    if (kept.length) data.visits[id] = kept; else delete data.visits[id];
+  }
+  const samples = trackSamples(t);
+  if (samples.length < 2 || !FEATS.length) return [];
+  const near = sampleGrid(samples), tb = bboxOf(samples), hits = [];
+  const add = (id, extra) => { (data.visits[id] = data.visits[id] || []).push(Object.assign({ vid: uid(), date: t.date, src: 'track', trackId: t.id, status: 'been', note: '' }, extra)); hits.push(id); };
+  for (const f of FEATS) {
+    if (f.coord) {
+      if (f.coord[0] < tb[0] - 0.002 || f.coord[0] > tb[2] + 0.002 || f.coord[1] < tb[1] - 0.002 || f.coord[1] > tb[3] + 0.002) continue;
+      if (near(f.coord[0], f.coord[1], f.kind === 'pass' ? 60 : 80)) add(f.id);
+    } else if (f.kind === 'trail') {
+      if (!bboxHit(f.bb, tb, 0.001)) continue;
+      const pts = resample(f.coords, 20); let hit = 0;
+      for (const p of pts) if (near(p[0], p[1], 30)) hit++;
+      const cov = hit / pts.length;
+      if (hit * 20 >= 200 || (cov >= 0.6 && hit >= 2)) add(f.id, { cov: Math.min(1, cov) });
+    } else if (f.kind === 'lake') {
+      if (!bboxHit(f.bb, tb, 0.001)) continue;
+      let ok = false;
+      for (const ring of f.polys) { for (const p of resample(ring, 30)) if (near(p[0], p[1], 60)) { ok = true; break; } if (ok) break; }
+      if (!ok) for (const s of samples) if (s[0] >= f.bb[0] && s[0] <= f.bb[2] && s[1] >= f.bb[1] && s[1] <= f.bb[3] && f.polys.some(r => pointInRing(s[0], s[1], r))) { ok = true; break; }
+      if (ok) add(f.id);
+    }
+  }
+  return hits;
+}
+
+// ================= GPX =================
+function parseGPX(text, filename) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  const kids = (el, n) => [...el.getElementsByTagName(n)];
+  const read = (nodes) => {
+    const pts = []; let t0 = null, t1 = null;
+    for (const p of nodes) {
+      const lat = parseFloat(p.getAttribute('lat')), lon = parseFloat(p.getAttribute('lon'));
+      if (isNaN(lat) || isNaN(lon)) continue;
+      const e = p.getElementsByTagName('ele')[0], tm = p.getElementsByTagName('time')[0];
+      const ele = e ? parseFloat(e.textContent) : NaN;
+      if (tm) { const ms = Date.parse(tm.textContent); if (!isNaN(ms)) { if (t0 === null) t0 = ms; t1 = ms; } }
+      pts.push([+lon.toFixed(6), +lat.toFixed(6), isNaN(ele) ? null : +ele.toFixed(1)]);
+    }
+    return { pts, t0, t1 };
+  };
+  const out = [];
+  const make = (el, segNodes) => {
+    const nameEl = [...el.children].find(c => c.localName === 'name');
+    const name = (nameEl && nameEl.textContent.trim()) || filename.replace(/\.gpx$/i, '');
+    const segments = []; let t0 = null, t1 = null;
+    for (const nodes of segNodes) {
+      const r = read(nodes);
+      if (r.t0 !== null && t0 === null) t0 = r.t0; if (r.t1 !== null) t1 = r.t1;
+      if (r.pts.length > 1) segments.push({ src: 'garmin', pts: simplify(r.pts, 0.00002) });
+    }
+    if (segments.length) out.push({ id: uid(), name, date: t0 !== null ? localDate(t0) : today(), start: t0, end: t1, trip: '', notes: '', segments });
+  };
+  for (const trk of kids(doc, 'trk')) make(trk, kids(trk, 'trkseg').map(s => kids(s, 'trkpt')));
+  if (!out.length) for (const rte of kids(doc, 'rte')) make(rte, [kids(rte, 'rtept')]);
+  return out;
+}
+function toGPX(name, lines) {
+  const x = s => esc(s);
+  const segs = lines.map(l => '<trkseg>' + l.map(p => `<trkpt lat="${p[1]}" lon="${p[0]}">${p[2] != null ? `<ele>${(+p[2]).toFixed(1)}</ele>` : ''}</trkpt>`).join('') + '</trkseg>').join('');
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Teton Atlas" xmlns="http://www.topografix.com/GPX/1/1"><metadata><name>${x(name)}</name></metadata><trk><name>${x(name)}</name>${segs}</trk></gpx>`;
+}
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: type || 'application/octet-stream' }));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+async function importGPXFiles(files) {
+  let added = 0, dup = 0, places = 0, lastId = null;
+  for (const f of files) {
+    for (const t of parseGPX(await f.text(), f.name)) {
+      const n = t.segments.reduce((a, s) => a + s.pts.length, 0);
+      if (data.tracks.some(o => o.name === t.name && o.date === t.date && o.segments.reduce((a, s) => a + s.pts.length, 0) === n)) { dup++; continue; }
+      data.tracks.push(t); places += matchTrack(t).length; added++; lastId = t.id;
+    }
+  }
+  if (added) { touch(); if (added === 1) openDetail({ type: 'track', id: lastId }); else setTab('activity'); }
+  toast(added ? `Imported ${added} hike${added > 1 ? 's' : ''}${places ? `, matched ${places} places` : ''}${dup ? ` (${dup} duplicate skipped)` : ''}.` : (dup ? 'Already imported.' : 'No tracks found in that file.'));
+}
+
+// ================= Track helpers =================
+const findTrack = id => data.tracks.find(t => t.id === id);
+const findPin = id => data.pins.find(p => p.id === id);
+const findRoute = id => data.routes.find(r => r.id === id);
+const trackLine = t => t.segments.filter(s => s.src !== 'ignored').flatMap(s => s.pts);
+const trackMeters = t => t.segments.filter(s => s.src !== 'ignored').reduce((a, s) => a + lineLen(s.pts), 0);
+
+// ================= Saving =================
+function touch(opts) {
+  dirty = true; data.editedAt = Date.now();
+  updateSaveState();
+  clearTimeout(touch.tm); touch.tm = setTimeout(saveLocal, 500);
+  if (!opts || !opts.noRender) { updateSources(); renderSide(); }
+}
+function updateSaveState() { const b = document.querySelector('[data-menu=save]'); if (b) b.innerHTML = dirty ? '<span>💾</span><span>Save file<span class="sub">You have unsaved changes</span></span>' : '<span>💾</span><span>Save file</span>'; }
+function saveLocal() {
+  try { const { osm, ...rest } = data; localStorage.setItem(LS_KEY, JSON.stringify({ savedAt: data.editedAt, data: rest })); } catch (e) { /* optional */ }
+}
+function buildHTML() {
+  const json = JSON.stringify(data).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+  const open = '<script type="application/json" id="embedded-data">', close = '</' + 'script>';
+  const i = ORIGINAL_HTML.indexOf(open), end = ORIGINAL_HTML.indexOf(close, i + open.length);
+  if (i < 0 || end < 0) throw new Error('Could not find the data block in this file.');
+  return ORIGINAL_HTML.slice(0, i + open.length) + json + ORIGINAL_HTML.slice(end);
+}
+async function saveFile() {
+  let html;
+  try { html = buildHTML(); } catch (e) { toast(e.message); return; }
+  saveLocal();
+  const fname = `Teton Atlas ${APP_VERSION}.html`;
+  if (window.showSaveFilePicker) {
+    try {
+      if (!fileHandle) fileHandle = await showSaveFilePicker({ suggestedName: fname, types: [{ description: 'Teton Atlas file', accept: { 'text/html': ['.html'] } }] });
+      const w = await fileHandle.createWritable(); await w.write(html); await w.close();
+      dirty = false; updateSaveState(); toast('Saved to ' + fileHandle.name + '.'); return;
+    } catch (e) { if (e.name === 'AbortError') return; fileHandle = null; }
+  }
+  download(fname, html, 'text/html');
+  dirty = false; updateSaveState();
+  toast(`Downloaded ${fname}. Replace your copy with it to keep your changes.`, 7000);
+}
+function mergeData(inc) {
+  inc = normalize(inc);
+  let n = 0;
+  for (const key of ['tracks', 'pins', 'routes']) {
+    const have = new Set(data[key].map(x => x.id));
+    for (const x of inc[key]) if (!have.has(x.id)) { data[key].push(x); n++; }
+  }
+  for (const [id, list] of Object.entries(inc.visits)) {
+    const cur = data.visits[id] = data.visits[id] || [];
+    const keys = new Set(cur.map(v => v.vid + '|' + v.date + '|' + v.src + '|' + (v.trackId || '')));
+    for (const v of list) { const k = v.vid + '|' + v.date + '|' + v.src + '|' + (v.trackId || ''); const k2 = cur.some(c => c.date === v.date && c.src === v.src && (c.trackId || '') === (v.trackId || '') && (c.note || '') === (v.note || '')); if (!keys.has(k) && !k2) { cur.push(v); n++; } }
+  }
+  for (const [id, nm] of Object.entries(inc.names)) if (!data.names[id]) { data.names[id] = nm; n++; }
+  for (const id of Object.keys(inc.wish)) data.wish[id] = true;
+  if (inc.osm && inc.osm.features && !(data.osm && data.osm.features && data.osm.features.length)) { data.osm = inc.osm; indexFeatures(); idbPut('osm', data.osm); }
+  return n;
+}
+function extractEmbedded(html) {
+  const m = html.match(/<script type="application\/json" id="embedded-data">([\s\S]*?)<\/script>/);
+  if (!m) throw new Error('That file does not look like a Teton Atlas file.');
+  return JSON.parse(m[1]);
+}
+
+// ================= Map =================
+function layerOn(k) { const L = data.settings.layers || {}; return L[k] !== undefined ? L[k] : k === 'hillshade' ? true : k !== 'heat'; }
+// AllTrails-style outdoor map: free OpenFreeMap vector tiles + hillshade + contour lines (feet)
+let demSource = null;
+function contourTiles() {
+  if (!window.mlcontour) return null;
+  if (!demSource) {
+    demSource = new mlcontour.DemSource({ url: DEM_URL, encoding: 'terrarium', maxzoom: 13, worker: true });
+    // Serve contour tiles through our own protocol and hand MapLibre a fresh copy of each tile
+    maplibregl.addProtocol('teton-contour', async (req, ac) => {
+      const r = await demSource.contourProtocolV4({ url: req.url.replace('teton-contour://', demSource.contourProtocolId + '://') }, ac);
+      return { data: r.data.slice(0) };
+    });
+  }
+  const u = demSource.contourProtocolUrl({
+    multiplier: FT_PER_M, elevationKey: 'ele', levelKey: 'level', contourLayer: 'contours',
+    thresholds: { 10: [200, 1000], 11: [200, 1000], 12: [100, 500], 13: [80, 400], 14: [40, 200], 15: [40, 200] }
+  });
+  return 'teton-contour://' + u.slice(u.indexOf('://') + 3);
+}
+const OUT_LAYERS = [];
+function outdoorLayers() {
+  const S = 'openmaptiles', L = [];
+  const add = l => { l.source = l.source || S; L.push(l); OUT_LAYERS.push(l.id); };
+  const cls = (...v) => ['match', ['get', 'class'], v, true, false];
+  add({ id: 'o-bg', type: 'background', source: undefined, paint: { 'background-color': '#f2efe6' } });
+  add({ id: 'o-landuse', type: 'fill', 'source-layer': 'landuse', filter: cls('residential', 'commercial', 'industrial', 'retail'), paint: { 'fill-color': '#ebe6dc' } });
+  add({ id: 'o-grass', type: 'fill', 'source-layer': 'landcover', filter: cls('grass', 'farmland'), paint: { 'fill-color': '#e7eed8' } });
+  add({ id: 'o-wood', type: 'fill', 'source-layer': 'landcover', filter: cls('wood'), paint: { 'fill-color': '#cfe2bd', 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.6, 13, 0.9] } });
+  add({ id: 'o-wet', type: 'fill', 'source-layer': 'landcover', filter: cls('wetland'), paint: { 'fill-color': '#d7e8d6' } });
+  add({ id: 'o-rock', type: 'fill', 'source-layer': 'landcover', filter: cls('rock', 'sand'), paint: { 'fill-color': '#e9e5df' } });
+  add({ id: 'o-ice', type: 'fill', 'source-layer': 'landcover', filter: cls('ice'), paint: { 'fill-color': '#fbfdff', 'fill-outline-color': '#b7d7ee' } });
+  add({ id: 'o-park', type: 'fill', 'source-layer': 'park', paint: { 'fill-color': '#9fcf87', 'fill-opacity': 0.12 } });
+  add({ id: 'o-park-line', type: 'line', 'source-layer': 'park', paint: { 'line-color': '#6fae5a', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1, 13, 2.5], 'line-opacity': 0.55, 'line-dasharray': [3, 2] } });
+  add({ id: 'o-hillshade', type: 'hillshade', source: 'dem-hs', paint: { 'hillshade-exaggeration': 0.38, 'hillshade-shadow-color': '#56634f', 'hillshade-highlight-color': '#ffffff', 'hillshade-accent-color': '#6c7a63' } });
+  add({ id: 'o-water', type: 'fill', 'source-layer': 'water', paint: { 'fill-color': '#a9d4f2' } });
+  add({ id: 'o-waterway', type: 'line', 'source-layer': 'waterway', paint: { 'line-color': '#86c0e8', 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.6, 15, ['match', ['get', 'class'], 'river', 3, 1.4]] } });
+  add({ id: 'o-boundary', type: 'line', 'source-layer': 'boundary', filter: ['all', ['<=', ['get', 'admin_level'], 4], ['!=', ['get', 'maritime'], 1]], paint: { 'line-color': '#9e9cab', 'line-width': 1.2, 'line-dasharray': [4, 2, 1, 2] } });
+  const byCls = (maj, mid, min) => ['match', ['get', 'class'], ['motorway', 'trunk', 'primary'], maj, ['secondary', 'tertiary'], mid, min];
+  const roadW = (lo, hi) => ['interpolate', ['exponential', 1.5], ['zoom'], 9, byCls(...lo), 16, byCls(...hi)];
+  add({ id: 'o-path-case', type: 'line', 'source-layer': 'transportation', minzoom: 10.5, filter: cls('path'), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-opacity': 0.7, 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 1.6, 16, 4] } });
+  add({ id: 'o-path', type: 'line', 'source-layer': 'transportation', minzoom: 10.5, filter: cls('path'), layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: { 'line-color': '#c2410c', 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.9, 16, 2.4], 'line-dasharray': [2.2, 1.4] } });
+  add({ id: 'o-road-track', type: 'line', 'source-layer': 'transportation', minzoom: 11, filter: cls('track'), paint: { 'line-color': '#b59b7a', 'line-width': 1.2, 'line-dasharray': [3, 2] } });
+  add({ id: 'o-road-case', type: 'line', 'source-layer': 'transportation', filter: cls('motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service'), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#cfc6b6', 'line-width': roadW([2.4, 1.6, 0.8], [14, 11, 7]) } });
+  add({ id: 'o-road', type: 'line', 'source-layer': 'transportation', filter: cls('motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service'), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['match', ['get', 'class'], ['motorway', 'trunk', 'primary'], '#fdf4d8', '#ffffff'], 'line-width': roadW([1.4, 0.9, 0.3], [11, 8.5, 5]) } });
+  add({ id: 'o-road-name', type: 'symbol', source: 'omt-text', 'source-layer': 'transportation_name', minzoom: 12, layout: { 'symbol-placement': 'line', 'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']], 'text-font': FONT_REG, 'text-size': 11 }, paint: { 'text-color': '#6b6459', 'text-halo-color': '#ffffff', 'text-halo-width': 1.4 } });
+  add({ id: 'o-water-name', type: 'symbol', source: 'omt-text', 'source-layer': 'water_name', minzoom: 11, layout: { 'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']], 'text-font': FONT_IT, 'text-size': 12 }, paint: { 'text-color': '#2a6fa8', 'text-halo-color': '#ffffff', 'text-halo-width': 1.2 } });
+  add({ id: 'o-park-name', type: 'symbol', source: 'omt-text', 'source-layer': 'park', minzoom: 8, maxzoom: 12, filter: ['==', ['geometry-type'], 'Point'], layout: { 'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']], 'text-font': FONT, 'text-size': 13, 'text-max-width': 8 }, paint: { 'text-color': '#3e7a2f', 'text-halo-color': '#ffffff', 'text-halo-width': 1.6 } });
+  add({ id: 'o-place', type: 'symbol', source: 'omt-text', 'source-layer': 'place', filter: cls('city', 'town', 'village', 'hamlet'), layout: { 'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']], 'text-font': FONT, 'text-size': ['match', ['get', 'class'], ['city', 'town'], 15, 12] }, paint: { 'text-color': '#3a3a3a', 'text-halo-color': '#ffffff', 'text-halo-width': 1.8 } });
+  return L;
+}
+// Contours are added once the map has loaded (sources added later load reliably with the contour plugin)
+function addContours() {
+  const ct = contourTiles(); if (!ct || map.getSource('contours')) return;
+  map.addSource('contours', { type: 'vector', tiles: [ct], maxzoom: 15 });
+  map.addSource('contour-text', { type: 'vector', tiles: [ct], maxzoom: 15 }); // labels kept separate so a font problem can't hide the lines
+  const vis = (data.settings.base || 'outdoor') === 'outdoor' && layerOn('contours') ? 'visible' : 'none';
+  map.addLayer({ id: 'o-contour', type: 'line', source: 'contours', 'source-layer': 'contours', layout: { visibility: vis }, paint: { 'line-color': '#a68b6a', 'line-opacity': ['match', ['get', 'level'], 1, 0.55, 0.3], 'line-width': ['match', ['get', 'level'], 1, 1, 0.55] } }, 'o-water');
+  map.addLayer({ id: 'o-contour-label', type: 'symbol', source: 'contour-text', 'source-layer': 'contours', filter: ['>', ['get', 'level'], 0], layout: { visibility: vis, 'symbol-placement': 'line', 'text-field': ['concat', ['number-format', ['get', 'ele'], {}], ' ft'], 'text-font': FONT_REG, 'text-size': 10, 'text-max-angle': 25 }, paint: { 'text-color': '#8d7457', 'text-halo-color': '#f2efe6', 'text-halo-width': 1.4 } }, 'o-water');
+  OUT_LAYERS.push('o-contour', 'o-contour-label');
+}
+function buildStyle() {
+  const sources = {}, layers = [{ id: 'bg', type: 'background', paint: { 'background-color': '#e8e6df' } }];
+  const base = data.settings.base || 'outdoor';
+  for (const [k, b] of Object.entries(BASES)) {
+    if (b.vector) continue;
+    sources['base-' + k] = { type: 'raster', tiles: b.tiles, tileSize: 256, maxzoom: b.max, attribution: b.attr };
+    layers.push({ id: 'base-' + k, type: 'raster', source: 'base-' + k, layout: { visibility: base === k ? 'visible' : 'none' } });
+  }
+  sources.dem = { type: 'raster-dem', tiles: [DEM_URL], tileSize: 256, encoding: 'terrarium', maxzoom: 15, attribution: 'Elevation: Mapzen Terrain Tiles (AWS)' };
+  sources['dem-hs'] = { type: 'raster-dem', tiles: [DEM_URL], tileSize: 256, encoding: 'terrarium', maxzoom: 15 };
+  sources.openmaptiles = { type: 'vector', url: OFM + '/planet', attribution: BASES.outdoor.attr };
+  sources['omt-text'] = { type: 'vector', url: OFM + '/planet' };
+  for (const l of outdoorLayers()) { if (l.type === 'background') delete l.source; l.layout = Object.assign({}, l.layout, { visibility: base === 'outdoor' ? 'visible' : 'none' }); layers.push(l); }
+  layers.push({ id: 'hillshade', type: 'hillshade', source: 'dem-hs', layout: { visibility: layerOn('hillshade') && base !== 'outdoor' ? 'visible' : 'none' }, paint: { 'hillshade-exaggeration': 0.45, 'hillshade-shadow-color': '#3b3b3b' } });
+  return { version: 8, glyphs: OFM + '/fonts/{fontstack}/{range}.pbf', sources, layers };
+}
+function makeIcon(draw) {
+  const c = document.createElement('canvas'); c.width = c.height = 44; const g = c.getContext('2d');
+  draw(g); return { width: 44, height: 44, data: g.getImageData(0, 0, 44, 44).data };
+}
+function addIcons() {
+  const fills = { none: '#ffffff', been: '#d62828', seen: '#f77f00' };
+  for (const [st, fill] of Object.entries(fills)) {
+    map.addImage('peak-' + st, makeIcon(g => { g.beginPath(); g.moveTo(22, 6); g.lineTo(39, 36); g.lineTo(5, 36); g.closePath(); g.fillStyle = fill; g.fill(); g.lineWidth = 4; g.strokeStyle = '#1b1b1b'; g.stroke(); }), { pixelRatio: 2 });
+    map.addImage('pass-' + st, makeIcon(g => { g.beginPath(); g.moveTo(22, 8); g.lineTo(36, 22); g.lineTo(22, 36); g.lineTo(8, 22); g.closePath(); g.fillStyle = fill; g.fill(); g.lineWidth = 4; g.strokeStyle = '#1b1b1b'; g.stroke(); }), { pixelRatio: 2 });
+    map.addImage('waterfall-' + st, makeIcon(g => { g.beginPath(); g.arc(22, 22, 14, 0, Math.PI * 2); g.fillStyle = st === 'none' ? '#4fc3f7' : fill; g.fill(); g.lineWidth = 4; g.strokeStyle = '#0d47a1'; g.stroke(); }), { pixelRatio: 2 });
+  }
+}
+const POI_LABEL = ['step', ['zoom'], ['case', ['>', ['get', 'ele'], 3500], ['get', 'label'], ''], 11.5, ['get', 'label']];
+function addOverlays() {
+  addIcons();
+  for (const id of ['trails', 'trail-text', 'lakes', 'lake-pts', 'pois', 'poi-text', 'tracks', 'routes', 'heat', 'edit', 'sel', 'hover']) map.addSource(id, { type: 'geojson', data: fc([]) });
+  const halo = { 'text-color': '#1b1b1b', 'text-halo-color': '#ffffff', 'text-halo-width': 1.6 };
+  map.addLayer({ id: 'lake-fill', type: 'fill', source: 'lakes', paint: { 'fill-color': ['match', ['get', 'st'], 'been', '#2a9d8f', 'seen', '#f4a261', '#4fa3e0'], 'fill-opacity': ['match', ['get', 'st'], 'none', 0.25, 0.45] } });
+  map.addLayer({ id: 'lake-line', type: 'line', source: 'lakes', paint: { 'line-color': ['match', ['get', 'st'], 'been', '#1b7a34', 'seen', '#d97706', '#2b7bbd'], 'line-width': ['match', ['get', 'st'], 'none', 1, 2] } });
+  map.addLayer({ id: 'heat-layer', type: 'heatmap', source: 'heat', layout: { visibility: layerOn('heat') ? 'visible' : 'none' }, paint: {
+    'heatmap-weight': ['get', 'w'], 'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 8, 0.35, 12, 0.6, 16, 1],
+    'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 8, 9, 12, 22, 14, 34, 16, 60],
+    'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], 0, 'rgba(255,255,178,0)', 0.1, 'rgba(254,217,118,0.55)', 0.3, '#feb24c', 0.5, '#fd8d3c', 0.7, '#f03b20', 1, '#bd0026'],
+    'heatmap-opacity': 0.8 } });
+  map.addLayer({ id: 'trail-hit', type: 'line', source: 'trails', paint: { 'line-width': 14, 'line-opacity': 0 } });
+  const trailW = (lo, hi) => ['interpolate', ['linear'], ['zoom'], 9, lo, 15, hi];
+  map.addLayer({ id: 'trail-line', type: 'line', source: 'trails', filter: ['==', ['get', 'cov'], 0], layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: {
+    'line-color': ['match', ['get', 'hw'], 'track', '#8d6e63', '#d9480f'], 'line-width': trailW(1, 2.6), 'line-dasharray': [2, 1.4] } });
+  map.addLayer({ id: 'trail-done', type: 'line', source: 'trails', filter: ['>', ['get', 'cov'], 0], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: {
+    'line-color': ['match', ['get', 'cov'], 2, '#2bb24c', '#82c91e'], 'line-width': trailW(2.2, 5) } });
+  map.addLayer({ id: 'route-line', type: 'line', source: 'routes', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': ['case', ['get', 'sel'], 6, 3.5], 'line-opacity': ['case', ['get', 'sel'], 1, 0.75] } });
+  map.addLayer({ id: 'track-hit', type: 'line', source: 'tracks', paint: { 'line-width': 14, 'line-opacity': 0 } });
+  map.addLayer({ id: 'track-ignored', type: 'line', source: 'tracks', filter: ['==', ['get', 'src'], 'ignored'], paint: { 'line-color': '#9e9e9e', 'line-width': 2, 'line-dasharray': [1, 2] } });
+  map.addLayer({ id: 'track-garmin', type: 'line', source: 'tracks', filter: ['==', ['get', 'src'], 'garmin'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#1e88e5', 'line-width': ['case', ['get', 'sel'], 6, 3.5] } });
+  map.addLayer({ id: 'track-manual', type: 'line', source: 'tracks', filter: ['==', ['get', 'src'], 'manual'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#8e24aa', 'line-width': ['case', ['get', 'sel'], 6, 3.5], 'line-dasharray': [2, 1] } });
+  map.addLayer({ id: 'sel-fill', type: 'fill', source: 'sel', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': '#aef07f', 'fill-opacity': 0.35 } });
+  map.addLayer({ id: 'sel-case', type: 'line', source: 'sel', filter: ['!=', ['geometry-type'], 'Point'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#151515', 'line-width': 9, 'line-opacity': 0.8 } });
+  map.addLayer({ id: 'sel-line', type: 'line', source: 'sel', filter: ['!=', ['geometry-type'], 'Point'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#aef07f', 'line-width': 5 } });
+  map.addLayer({ id: 'edit-case', type: 'line', source: 'edit', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 8 } });
+  map.addLayer({ id: 'edit-line', type: 'line', source: 'edit', filter: ['!', ['get', 'off']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': 4.5 } });
+  map.addLayer({ id: 'edit-off', type: 'line', source: 'edit', filter: ['get', 'off'], paint: { 'line-color': ['get', 'color'], 'line-width': 4.5, 'line-dasharray': [1.5, 1.2] } });
+  map.addLayer({ id: 'poi', type: 'symbol', source: 'pois', layout: {
+    'icon-image': ['concat', ['get', 'kind'], '-', ['get', 'st']], 'icon-size': ['interpolate', ['linear'], ['zoom'], 9, 0.85, 14, 1.3],
+    'icon-allow-overlap': true, 'symbol-sort-key': ['-', 0, ['get', 'ele']] } });
+  map.addLayer({ id: 'poi-label', type: 'symbol', source: 'poi-text', layout: {
+    'text-field': POI_LABEL, 'text-font': FONT, 'text-size': 12, 'text-offset': [0, 1.0], 'text-anchor': 'top', 'text-optional': true, 'symbol-sort-key': ['-', 0, ['get', 'ele']] }, paint: halo });
+  map.addLayer({ id: 'lake-label', type: 'symbol', source: 'lake-pts', minzoom: 11, layout: { 'text-field': ['get', 'label'], 'text-font': FONT, 'text-size': 12 }, paint: { 'text-color': '#0d47a1', 'text-halo-color': '#ffffff', 'text-halo-width': 1.4 } });
+  map.addLayer({ id: 'trail-label', type: 'symbol', source: 'trail-text', minzoom: 12.5, layout: { 'symbol-placement': 'line', 'text-field': ['get', 'label'], 'text-font': FONT, 'text-size': 11.5 }, paint: halo });
+  map.addLayer({ id: 'hover-pt', type: 'circle', source: 'hover', paint: { 'circle-radius': 7, 'circle-color': '#151515', 'circle-stroke-color': '#aef07f', 'circle-stroke-width': 3 } });
+  applyLayerVisibility();
+}
+const LAYER_GROUPS = {
+  trails: ['trail-line', 'trail-done', 'trail-hit'], places: ['poi', 'poi-label'], lakes: ['lake-fill', 'lake-line'], tracks: ['track-garmin', 'track-manual', 'track-ignored', 'track-hit'],
+  routes: ['route-line'], labels: ['trail-label', 'lake-label', 'poi-label'], heat: ['heat-layer']
+};
+function applyLayerVisibility() {
+  if (!mapReady && !map.getLayer('poi')) return;
+  for (const [g, ids] of Object.entries(LAYER_GROUPS)) for (const l of ids) if (map.getLayer(l)) map.setLayoutProperty(l, 'visibility', layerOn(g) ? 'visible' : 'none');
+  const outdoor = (data.settings.base || 'outdoor') === 'outdoor';
+  for (const id of OUT_LAYERS) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', outdoor && (!id.startsWith('o-contour') || layerOn('contours')) && (id !== 'o-hillshade' || layerOn('hillshade')) ? 'visible' : 'none');
+  if (map.getLayer('hillshade')) map.setLayoutProperty('hillshade', 'visibility', !outdoor && layerOn('hillshade') ? 'visible' : 'none');
+  if (map.getLayer('poi-label')) map.setLayoutProperty('poi-label', 'visibility', layerOn('places') && layerOn('labels') ? 'visible' : 'none');
+  syncPins();
+}
+function setBase(k) {
+  data.settings.base = k;
+  for (const [b, info] of Object.entries(BASES)) if (!info.vector && map.getLayer('base-' + b)) map.setLayoutProperty('base-' + b, 'visibility', b === k ? 'visible' : 'none');
+  applyLayerVisibility();
+}
+function updateSources() {
+  if (!mapReady) return;
+  const trailF = [], lakeF = [], lakeP = [], poiF = [];
+  for (const f of FEATS) {
+    if (f.kind === 'trail') {
+      const c = wayCoverage(f.id);
+      trailF.push({ type: 'Feature', properties: { id: f.id, label: nameOf(f), hw: f.hw, cov: c >= 0.75 ? 2 : c > 0 ? 1 : 0 }, geometry: { type: 'LineString', coordinates: f.coords } });
+    } else if (f.kind === 'lake') {
+      const st = statusOf(f.id) || 'none';
+      lakeF.push({ type: 'Feature', properties: { id: f.id, st }, geometry: { type: 'MultiPolygon', coordinates: f.polys.map(r => [r]) } });
+      if (nameOf(f)) lakeP.push({ type: 'Feature', properties: { label: nameOf(f) }, geometry: { type: 'Point', coordinates: f.center } });
+    } else {
+      const nm = nameOf(f), ft = f.ele ? Math.round(f.ele * FT_PER_M).toLocaleString() + ' ft' : '';
+      poiF.push({ type: 'Feature', properties: { id: f.id, kind: f.kind, st: statusOf(f.id) || 'none', ele: f.ele || 0, label: f.kind === 'peak' ? [nm, ft].filter(Boolean).join('\n') : nm }, geometry: { type: 'Point', coordinates: f.coord } });
+    }
+  }
+  const sel = view.detail || {};
+  const trackF = [], heatF = [], hm = data.settings.heatMode || 'both';
+  for (const t of data.tracks) {
+    if (!inFilter(t.date)) continue;
+    t.segments.forEach((s, si) => {
+      if (s.pts.length < 2) return;
+      trackF.push({ type: 'Feature', properties: { tid: t.id, si, src: s.src, sel: sel.type === 'track' && sel.id === t.id }, geometry: { type: 'LineString', coordinates: s.pts.map(p => [p[0], p[1]]) } });
+      if (s.src !== 'ignored' && hm !== 'places') for (const p of resample(s.pts, 40)) heatF.push({ type: 'Feature', properties: { w: 1 }, geometry: { type: 'Point', coordinates: [p[0], p[1]] } });
+    });
+  }
+  if (hm !== 'tracks') {
+    for (const [id, list] of Object.entries(data.visits)) {
+      const f = FEAT[id]; if (!f || f.kind === 'trail') continue;
+      const n = list.filter(v => v.status === 'been' && inFilter(v.date)).length; if (!n) continue;
+      heatF.push({ type: 'Feature', properties: { w: 3 + Math.min(n, 5) }, geometry: { type: 'Point', coordinates: f.coord || f.center } });
+    }
+    for (const p of data.pins) if (p.status === 'been' && inFilter(p.date)) heatF.push({ type: 'Feature', properties: { w: 3 }, geometry: { type: 'Point', coordinates: [p.lon, p.lat] } });
+  }
+  const routeF = data.routes.map(r => ({ type: 'Feature', properties: { rid: r.id, color: r.color || COLORS[0], sel: sel.type === 'route' && sel.id === r.id }, geometry: { type: 'LineString', coordinates: routeLine(r).map(p => [p[0], p[1]]) } })).filter(f => f.geometry.coordinates.length > 1);
+  map.getSource('trails').setData(fc(trailF));
+  map.getSource('lakes').setData(fc(lakeF));
+  map.getSource('lake-pts').setData(fc(lakeP));
+  map.getSource('pois').setData(fc(poiF));
+  map.getSource('poi-text').setData(fc(poiF));
+  map.getSource('trail-text').setData(fc(trailF.filter(f => f.properties.label)));
+  map.getSource('tracks').setData(fc(trackF));
+  map.getSource('routes').setData(fc(routeF));
+  map.getSource('heat').setData(fc(heatF));
+  updateSelection();
+  syncPins();
+}
+function updateSelection() {
+  if (!mapReady) return;
+  const d = view.detail, feats = [];
+  if (d && d.type === 'feature') {
+    for (const fid of idsOf(d.id)) {
+      const f = FEAT[fid]; if (!f) continue;
+      if (f.kind === 'trail') feats.push({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: f.coords } });
+      if (f.kind === 'lake') feats.push({ type: 'Feature', properties: {}, geometry: { type: 'MultiPolygon', coordinates: f.polys.map(r => [r]) } });
+    }
+  }
+  map.getSource('sel').setData(fc(feats));
+}
+function setHover(c) { if (mapReady) map.getSource('hover').setData(fc(c ? [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [c[0], c[1]] } }] : [])); }
+
+// Pins are HTML markers so they can show emoji icons and be dragged
+function syncPins() {
+  if (!map) return;
+  const show = layerOn('pins'), live = new Set();
+  for (const p of data.pins) {
+    live.add(p.id);
+    let m = pinMarkers.get(p.id);
+    const t = PIN_TYPES[p.type] || PIN_TYPES.other;
+    if (!m) {
+      const el = document.createElement('div'); el.className = 'pin';
+      el.addEventListener('click', e => { e.stopPropagation(); if (mode === 'browse') openDetail({ type: 'pin', id: p.id }); });
+      m = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -6] }).setLngLat([p.lon, p.lat]);
+      m.on('dragend', () => { const ll = m.getLngLat(), pin = findPin(p.id); if (pin) { pin.lon = +ll.lng.toFixed(6); pin.lat = +ll.lat.toFixed(6); touch(); toast('Pin moved.'); } });
+      pinMarkers.set(p.id, m);
+    }
+    const el = m.getElement();
+    el.style.background = p.color || t.color;
+    el.innerHTML = `<span>${esc(p.icon || t.icon)}</span>`;
+    el.title = p.name || t.label;
+    el.classList.toggle('sel', selectedPinId === p.id);
+    el.style.opacity = p.status === 'want' ? 0.7 : 1;
+    m.setLngLat([p.lon, p.lat]);
+    m.setDraggable(selectedPinId === p.id);
+    if (show && inFilterPin(p)) { if (!m._map) m.addTo(map); } else m.remove();
+  }
+  for (const [id, m] of pinMarkers) if (!live.has(id)) { m.remove(); pinMarkers.delete(id); }
+}
+function inFilterPin(p) { return (filter.year === 'all' && filter.season === 'all') || inFilter(p.date); }
+
+// 3D terrain
+function set3D(on) {
+  data.settings.terrain = on;
+  $('btn3d').classList.toggle('on', on);
+  if (on) {
+    map.setTerrain({ source: 'dem', exaggeration: +(data.settings.exag || 1.5) });
+    if (map.setSky) try { map.setSky({ 'sky-color': '#88b8e8', 'horizon-color': '#f0f4f8', 'fog-color': '#ffffff', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.8 }); } catch (e) { /* older engine */ }
+    if (map.getPitch() < 45) map.easeTo({ pitch: 65, duration: 900 });
+  } else {
+    map.setTerrain(null);
+    map.easeTo({ pitch: 0, duration: 700 });
+  }
+}
+
+// ================= Lines & stats =================
+function joinLegs(legs) {
+  const out = [];
+  for (const l of legs) for (let i = 0; i < l.pts.length; i++) { if (i === 0 && out.length) { const q = out[out.length - 1]; if (q[0] === l.pts[0][0] && q[1] === l.pts[0][1]) continue; } out.push(l.pts[i]); }
+  return out;
+}
+const routeLine = r => joinLegs(r.legs || []);
+// Profile using stored elevations (synchronous)
+function profileSync(coords) {
+  if (coords.length > 1 && coords.every(p => p[2] != null)) coords = resample(coords, 25);
+  const out = []; let d = 0;
+  for (let i = 0; i < coords.length; i++) { if (i) d += dist(coords[i - 1][1], coords[i - 1][0], coords[i][1], coords[i][0]); if (coords[i][2] != null) out.push({ d, e: coords[i][2], c: coords[i] }); }
+  return out;
+}
+// Day/segment boundaries (distance in metres along the line)
+function routeBreaks(r) {
+  const br = []; let d = 0;
+  (r.legs || []).forEach((l, i) => { d += lineLen(l.pts); if (r.wps[i + 1] && r.wps[i + 1].brk && i < r.legs.length - 1) br.push(d); });
+  return br;
+}
+function segmentStats(prof, total, breaks) {
+  const edges = [0, ...breaks, total], out = [];
+  for (let i = 0; i < edges.length - 1; i++) {
+    const c = climb(prof, edges[i], edges[i + 1]), len = edges[i + 1] - edges[i];
+    out.push({ len, gain: c.gain, loss: c.loss, time: estTime(len, c.gain) });
+  }
+  return out;
+}
+function lineStats(coords) {
+  const prof = profileSync(coords), len = lineLen(coords), c = climb(prof);
+  return { len, gain: c.gain, loss: c.loss, min: c.min, max: c.max, prof };
+}
+async function fillElevation(pts) {
+  const missing = pts.filter(p => p[2] == null);
+  if (!missing.length) return pts;
+  const el = await elevations(missing);
+  missing.forEach((p, i) => { if (el[i] != null) p[2] = +el[i].toFixed(1); });
+  return pts;
+}
+
+// ================= Elevation chart (AllTrails style) =================
+let chartSeq = 0;
+function chartHTML(prof, breaks, colors) {
+  if (!prof || prof.length < 2) return `<div class="empty small">No elevation data${navigator.onLine ? '' : ' (offline)'}.</div>`;
+  const id = 'ch' + (++chartSeq), W = 1000, H = 160, total = prof[prof.length - 1].d || 1;
+  let min = Infinity, max = -Infinity; for (const p of prof) { if (p.e < min) min = p.e; if (p.e > max) max = p.e; }
+  const pad = Math.max(10, (max - min) * 0.08), lo = min - pad, hi = max + pad;
+  const X = d => d / total * W, Y = e => H - (e - lo) / (hi - lo) * H;
+  const step = Math.max(1, Math.floor(prof.length / 900));
+  const pts = prof.filter((_, i) => i % step === 0 || i === prof.length - 1);
+  const path = pts.map((p, i) => (i ? 'L' : 'M') + X(p.d).toFixed(1) + ' ' + Y(p.e).toFixed(1)).join('');
+  const area = path + `L${W} ${H}L0 ${H}Z`;
+  const grid = [0, H / 2, H].map(y => `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="#e3e3df" vector-effect="non-scaling-stroke" ${y === H / 2 ? 'stroke-dasharray="6 6"' : ''}/>`).join('');
+  const brk = (breaks || []).map(b => `<line x1="${X(b)}" x2="${X(b)}" y1="0" y2="${H}" stroke="#bdbdb8" stroke-dasharray="3 4" vector-effect="non-scaling-stroke"/>`).join('');
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map(t => `<span>${(total * t / M_PER_MI).toFixed(1)} mi</span>`).join('');
+  setTimeout(() => wireChart(id, pts, total, W), 0);
+  return `<div class="chart" id="${id}">
+    <div style="position:relative">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:${H}px">${grid}${brk}<path d="${area}" fill="#f2f2ee"/><path d="${path}" fill="none" stroke="#1b1b1b" stroke-width="2.2" vector-effect="non-scaling-stroke"/><line class="cur" y1="0" y2="${H}" stroke="#1b1b1b" vector-effect="non-scaling-stroke" visibility="hidden"/></svg>
+      <span class="small muted" style="position:absolute;right:0;top:-18px">${fmtFt(max)} ft</span>
+      <span class="small muted" style="position:absolute;right:0;bottom:-18px">${fmtFt(min)} ft</span>
+      <div class="tip" hidden></div>
+    </div>
+    <div class="small muted" style="display:flex;justify-content:space-between;margin-top:22px">${ticks}</div>
+  </div>`;
+}
+function wireChart(id, pts, total, W) {
+  const el = $(id); if (!el) return;
+  const svg = el.querySelector('svg'), tip = el.querySelector('.tip'), cur = el.querySelector('.cur');
+  svg.addEventListener('mousemove', e => {
+    const r = svg.getBoundingClientRect(), x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), d = x * total;
+    let best = pts[0]; for (const p of pts) if (Math.abs(p.d - d) < Math.abs(best.d - d)) best = p;
+    cur.setAttribute('x1', best.d / total * W); cur.setAttribute('x2', best.d / total * W); cur.setAttribute('visibility', 'visible');
+    tip.hidden = false; tip.style.left = (best.d / total * 100) + '%';
+    tip.textContent = `${(best.d / M_PER_MI).toFixed(2)} mi · ${fmtFt(best.e)} ft`;
+    setHover(best.c);
+  });
+  svg.addEventListener('mouseleave', () => { tip.hidden = true; cur.setAttribute('visibility', 'hidden'); setHover(null); });
+}
+const statHTML = (val, unit, label) => `<div class="stat"><b>${val}${unit ? `<small>${unit}</small>` : ''}</b><div>${label}</div></div>`;
+const ICON = {
+  dist: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h7a3 3 0 000-6H9a3 3 0 010-6h7"/></svg>',
+  up: '↗', down: '↘',
+  clock: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'
+};
+function segHTML(name, color, s) {
+  return `<div class="seg"><i style="background:${color}"></i><div><div class="n">${esc(name)}</div><div class="m">
+    <span>${ICON.dist} ${fmtMi(s.len)} mi</span><span>${ICON.up} ${fmtFt(s.gain)} ft</span><span>${ICON.down} ${fmtFt(s.loss)} ft</span><span>${ICON.clock} ${s.time} hr</span></div></div></div>`;
+}
+
+// ================= Route / hike editor =================
+function startEditor(kind, opts) {
+  stopEditor(true);
+  opts = opts || {};
+  const r = opts.route;
+  editor = {
+    kind, routeId: r ? r.id : null, trackId: opts.trackId || null,
+    name: r ? r.name : (kind === 'route' ? 'New route' : kind === 'track' ? 'Hike on ' + fmtDate(today()) : ''),
+    color: r ? r.color : COLORS[data.routes.length % COLORS.length], notes: r ? r.notes || '' : '',
+    date: today(), snap: data.settings.snap !== false,
+    wps: r ? r.wps.map(w => Object.assign({}, w, { c: w.c.slice() })) : [],
+    legs: r ? r.legs.map(l => ({ off: l.off, pts: l.pts.map(p => p.slice()) })) : [], markers: [], prof: null
+  };
+  if (opts.start) addPoint(opts.start, true);
+  setMode(kind === 'route' ? 'route' : 'track', true);
+  redrawEditor();
+  view.detail = { type: 'editor' }; viewStack = []; renderSide();
+}
+function stopEditor(silent) {
+  if (!editor) return;
+  for (const m of editor.markers) m.remove();
+  editor = null;
+  if (mapReady) map.getSource('edit').setData(fc([]));
+  if (!silent) { setMode('browse', true); }
+}
+function snapPoint(c) {
+  if (!editor.snap) return c;
+  const n = nearestNode(c[0], c[1], 120);
+  return n >= 0 ? [GRAPH.lon[n], GRAPH.lat[n]] : c;
+}
+function computeLeg(i) {
+  const a = editor.wps[i].c, b = editor.wps[i + 1].c, snap = editor.wps[i + 1].snap;
+  let path = snap ? routeBetween(a, b) : null;
+  if (path && path.length > 1) {
+    const st = path[0], en = path[path.length - 1];
+    if (dist(a[1], a[0], st[1], st[0]) > 1) path.unshift(a.slice(0, 2));
+    if (dist(b[1], b[0], en[1], en[0]) > 1) path.push(b.slice(0, 2));
+    editor.legs[i] = { off: false, pts: path.map(p => [p[0], p[1]]) };
+  } else {
+    editor.legs[i] = { off: true, pts: resample([a.slice(0, 2), b.slice(0, 2)], 30).map(p => [p[0], p[1]]) };
+    if (snap && !path) toast('No trail connection here, so this leg is drawn off-trail.', 2500);
+  }
+}
+function addPoint(c, quiet) {
+  const wp = { c: snapPoint([+c[0].toFixed(6), +c[1].toFixed(6)]), brk: false, snap: editor.snap };
+  editor.wps.push(wp);
+  if (editor.wps.length > 1) computeLeg(editor.wps.length - 2);
+  if (!quiet) { redrawEditor(); renderSide(); }
+}
+function undoPoint() { if (!editor || !editor.wps.length) return; editor.wps.pop(); editor.legs.length = Math.max(0, editor.wps.length - 1); redrawEditor(); renderSide(); }
+function removePoint(i) {
+  const old = editor.legs; editor.wps.splice(i, 1);
+  const L = [];
+  for (let k = 0; k < editor.wps.length - 1; k++) L[k] = k < i - 1 ? old[k] : k >= i ? old[k + 1] : null;
+  editor.legs = L;
+  if (i > 0 && i < editor.wps.length) computeLeg(i - 1);
+  redrawEditor(); renderSide();
+}
+function moveWaypoint(i, c) {
+  editor.wps[i].c = snapPoint(c);
+  if (i > 0) computeLeg(i - 1);
+  if (i < editor.wps.length - 1) computeLeg(i);
+  redrawEditor(); renderSide();
+}
+function editorLine() { return editor.legs.length ? joinLegs(editor.legs) : editor.wps.map(w => w.c); }
+function redrawEditor() {
+  if (!editor || !mapReady) return;
+  map.getSource('edit').setData(fc(editor.legs.filter(Boolean).map(l => ({ type: 'Feature', properties: { color: editor.kind === 'route' ? editor.color : '#8e24aa', off: l.off }, geometry: { type: 'LineString', coordinates: l.pts } }))));
+  for (const m of editor.markers) m.remove();
+  editor.markers = editor.wps.map((w, i) => {
+    const el = document.createElement('div');
+    el.className = 'wpm' + (i === 0 ? ' first' : '') + (w.brk ? ' brk' : '');
+    el.title = i === 0 ? 'Start' : w.brk ? 'End of day' : 'Point ' + (i + 1);
+    const m = new maplibregl.Marker({ element: el, draggable: true }).setLngLat(w.c).addTo(map);
+    m.on('dragend', () => { const ll = m.getLngLat(); moveWaypoint(i, [ll.lng, ll.lat]); });
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const html = document.createElement('div');
+      html.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px;padding:4px">
+        ${i > 0 && i < editor.wps.length - 1 && editor.kind === 'route' ? `<button class="btn sm" data-a="brk">${w.brk ? 'Remove day break' : 'End day here'}</button>` : ''}
+        <button class="btn sm danger" data-a="del">Remove point</button></div>`;
+      const pop = new maplibregl.Popup({ closeButton: false, offset: 12 }).setLngLat(w.c).setDOMContent(html).addTo(map);
+      html.addEventListener('click', ev => {
+        const a = ev.target.closest('[data-a]'); if (!a) return; pop.remove();
+        if (a.dataset.a === 'brk') { w.brk = !w.brk; redrawEditor(); renderSide(); }
+        if (a.dataset.a === 'del') removePoint(i);
+      });
+    });
+    return m;
+  });
+  clearTimeout(redrawEditor.tm);
+  redrawEditor.tm = setTimeout(async () => {
+    if (!editor) return;
+    const line = editorLine();
+    editor.prof = line.length > 1 ? await profileOf(line) : null;
+    const box = $('edProfile'); if (box && editor) box.innerHTML = editorStatsHTML();
+  }, 350);
+}
+function editorStatsHTML() {
+  const line = editorLine(), len = lineLen(line), prof = editor.prof;
+  const fake = { wps: editor.wps, legs: editor.legs.filter(Boolean) };
+  const breaks = editor.kind === 'route' ? routeBreaks(fake) : [];
+  const c = prof ? climb(prof) : { gain: 0 };
+  return `<div class="stats">${statHTML(fmtMi(len), 'mi', 'Length')}${statHTML(prof ? fmtFt(c.gain) : '…', 'ft', 'Elev. gain')}${statHTML(estTime(len, c.gain), 'hr', 'Est. time')}${statHTML(breaks.length + 1, '', editor.kind === 'route' ? 'Days' : 'Points')}</div>
+    ${line.length > 1 ? (prof ? chartHTML(prof, breaks) : '<div class="empty small">Loading elevation…</div>') : ''}`;
+}
+async function saveEditor() {
+  const e = editor; if (!e) return;
+  if (e.wps.length < 2) { toast('Add at least two points on the map first.'); return; }
+  toast('Saving…', 0);
+  const legs = e.legs.filter(Boolean);
+  for (const l of legs) await fillElevation(l.pts);
+  if (e.kind === 'route') {
+    const r = (e.routeId && findRoute(e.routeId)) || { id: uid(), created: today() };
+    Object.assign(r, { name: ($('edName') && $('edName').value.trim()) || e.name || 'Route', color: e.color, notes: e.notes, wps: e.wps.map(w => ({ c: w.c, brk: !!w.brk, snap: w.snap })), legs });
+    const st = lineStats(routeLine(r)); r.stats = { len: st.len, gain: st.gain, loss: st.loss, days: routeBreaks(r).length + 1 };
+    if (!findRoute(r.id)) data.routes.push(r);
+    stopEditor(); touch({ noRender: true }); openDetail({ type: 'route', id: r.id }, true);
+    toast('Route saved.');
+  } else {
+    const pts = joinLegs(legs);
+    let t;
+    if (e.kind === 'extend' && (t = findTrack(e.trackId))) {
+      // Line drawn elevations up with the watch's altimeter at the cut point
+      const g = t.segments.filter(s => s.src === 'garmin').pop(), end = g && g.pts[g.pts.length - 1];
+      if (end && end[2] != null && pts[0] && pts[0][2] != null) { const off = end[2] - pts[0][2]; for (const q of pts) if (q[2] != null) q[2] = +(q[2] + off).toFixed(1); }
+      t.segments.push({ src: 'manual', pts });
+    }
+    else {
+      t = { id: uid(), name: ($('edName') && $('edName').value.trim()) || e.name || 'Hike', date: ($('edDate') && $('edDate').value) || today(), trip: '', notes: '', segments: [{ src: 'manual', pts }] };
+      data.tracks.push(t);
+    }
+    const n = matchTrack(t).length;
+    stopEditor(); touch({ noRender: true }); openDetail({ type: 'track', id: t.id }, true);
+    toast(`Hike saved${n ? `, matched ${n} places` : ''}.`);
+  }
+}
+
+// ================= Sidebar: navigation =================
+const body = () => $('sideBody');
+function setTab(t) {
+  if (editor) stopEditor();
+  view = { tab: t, detail: null }; viewStack = []; selectedPinId = null;
+  document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  renderSide(); updateSources();
+}
+function openDetail(d, replace) {
+  if (view.detail && !replace && view.detail.type !== 'editor') viewStack.push(view.detail);
+  view.detail = d;
+  selectedPinId = d.type === 'pin' ? d.id : null;
+  if (document.body.classList.contains('collapsed')) setCollapsed(false);
+  renderSide(); updateSources();
+  body().scrollTop = 0;
+}
+function goBack() {
+  if (editor) { stopEditor(); }
+  view.detail = viewStack.pop() || null; selectedPinId = view.detail && view.detail.type === 'pin' ? view.detail.id : null;
+  renderSide(); updateSources();
+}
+function renderSide() {
+  const d = view.detail;
+  if (d) {
+    const fn = { feature: pageFeature, route: pageRoute, track: pageTrack, pin: pagePin, editor: pageEditor, history: pageHistory, settings: pageSettings, help: pageHelp }[d.type];
+    if (fn) { body().innerHTML = fn(d); return; }
+  }
+  const q = $('q').value.trim().toLowerCase();
+  body().innerHTML = q ? pageSearch(q) : ({ explore: pageExplore, routes: pageRoutes, activity: pageActivity, stats: pageStats }[view.tab] || pageExplore)();
+}
+const backBtn = () => `<button class="back" data-act="back">‹ Back</button>`;
+function fitTo(coords, maxZoom) {
+  if (!coords || !coords.length || !map) return;
+  const b = bboxOf(coords);
+  const left = window.innerWidth > 800 ? 40 : 30;
+  map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: { top: 80, bottom: 110, left, right: 40 }, maxZoom: maxZoom || 15, duration: 800 });
+}
+function coordsOf(d) {
+  if (d.type === 'route') { const r = findRoute(d.id); return r ? routeLine(r) : null; }
+  if (d.type === 'track') { const t = findTrack(d.id); return t ? t.segments.flatMap(s => s.pts) : null; }
+  if (d.type === 'pin') { const p = findPin(d.id); return p ? [[p.lon, p.lat]] : null; }
+  if (d.type === 'feature') {
+    if (isGroup(d.id)) return GROUPS[d.id] ? GROUPS[d.id].ways.flatMap(w => w.coords) : null;
+    const f = FEAT[d.id]; if (!f) return null;
+    return f.coord ? [f.coord] : f.coords || f.polys.flat();
+  }
+  return null;
+}
+
+// ================= List pages =================
+function cardHTML(item) {
+  const badge = item.st ? `<span class="badge ${item.st}">${item.st === 'been' ? 'Been' : item.st === 'seen' ? 'Seen' : 'Want'}</span>` : '';
+  return `<div class="card" data-open='${esc(JSON.stringify(item.open))}'><div class="ic" ${item.color ? `style="background:${item.color}22"` : ''}>${item.icon}</div><div class="tx"><div class="t">${esc(item.title)}</div><div class="s">${esc(item.sub)}</div></div>${badge}${item.wish ? '<span title="Saved">❤️</span>' : ''}</div>`;
+}
+function featureItems() {
+  const items = [];
+  for (const f of FEATS) {
+    if (f.kind === 'trail') continue;
+    const nm = nameOf(f); if (!nm) continue;
+    const st = statusOf(f.id);
+    items.push({ kind: f.kind, title: nm, icon: KIND_INFO[f.kind].icon, sub: KIND_INFO[f.kind].label + (f.ele ? ' · ' + fmtFt(f.ele) + ' ft' : ''), st, wish: isWish(f.id), ele: f.ele || 0, open: { type: 'feature', id: f.id } });
+  }
+  for (const g of Object.values(GROUPS)) {
+    const cov = g.ways.reduce((a, w) => a + w.len * wayCoverage(w.id), 0) / g.len;
+    items.push({ kind: 'trail', title: g.name, icon: '🥾', sub: `Trail · ${fmtMi(g.len)} mi${cov > 0.02 ? ` · ${Math.round(cov * 100)}% hiked` : ''}`, st: statusOf(g.id), wish: isWish(g.id), ele: 0, len: g.len, open: { type: 'feature', id: g.id } });
+  }
+  for (const p of data.pins) {
+    const t = PIN_TYPES[p.type] || PIN_TYPES.other;
+    items.push({ kind: 'pin', title: p.name || t.label, icon: p.icon || t.icon, color: p.color || t.color, sub: 'Pin · ' + t.label + (p.date ? ' · ' + fmtDate(p.date) : ''), st: p.status, ele: 0, open: { type: 'pin', id: p.id } });
+  }
+  return items;
+}
+function noDataHTML() {
+  return `<div style="padding:28px 0;text-align:center">
+    <div style="font-size:44px">🗺️</div><h2 style="margin:8px 0">Download the Teton map data</h2>
+    <p class="muted">One download (a minute or two) loads every trail, peak, pass, waterfall and lake in the range from OpenStreetMap. It is then cached here and saved inside this file.</p>
+    <button class="btn primary" data-act="fetchAll">Download map data</button>
+    <p class="muted small" style="margin-top:22px">Coming from an older version? Menu (☰, top right) → Import from an older version.</p></div>`;
+}
+function pageExplore() {
+  if (!FEATS.length) return noDataHTML();
+  const ex = view.explore = view.explore || { chip: 'all', st: 'any', sort: 'name', limit: 120 };
+  const chips = [['all', 'All'], ['peak', 'Peaks'], ['lake', 'Lakes'], ['trail', 'Trails'], ['pass', 'Passes'], ['waterfall', 'Waterfalls'], ['pin', 'Pins'], ['saved', '❤️ Saved']];
+  let items = featureItems();
+  if (ex.chip === 'saved') items = items.filter(i => i.wish || i.st === 'want');
+  else if (ex.chip !== 'all') items = items.filter(i => i.kind === ex.chip);
+  if (ex.st === 'been') items = items.filter(i => i.st === 'been');
+  if (ex.st === 'seen') items = items.filter(i => i.st === 'seen');
+  if (ex.st === 'not') items = items.filter(i => !i.st || i.st === 'want');
+  items.sort(ex.sort === 'ele' ? (a, b) => (b.ele || 0) - (a.ele || 0) || (b.len || 0) - (a.len || 0) : (a, b) => a.title.localeCompare(b.title));
+  return `<div class="chips">${chips.map(([k, l]) => `<button data-chip="${k}" class="${ex.chip === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <div class="row"><select id="exSt" style="flex:1"><option value="any">Any status</option><option value="been">Been</option><option value="seen">Seen</option><option value="not">Not been yet</option></select>
+    <select id="exSort" style="flex:1"><option value="name">Sort: name</option><option value="ele">Sort: highest / longest</option></select></div>
+    <div class="small muted">${items.length.toLocaleString()} places</div>
+    ${items.slice(0, ex.limit).map(cardHTML).join('') || '<div class="empty">Nothing here yet.</div>'}
+    ${items.length > ex.limit ? `<button class="btn wide" data-act="more">Show more</button>` : ''}`;
+}
+function pageSearch(q) {
+  const items = featureItems().filter(i => i.title.toLowerCase().includes(q));
+  for (const r of data.routes) if (r.name.toLowerCase().includes(q)) items.unshift({ title: r.name, icon: '🧭', color: r.color, sub: 'Route · ' + fmtMi((r.stats || {}).len || 0) + ' mi', open: { type: 'route', id: r.id } });
+  for (const t of data.tracks) if (t.name.toLowerCase().includes(q) || (t.trip || '').toLowerCase().includes(q)) items.unshift({ title: t.name, icon: '🥾', sub: 'Hike · ' + fmtDate(t.date), open: { type: 'track', id: t.id } });
+  items.sort((a, b) => (a.title.toLowerCase().startsWith(q) ? 0 : 1) - (b.title.toLowerCase().startsWith(q) ? 0 : 1));
+  return `<h3 class="sec">Results</h3>${items.slice(0, 80).map(cardHTML).join('') || '<div class="empty">No matches.' + (FEATS.length ? '' : ' Download map data first (menu, top right).') + '</div>'}`;
+}
+function pageRoutes() {
+  const list = data.routes.slice().sort((a, b) => (b.created || '').localeCompare(a.created || ''));
+  return `<button class="btn primary" style="width:100%;margin:16px 0 6px;padding:13px" data-act="newRoute">＋ Build a new route</button>
+    <div class="small muted">Click points on the map. The route follows trails automatically; turn snapping off for off-trail legs.</div>
+    <h2 class="sec">My routes <span class="small muted">${list.length}</span></h2>
+    ${list.map(r => { const s = r.stats || {}; return cardHTML({ title: r.name, icon: '🧭', color: r.color, sub: `${fmtMi(s.len || 0)} mi · ${fmtFt(s.gain || 0)} ft gain · ${s.days || 1} day${(s.days || 1) > 1 ? 's' : ''}`, open: { type: 'route', id: r.id } }); }).join('') || '<div class="empty">No routes yet.</div>'}`;
+}
+function pageActivity() {
+  const list = data.tracks.filter(t => inFilter(t.date)).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  let html = `<button class="btn" style="width:100%;margin:16px 0 4px;padding:12px" data-act="drawHike">✏️ Draw a hike on the map</button>`;
+  let yr = null;
+  for (const t of list) {
+    const y = (t.date || '').slice(0, 4);
+    if (y !== yr) { yr = y; html += `<h2 class="sec">${y || 'Undated'}</h2>`; }
+    const st = lineStats(trackLine(t)), mixed = t.segments.some(s => s.src === 'manual') && t.segments.some(s => s.src === 'garmin');
+    html += cardHTML({ title: t.name, icon: mixed ? '🔀' : t.segments.some(s => s.src === 'garmin') ? '⌚' : '✏️', sub: `${fmtDate(t.date)} · ${fmtMi(st.len)} mi · ${fmtFt(st.gain)} ft${t.trip ? ' · ' + t.trip : ''}`, open: { type: 'track', id: t.id } });
+  }
+  return html + (list.length ? '' : '<div class="empty">No hikes yet. To bring in Garmin hikes, open the menu (☰, top right) → Import GPX hikes.</div>');
+}
+function filterSelects() {
+  const ys = new Set(); data.tracks.forEach(t => ys.add((t.date || '').slice(0, 4))); Object.values(data.visits).flat().forEach(v => ys.add((v.date || '').slice(0, 4))); data.pins.forEach(p => ys.add((p.date || '').slice(0, 4)));
+  const years = [...ys].filter(Boolean).sort().reverse();
+  return `<div class="row"><select data-filter="year" style="flex:1"><option value="all">All years</option>${years.map(y => `<option ${filter.year === y ? 'selected' : ''}>${y}</option>`).join('')}</select>
+    <select data-filter="season" style="flex:1">${[['all', 'All seasons'], ['spring', 'Spring'], ['summer', 'Summer'], ['fall', 'Fall'], ['winter', 'Winter']].map(([k, l]) => `<option value="${k}" ${filter.season === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`;
+}
+function pageStats() {
+  const tracks = data.tracks.filter(t => inFilter(t.date));
+  let miles = 0, gain = 0; const byYear = {};
+  for (const t of tracks) { const st = lineStats(trackLine(t)); miles += st.len; gain += st.gain; const y = (t.date || '').slice(0, 4); byYear[y] = (byYear[y] || 0) + st.len; }
+  const kinds = k => FEATS.filter(f => f.kind === k);
+  const been = list => list.filter(f => statusOf(f.id) === 'been').length;
+  const peaks = kinds('peak'), lakes = kinds('lake'), passes = kinds('pass'), falls = kinds('waterfall');
+  let trailM = 0; for (const f of kinds('trail')) trailM += f.len * wayCoverage(f.id);
+  const allTrailM = kinds('trail').reduce((a, f) => a + f.len, 0);
+  const years = Object.keys(byYear).sort(), max = Math.max(1, ...Object.values(byYear));
+  const namedPeaks = peaks.filter(f => nameOf(f)).sort((a, b) => (b.ele || 0) - (a.ele || 0));
+  return `${filterSelects()}
+    <div class="grid">
+      <div class="tile"><b>${(miles / M_PER_MI).toFixed(1)}</b><span>miles hiked</span></div>
+      <div class="tile"><b>${fmtFt(gain)}</b><span>feet climbed</span></div>
+      <div class="tile"><b>${tracks.length}</b><span>hikes</span></div>
+      <div class="tile"><b>${(trailM / M_PER_MI).toFixed(1)}</b><span>of ${(allTrailM / M_PER_MI).toFixed(0)} trail miles explored</span></div>
+      <div class="tile"><b>${been(peaks)}<small class="muted" style="font-size:14px"> / ${peaks.length}</small></b><span>peaks summited</span></div>
+      <div class="tile"><b>${been(lakes)}<small class="muted" style="font-size:14px"> / ${lakes.length}</small></b><span>lakes reached</span></div>
+      <div class="tile"><b>${been(passes)}<small class="muted" style="font-size:14px"> / ${passes.length}</small></b><span>passes crossed</span></div>
+      <div class="tile"><b>${been(falls)}<small class="muted" style="font-size:14px"> / ${falls.length}</small></b><span>waterfalls</span></div>
+    </div>
+    <h2 class="sec">Miles by year</h2>
+    ${years.map(y => `<div class="yr"><span>${y || '—'}</span><div class="bar"><i style="width:${(byYear[y] / max * 100).toFixed(1)}%"></i></div><span>${(byYear[y] / M_PER_MI).toFixed(1)} mi</span></div>`).join('') || '<div class="empty">No hikes in this period.</div>'}
+    <h2 class="sec">Peak checklist</h2>
+    ${namedPeaks.slice(0, 60).map(f => cardHTML({ title: nameOf(f), icon: '⛰️', sub: f.ele ? fmtFt(f.ele) + ' ft' : 'Peak', st: statusOf(f.id), wish: isWish(f.id), open: { type: 'feature', id: f.id } })).join('') || '<div class="empty">Download map data to see the peak list.</div>'}`;
+}
+
+// ================= Detail pages =================
+const profCache = new Map();
+function actionBtn(act, title, inner, on) { return `<button data-act="${act}" title="${title}" class="${on ? 'on' : ''}">${inner}</button>`; }
+const SVG = {
+  check: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12l5 5 9-10"/></svg>',
+  eye: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  heart: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20s-7-4.5-9-9a4.8 4.8 0 019-3 4.8 4.8 0 019 3c-2 4.5-9 9-9 9z"/></svg>',
+  pencil: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20l4-1 11-11-3-3L5 16z"/></svg>',
+  share: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 8l5-5 5 5M5 14v6h14v-6"/></svg>',
+  cal: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>',
+  trash: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
+  cube: '<b style="font-size:14px">3D</b>',
+  scissors: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.5 7.5L20 18M8.5 16.5L20 6"/></svg>',
+  undo: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg>',
+  refresh: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 12a8 8 0 11-2.3-5.7L20 8"/><path d="M20 3v5h-5"/></svg>'
+};
+function visitsHTML(id) {
+  const list = visitsFor(id);
+  return `<h2 class="sec">My visits <span class="small muted">${list.length}</span></h2>
+    ${list.map(v => { const t = v.trackId && findTrack(v.trackId); return `<div class="visit"><span class="badge ${v.status}">${v.status === 'been' ? 'Been' : 'Seen'}</span><div class="tx"><b>${fmtDate(v.date)}</b>${t ? ` · <a href="#" data-open='${esc(JSON.stringify({ type: 'track', id: t.id }))}'>${esc(t.name)}</a>` : ''}${v.note ? `<div class="small muted">${esc(v.note)}</div>` : ''}</div>${v.src === 'log' ? `<button class="x" data-act="delVisit" data-vid="${v.vid}" title="Remove">×</button>` : ''}</div>`; }).join('') || '<div class="empty small">No visits logged yet.</div>'}
+    <div class="row"><input type="date" id="vDate" value="${today()}" style="flex:1"><select id="vStatus" style="flex:1"><option value="been">Been here</option><option value="seen">Seen it</option></select></div>
+    <input id="vNote" placeholder="Note (optional)"><div class="row"><button class="btn primary" data-act="addVisit">Add visit</button></div>`;
+}
+function pageFeature(d) {
+  const grp = isGroup(d.id) ? GROUPS[d.id] : null, f = grp ? null : FEAT[d.id];
+  if (!grp && !f) return backBtn() + '<div class="empty">This place is no longer in the map data.</div>';
+  const kind = grp ? 'trail' : f.kind, info = KIND_INFO[kind];
+  const name = grp ? grp.name : nameOf(f);
+  const st = statusOf(d.id), wish = isWish(d.id);
+  let stats = '', extra = '', sub = info.label;
+  if (kind === 'trail') {
+    const ways = grp ? grp.ways : [f], len = ways.reduce((a, w) => a + w.len, 0);
+    const cov = ways.reduce((a, w) => a + w.len * wayCoverage(w.id), 0) / len;
+    const hw = (ways[0].hw === 'track' ? 'Dirt road / track' : 'Trail') + (ways[0].sac ? ' · ' + ways[0].sac.replace(/_/g, ' ') : '');
+    sub = hw + (grp && grp.ways.length > 1 ? ` · ${grp.ways.length} sections` : '');
+    const chain = grp ? chainGroup(grp) : f.coords;
+    const pc = profCache.get(d.id);
+    const c = pc ? climb(pc) : null;
+    stats = `<div class="stats">${statHTML(fmtMi(len), 'mi', 'Length')}${statHTML(c ? fmtFt(c.gain) : (chain ? '…' : '—'), 'ft', 'Elev. gain')}${statHTML(c ? estTime(len, c.gain) : '…', 'hr', 'Est. time')}${statHTML(Math.round(cov * 100), '%', 'Hiked')}</div>`;
+    extra = `<div id="fprof">${pc ? chartHTML(pc) : chain ? '<div class="empty small">Loading elevation…</div>' : '<div class="empty small">This trail branches, so there is no single elevation profile.</div>'}</div>
+      ${chain && pc ? '<div class="small muted" style="margin-top:6px">Gain and time are for hiking it one way, start to end as drawn.</div>' : ''}`;
+    if (chain && !pc) profileOf(chain).then(p => { profCache.set(d.id, p); if (view.detail === d) renderSide(); });
+  } else if (kind === 'lake') {
+    const shore = f.polys.reduce((a, r) => a + lineLen(r), 0);
+    const acres = f.polys.reduce((a, r) => { let s = 0; for (let i = 1; i < r.length; i++) { const x1 = r[i - 1][0] * 111320 * Math.cos(r[i][1] * Math.PI / 180), y1 = r[i - 1][1] * 110540, x2 = r[i][0] * 111320 * Math.cos(r[i][1] * Math.PI / 180), y2 = r[i][1] * 110540; s += x1 * y2 - x2 * y1; } return a + Math.abs(s) / 2; }, 0) / 4046.86;
+    const vs = visitsFor(d.id);
+    const pe = profCache.get(d.id);
+    stats = `<div class="stats">${statHTML(pe ? fmtFt(pe) : '…', 'ft', 'Elevation')}${statHTML(acres < 10 ? acres.toFixed(1) : Math.round(acres).toLocaleString(), 'ac', 'Area')}${statHTML(fmtMi(shore), 'mi', 'Shoreline')}${statHTML(vs.length, '', 'Visits')}</div>`;
+    if (!pe) elevations([f.center]).then(e => { if (e[0] != null) { profCache.set(d.id, e[0]); if (view.detail === d) renderSide(); } });
+  } else {
+    const vs = visitsFor(d.id);
+    sub = info.label + ` · ${f.coord[1].toFixed(4)}, ${f.coord[0].toFixed(4)}`;
+    stats = `<div class="stats">${statHTML(f.ele ? fmtFt(f.ele) : '—', 'ft', 'Elevation')}${statHTML(vs.length, '', 'Visits')}${statHTML(vs[0] ? fmtDate(vs[0].date).replace(/, \d{4}/, '') : '—', '', vs[0] ? 'Last · ' + vs[0].date.slice(0, 4) : 'Last visit')}${statHTML(st === 'been' ? '✓' : st === 'seen' ? '👁' : '—', '', 'Status')}</div>`;
+  }
+  return `${backBtn()}
+    <div class="d-title">${esc(name || 'Unnamed ' + info.label.toLowerCase())}</div>
+    <div class="d-sub">${esc(sub)}</div>
+    ${stats}${extra}
+    <div class="actions">
+      ${actionBtn('been', kind === 'peak' ? 'I summited this' : "I've been here", SVG.check, st === 'been')}
+      ${actionBtn('seen', "I've seen it", SVG.eye, st === 'seen')}
+      ${actionBtn('wish', 'Save to my list', SVG.heart, wish)}
+      ${actionBtn('view3d', 'View in 3D', SVG.cube)}
+      ${kind === 'trail' ? actionBtn('routeOnTrail', 'Plan a route on this trail', SVG.pencil) : ''}
+    </div>
+    ${visitsHTML(d.id)}
+    <h2 class="sec">Name</h2>
+    <div class="row"><input id="fName" value="${esc(name)}" placeholder="Give this ${info.label.toLowerCase()} a name" style="flex:1"><button class="btn" data-act="saveName">Save</button></div>
+    ${(grp ? grp.ways.some(w => data.names[w.id]) : data.names[f.id]) ? '<div class="small muted">Custom name. Clear the box and save to go back to the map name.</div>' : ''}`;
+}
+function pageRoute(d) {
+  const r = findRoute(d.id); if (!r) return backBtn() + '<div class="empty">Route not found.</div>';
+  const line = routeLine(r), prof = profileSync(line), len = lineLen(line), c = climb(prof), breaks = routeBreaks(r);
+  const segs = segmentStats(prof, len, breaks);
+  return `${backBtn()}
+    <div class="d-title">${esc(r.name)}</div>
+    <div class="d-sub">Route · created ${fmtDate(r.created)}</div>
+    <div class="stats">${statHTML(fmtMi(len), 'mi', 'Length')}${statHTML(fmtFt(c.gain), 'ft', 'Elev. gain')}${statHTML(estTime(len, c.gain), 'hr', 'Est. time')}${statHTML(segs.length, '', segs.length > 1 ? 'Segments' : 'Segment')}</div>
+    ${chartHTML(prof, breaks)}
+    <button class="btn wide" data-act="preview">Preview route</button>
+    <div class="actions">
+      ${actionBtn('editRoute', 'Edit route', SVG.pencil, true)}
+      ${actionBtn('gpxRoute', 'Export GPX for your Garmin', SVG.share)}
+      ${actionBtn('hikedRoute', 'I hiked this: log it as a hike', SVG.cal)}
+      ${actionBtn('delRoute', 'Delete route', SVG.trash)}
+    </div>
+    <h2 class="sec">Segments</h2>
+    ${segs.map((s, i) => segHTML(segs.length > 1 ? 'Day ' + (i + 1) : 'Full route', DAY_COLORS[i % DAY_COLORS.length], s)).join('')}
+    <div class="small muted">Lowest ${fmtFt(c.min)} ft · highest ${fmtFt(c.max)} ft · loss ${fmtFt(c.loss)} ft. Time assumes ${data.settings.pace} mph plus 1 hour per 2,000 ft of climbing (change in Settings).</div>
+    <h2 class="sec">Details</h2>
+    <label class="f">Name</label><input id="rName" value="${esc(r.name)}">
+    <label class="f">Color</label><div class="swatches">${COLORS.map(cl => `<button data-color="${cl}" class="${(r.color || COLORS[0]) === cl ? 'on' : ''}" style="background:${cl}"></button>`).join('')}</div>
+    <label class="f">Notes</label><textarea id="rNotes" rows="3" placeholder="Permits, water, camps…">${esc(r.notes || '')}</textarea>
+    <div class="row"><button class="btn primary" data-act="saveRoute">Save details</button></div>`;
+}
+function fmtDur(ms) { const m = Math.round(ms / 60000); return Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm'; }
+function pageTrack(d) {
+  const t = findTrack(d.id); if (!t) return backBtn() + '<div class="empty">Hike not found.</div>';
+  const segs = t.segments.filter(s => s.src !== 'ignored' && s.pts.length > 1);
+  const line = joinLegs(segs.map(s => ({ pts: s.pts }))), prof = profileSync(line), len = lineLen(line), c = climb(prof);
+  const breaks = []; let acc = 0; segs.forEach((s, i) => { acc += lineLen(s.pts); if (i < segs.length - 1) breaks.push(acc); });
+  const sstats = segmentStats(prof, len, breaks);
+  const places = [...new Set(Object.entries(data.visits).filter(([, l]) => l.some(v => v.trackId === t.id)).map(([id]) => WAY2GROUP[id] || id))];
+  const hasSplit = t.segments.some(s => s.src === 'ignored' || s.src === 'manual') && t.segments.some(s => s.src === 'garmin');
+  const dur = t.start && t.end && !t.segments.some(s => s.src === 'manual') ? fmtDur(t.end - t.start) : null;
+  return `${backBtn()}
+    <div class="d-title">${esc(t.name)}</div>
+    <div class="d-sub">${fmtDate(t.date)}${t.trip ? ' · ' + esc(t.trip) : ''}</div>
+    <div class="stats">${statHTML(fmtMi(len), 'mi', 'Length')}${statHTML(fmtFt(c.gain), 'ft', 'Elev. gain')}${dur ? statHTML(dur, '', 'Time') : statHTML(estTime(len, c.gain), 'hr', 'Est. time')}${statHTML(places.length, '', 'Places')}</div>
+    ${chartHTML(prof, breaks)}
+    <div class="actions">
+      ${t.segments.some(s => s.src === 'garmin') ? actionBtn('split', 'Mark where Garmin stopped, then draw the rest', SVG.scissors) : ''}
+      ${hasSplit ? actionBtn('unsplit', 'Undo Garmin split and remove manual parts', SVG.undo) : ''}
+      ${actionBtn('gpxTrack', 'Export GPX', SVG.share)}
+      ${actionBtn('rematch', 'Re-match places', SVG.refresh)}
+      ${actionBtn('delTrack', 'Delete hike', SVG.trash)}
+    </div>
+    ${segs.length > 1 ? `<h2 class="sec">Segments</h2>${segs.map((s, i) => segHTML(s.src === 'garmin' ? 'Garmin recorded' : 'Drawn by me', s.src === 'garmin' ? '#1e88e5' : '#8e24aa', sstats[i])).join('')}` : ''}
+    <h2 class="sec">Places on this hike <span class="small muted">${places.length}</span></h2>
+    ${places.map(id => { const g = GROUPS[id], f = FEAT[id]; if (!g && !f) return ''; const k = g ? 'trail' : f.kind; return cardHTML({ title: g ? g.name : (nameOf(f) || 'Unnamed ' + KIND_INFO[k].label.toLowerCase()), icon: KIND_INFO[k].icon, sub: KIND_INFO[k].label + (f && f.ele ? ' · ' + fmtFt(f.ele) + ' ft' : ''), open: { type: 'feature', id } }); }).join('') || '<div class="empty small">No mapped places matched yet.' + (FEATS.length ? '' : ' Download map data first.') + '</div>'}
+    <h2 class="sec">Details</h2>
+    <label class="f">Name</label><input id="tName" value="${esc(t.name)}">
+    <div class="row"><div style="flex:1"><label class="f">Date</label><input type="date" id="tDate" value="${esc(t.date)}"></div><div style="flex:1"><label class="f">Trip</label><input id="tTrip" value="${esc(t.trip || '')}" placeholder="e.g. Teton Crest 2026"></div></div>
+    <label class="f">Notes</label><textarea id="tNotes" rows="3">${esc(t.notes || '')}</textarea>
+    <div class="row"><button class="btn primary" data-act="saveTrack">Save details</button></div>`;
+}
+function pagePin(d) {
+  const p = findPin(d.id); if (!p) return backBtn() + '<div class="empty">Pin not found.</div>';
+  const t = PIN_TYPES[p.type] || PIN_TYPES.other;
+  return `${backBtn()}
+    <div class="d-title">${esc(p.icon || t.icon)} ${esc(p.name || t.label)}</div>
+    <div class="d-sub">${t.label} · ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)} · drag the pin on the map to move it</div>
+    <label class="f">Name</label><input id="pName" value="${esc(p.name)}">
+    <div class="row"><div style="flex:1"><label class="f">Type</label><select id="pType">${Object.entries(PIN_TYPES).map(([k, v]) => `<option value="${k}" ${k === p.type ? 'selected' : ''}>${v.icon} ${v.label}</option>`).join('')}</select></div>
+      <div style="flex:1"><label class="f">Status</label><select id="pStatus">${[['been', 'Been here'], ['seen', 'Seen it'], ['want', 'Want to go']].map(([k, l]) => `<option value="${k}" ${p.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
+    <div class="row"><div style="flex:1"><label class="f">Icon (any emoji)</label><input id="pIcon" value="${esc(p.icon || '')}" placeholder="${t.icon}" maxlength="4"></div><div style="flex:1"><label class="f">Date</label><input type="date" id="pDate" value="${esc(p.date || '')}"></div></div>
+    <div class="row">${['⛰️', '💧', '⛺', '🥾', '📷', '🦌', '🐻', '🌼', '🍄', '🎣', '❄️', '⭐'].map(e => `<button class="btn sm" data-emoji="${e}">${e}</button>`).join('')}</div>
+    <label class="f">Color</label><div class="swatches">${[t.color, ...COLORS.filter(c => c !== t.color)].map(cl => `<button data-color="${cl}" class="${(p.color || t.color) === cl ? 'on' : ''}" style="background:${cl}"></button>`).join('')}</div>
+    <label class="f">Notes</label><textarea id="pNote" rows="4">${esc(p.note || '')}</textarea>
+    <div class="row"><button class="btn primary" data-act="savePin">Save pin</button><button class="btn danger" data-act="delPin">Delete</button></div>`;
+}
+function pageEditor() {
+  const e = editor; if (!e) return '';
+  const title = { route: e.routeId ? 'Edit route' : 'Build a route', track: 'Draw a hike', extend: 'Draw the rest of this hike' }[e.kind];
+  const help = e.kind === 'extend' ? 'Click where your manual tracking began, then keep clicking along where you went.' : 'Click the map to add points. Drag points to adjust. Click a point to remove it' + (e.kind === 'route' ? ' or end a day there.' : '.');
+  return `${backBtn()}
+    <div class="d-title">${title}</div><div class="d-sub">${help}</div>
+    ${e.kind !== 'extend' ? `<label class="f">Name</label><input id="edName" value="${esc(e.name)}">` : ''}
+    ${e.kind === 'track' ? `<label class="f">Date hiked</label><input type="date" id="edDate" value="${esc(e.date)}">` : ''}
+    <label class="toggle"><input type="checkbox" id="edSnap" ${e.snap ? 'checked' : ''}> Follow trails${GRAPH && GRAPH.lon.length ? '' : ' (download map data to enable)'}</label>
+    ${e.kind === 'route' ? `<div class="swatches" style="margin:6px 0">${COLORS.map(cl => `<button data-ecolor="${cl}" class="${e.color === cl ? 'on' : ''}" style="background:${cl}"></button>`).join('')}</div>` : ''}
+    <div id="edProfile">${editorStatsHTML()}</div>
+    <div class="row"><button class="btn" data-act="edUndo">↶ Undo point</button><button class="btn" data-act="edClear">Clear</button>${e.kind === 'route' && e.wps.length > 1 ? `<button class="btn" data-act="edDay">End day at last point</button>` : ''}</div>
+    <div class="row"><button class="btn primary" style="flex:1;padding:12px" data-act="edSave">Save ${e.kind === 'route' ? 'route' : 'hike'}</button><button class="btn" data-act="edCancel">Cancel</button></div>
+    <h3 class="sec">Points</h3>
+    ${e.wps.map((w, i) => `<div class="wp"><span class="num ${w.brk ? 'brk' : ''}">${i + 1}</span><span style="flex:1">${i === 0 ? 'Start' : w.brk ? 'End of day' : i === e.wps.length - 1 ? 'Finish' : 'Point'}${i > 0 && e.legs[i - 1] && e.legs[i - 1].off ? ' <span class="muted small">(off-trail)</span>' : ''}</span>${e.kind === 'route' && i > 0 && i < e.wps.length - 1 ? `<button class="btn sm" data-brk="${i}">${w.brk ? 'Undo day break' : 'End day'}</button>` : ''}<button class="x" data-delwp="${i}">×</button></div>`).join('') || '<div class="empty small">No points yet.</div>'}`;
+}
+function pageHistory() {
+  return `${backBtn()}<div class="d-title">Version history</div><div class="d-sub">Every version we've built together.</div>
+    ${VERSIONS.slice().reverse().map(v => `<div class="visit" style="align-items:flex-start"><div class="tx"><b>${esc(v.name)}</b> <span class="muted small">${fmtDate(v.date)}</span><ul class="history small">${v.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></div></div>`).join('')}`;
+}
+function pageSettings() {
+  const s = data.settings;
+  return `${backBtn()}<div class="d-title">Settings</div>
+    <label class="f">Hiking pace on flat ground (mph), used for time estimates</label><input type="number" id="sPace" min="0.5" max="5" step="0.1" value="${s.pace}">
+    <label class="toggle"><input type="checkbox" id="sSnap" ${s.snap !== false ? 'checked' : ''}> Route builder follows trails by default</label>
+    <div class="row"><button class="btn primary" data-act="saveSettings">Save settings</button></div>
+    <h2 class="sec">Map data</h2>
+    <p class="muted small">${FEATS.length ? `${FEATS.length.toLocaleString()} features, downloaded ${data.osm && data.osm.fetchedAt ? new Date(data.osm.fetchedAt).toLocaleString() : ''}.` : 'Not downloaded yet.'} Data © OpenStreetMap contributors (ODbL).</p>
+    <div class="row"><button class="btn" data-act="fetchAll">Re-download whole range</button><button class="btn" data-act="fetchView">Add this map view</button></div>`;
+}
+function pageHelp() {
+  return `${backBtn()}<div class="d-title">How to use Teton Atlas</div>
+  <ol class="small" style="padding-left:18px;line-height:1.7">
+  <li><b>First time:</b> menu → Fetch map data. Then menu → Save file. Saving rewrites this HTML file with all your data inside it.</li>
+  <li><b>Moving from an older version:</b> menu → Import from an older version, and pick your old Teton Atlas file.</li>
+  <li><b>Garmin hikes:</b> in Garmin Connect open an activity → ⚙ → Export to GPX, then menu → Import GPX hikes. Places you passed are logged automatically.</li>
+  <li><b>Garmin stopped early?</b> Open the hike → ✂ and click the blue line where it stopped. Then click along where you actually went.</li>
+  <li><b>Plan a route:</b> Routes → Build a new route, or the route button on the bottom bar. Click points; it follows trails. Click a point to end a day there.</li>
+  <li><b>Log without GPS:</b> Draw a hike, or open any peak, lake or trail and tap ✓ (been) or 👁 (seen).</li>
+  <li><b>Pins:</b> bottom bar → pin, then click the map. Choose an icon, color and status. Drag to move while it is open.</li>
+  <li><b>3D:</b> bottom bar → 3D. Right-drag (or Ctrl-drag) to tilt and rotate. Satellite looks best (layers button).</li>
+  <li><b>Heatmap and filters:</b> layers button → Heatmap, with year and season filters.</li>
+  <li><b>More map room:</b> the arrow on the edge of the side panel hides it; click again to bring it back.</li>
+  </ol>`;
+}
+
+// ================= Modes =================
+function setMode(m, keepEditor) {
+  if (!keepEditor && editor && m !== 'route' && m !== 'track') stopEditor(true);
+  mode = m;
+  document.querySelectorAll('#toolbar [data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  if (map) { map.getCanvas().style.cursor = m === 'browse' ? '' : 'crosshair'; if (m === 'browse') map.doubleClickZoom.enable(); else map.doubleClickZoom.disable(); }
+  if (m === 'pin') toast('Click the map to drop a pin.', 0);
+  else if (m === 'split') toast('Click the blue Garmin line where the watch stopped recording.', 0);
+  else if (m === 'browse') toast(null);
+}
+function splitAt(tid, si, lng, lat) {
+  const t = findTrack(tid); if (!t) return;
+  const s = t.segments[si]; if (!s || s.src !== 'garmin') return;
+  // Cut exactly at the clicked spot: project onto the nearest segment and insert a point there
+  const k = Math.cos(lat * Math.PI / 180);
+  let best = 0, bd = Infinity, bt = 0;
+  for (let i = 1; i < s.pts.length; i++) {
+    const a = s.pts[i - 1], b = s.pts[i], dx = (b[0] - a[0]) * k, dy = b[1] - a[1], L = dx * dx + dy * dy;
+    let u = L ? (((lng - a[0]) * k) * dx + (lat - a[1]) * dy) / L : 0; u = Math.max(0, Math.min(1, u));
+    const d = Math.hypot((a[0] + (b[0] - a[0]) * u - lng) * k, a[1] + (b[1] - a[1]) * u - lat);
+    if (d < bd) { bd = d; best = i; bt = u; }
+  }
+  const A = s.pts[best - 1], B = s.pts[best];
+  const cut = [+(A[0] + (B[0] - A[0]) * bt).toFixed(6), +(A[1] + (B[1] - A[1]) * bt).toFixed(6), A[2] != null && B[2] != null ? +(A[2] + (B[2] - A[2]) * bt).toFixed(1) : null];
+  const before = s.pts.slice(0, best).concat([cut]), after = [cut].concat(s.pts.slice(best));
+  t.segments.splice(si, 1, { src: 'garmin', pts: before }, ...(after.length > 1 ? [{ src: 'ignored', pts: after }] : []));
+  matchTrack(t); touch({ noRender: true });
+  startEditor('extend', { trackId: tid, start: [cut[0], cut[1]] });
+  toast('Garmin part ends here. Now click along where you actually went, then Save.', 6000);
+}
+function unsplit(t) {
+  const out = [];
+  for (const s of t.segments) {
+    if (s.src === 'manual') continue;
+    const last = out[out.length - 1];
+    if (s.src === 'ignored' && last) last.pts = last.pts.concat(s.pts.slice(1));
+    else out.push({ src: 'garmin', pts: s.pts.slice() });
+  }
+  t.segments = out;
+}
+
+// ================= Route preview flythrough =================
+let previewing = false;
+function previewRoute(coords) {
+  if (coords.length < 2) return;
+  if (!data.settings.terrain) set3D(true);
+  const total = lineLen(coords), pts = resample(coords, Math.max(10, total / 600)), dur = Math.min(45000, Math.max(12000, total / 1.2));
+  const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + dist(pts[i - 1][1], pts[i - 1][0], pts[i][1], pts[i][0]));
+  const at = d => { let i = cum.findIndex(c => c >= d); if (i <= 0) return pts[Math.max(0, i)]; const t = (d - cum[i - 1]) / ((cum[i] - cum[i - 1]) || 1); return [pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * t, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * t]; };
+  previewing = true; toast('Previewing route… click the map to stop.', 0);
+  let bearing = map.getBearing(), t0 = null;
+  const look = Math.min(800, total / 6);
+  const frame = ts => {
+    if (!previewing) return;
+    if (t0 === null) t0 = ts;
+    const k = Math.min(1, (ts - t0) / dur), d = k * total, p = at(d), ahead = at(Math.min(total, d + look));
+    const target = Math.atan2((ahead[0] - p[0]) * Math.cos(p[1] * Math.PI / 180), ahead[1] - p[1]) * 180 / Math.PI;
+    let diff = ((target - bearing + 540) % 360) - 180; bearing += diff * 0.04;
+    map.jumpTo({ center: p, bearing, pitch: 62, zoom: 13.6 });
+    if (k < 1) requestAnimationFrame(frame); else { previewing = false; toast('Preview finished.'); }
+  };
+  map.flyTo({ center: coords[0], zoom: 13.6, pitch: 62, duration: 1500 });
+  map.once('moveend', () => requestAnimationFrame(frame));
+}
+function stopPreview() { if (previewing) { previewing = false; toast(null); } }
+
+// ================= Layers panel =================
+function renderLayers() {
+  const s = data.settings, toggles = [['trails', 'Trails'], ['places', 'Peaks, passes, waterfalls'], ['lakes', 'Lakes'], ['tracks', 'My hikes'], ['routes', 'My routes'], ['pins', 'Pins'], ['labels', 'Labels'], ['contours', 'Contour lines (Outdoor map)'], ['hillshade', 'Hillshade'], ['heat', 'Heatmap']];
+  $('layers').innerHTML = `<h3 class="sec" style="margin-top:0">Map type</h3>
+    <div class="bases">${Object.entries(BASES).map(([k, b]) => `<button data-base="${k}" class="${(s.base || 'topo') === k ? 'on' : ''}"><i style="background:${b.sw}"></i>${b.label}</button>`).join('')}</div>
+    <h3 class="sec">Show</h3>
+    ${toggles.map(([k, l]) => `<label class="toggle"><input type="checkbox" data-layer="${k}" ${layerOn(k) ? 'checked' : ''}> ${l}</label>`).join('')}
+    <h3 class="sec">Heatmap & filters</h3>
+    <select id="heatMode"><option value="both">Heatmap: hikes + places</option><option value="tracks">Heatmap: hikes only</option><option value="places">Heatmap: places only</option></select>
+    ${filterSelects()}
+    <h3 class="sec">3D</h3>
+    <label class="toggle"><input type="checkbox" id="l3d" ${s.terrain ? 'checked' : ''}> 3D terrain</label>
+    <label class="f">Terrain exaggeration: <b id="exagV">${(+(s.exag || 1.5)).toFixed(1)}×</b></label><input type="range" id="exag" min="1" max="3" step="0.1" value="${s.exag || 1.5}" style="padding:0">
+    <h3 class="sec">Legend</h3>
+    <div class="small" style="line-height:1.9">
+      <span style="color:#d9480f">┅</span> trail · <span style="color:#82c91e">━</span> partly hiked · <span style="color:#2bb24c">━</span> hiked<br>
+      <span style="color:#1e88e5">━</span> Garmin hike · <span style="color:#8e24aa">┅</span> drawn hike<br>
+      ▲ white = not yet · <span style="color:#d62828">▲</span> summited · <span style="color:#f77f00">▲</span> seen · ◆ pass · ● waterfall</div>`;
+  $('heatMode').value = s.heatMode || 'both';
+}
+
+// ================= Events =================
+function onAction(act, el) {
+  const d = view.detail || {};
+  const t = d.type === 'track' ? findTrack(d.id) : null, r = d.type === 'route' ? findRoute(d.id) : null, p = d.type === 'pin' ? findPin(d.id) : null;
+  switch (act) {
+    case 'back': goBack(); break;
+    case 'fetchAll': fetchArea(BBOX.s, BBOX.w, BBOX.n, BBOX.e, 5).catch(e => toast('Download failed: ' + e.message + '. Check your connection and try again.', 8000)); break;
+    case 'fetchView': {
+      const b = map.getBounds();
+      if ((b.getNorth() - b.getSouth()) * (b.getEast() - b.getWest()) > 0.6) { toast('Zoom in a bit first (this view is too large).'); break; }
+      fetchArea(b.getSouth(), b.getWest(), b.getNorth(), b.getEast(), 1).catch(e => toast('Download failed: ' + e.message, 8000)); break;
+    }
+    case 'more': view.explore.limit += 200; renderSide(); break;
+    case 'newRoute': startEditor('route'); break;
+    case 'drawHike': startEditor('track'); break;
+    case 'gpx': $('gpxFile').click(); break;
+    case 'importOld': $('oldFile').click(); break;
+    case 'been': case 'seen': {
+      const mine = visitsFor(d.id).find(v => v.src === 'log' && v.status === act && v.date === today());
+      if (mine) delVisit(d.id, mine.vid); else addVisit(d.id, act, today());
+      touch(); toast(mine ? 'Removed.' : act === 'been' ? 'Logged as been, today. Change the date below if needed.' : 'Logged as seen, today.'); break;
+    }
+    case 'wish': if (data.wish[d.id]) delete data.wish[d.id]; else data.wish[d.id] = true; touch(); break;
+    case 'view3d': {
+      const c = coordsOf(d); if (!c) break;
+      if (!data.settings.terrain) set3D(true);
+      if (c.length === 1) map.flyTo({ center: c[0], zoom: 14, pitch: 70, bearing: map.getBearing() - 40, duration: 2200 });
+      else { const b = bboxOf(c); map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 80, pitch: 65, duration: 2000 }); }
+      break;
+    }
+    case 'routeOnTrail': {
+      const g = GROUPS[d.id], chain = g ? chainGroup(g) : (FEAT[d.id] || {}).coords;
+      if (!chain) { startEditor('route'); toast('Click points along the trail to build your route.'); break; }
+      startEditor('route', { start: chain[0] }); editor.name = (g ? g.name : 'Trail') + ' route'; addPoint(chain[chain.length - 1]); break;
+    }
+    case 'addVisit': addVisit(d.id, $('vStatus').value, $('vDate').value || today(), $('vNote').value.trim()); touch(); break;
+    case 'delVisit': delVisit(d.id, el.dataset.vid); touch(); break;
+    case 'saveName': {
+      const v = $('fName').value.trim();
+      for (const fid of idsOf(d.id)) { if (v) data.names[fid] = v; else delete data.names[fid]; }
+      const keep = idsOf(d.id)[0];
+      buildGroups(); touch({ noRender: true });
+      view.detail = { type: 'feature', id: WAY2GROUP[keep] || keep }; renderSide(); toast('Name saved.'); break;
+    }
+    case 'preview': previewRoute(routeLine(r)); break;
+    case 'editRoute': startEditor('route', { route: r }); break;
+    case 'gpxRoute': download(r.name + '.gpx', toGPX(r.name, [routeLine(r)]), 'application/gpx+xml'); toast('GPX downloaded. Import it into Garmin Connect as a course.'); break;
+    case 'hikedRoute': {
+      const date = prompt('Date you hiked this (YYYY-MM-DD):', today()); if (!date) break;
+      const nt = { id: uid(), name: r.name, date, trip: '', notes: 'Logged from planned route.', segments: [{ src: 'manual', pts: routeLine(r).map(q => q.slice()) }] };
+      data.tracks.push(nt); const n = matchTrack(nt).length; touch({ noRender: true }); openDetail({ type: 'track', id: nt.id }); toast(`Logged as a hike${n ? `, matched ${n} places` : ''}.`); break;
+    }
+    case 'delRoute': if (confirm('Delete this route?')) { data.routes = data.routes.filter(x => x !== r); touch({ noRender: true }); goBack(); } break;
+    case 'saveRoute': r.name = $('rName').value.trim() || r.name; r.notes = $('rNotes').value; touch(); toast('Saved.'); break;
+    case 'split': setMode('split'); break;
+    case 'unsplit': if (confirm('Undo the split? This removes the parts you drew and restores the full Garmin line.')) { unsplit(t); matchTrack(t); touch(); } break;
+    case 'gpxTrack': download(t.name + '.gpx', toGPX(t.name, t.segments.filter(s => s.src !== 'ignored').map(s => s.pts)), 'application/gpx+xml'); break;
+    case 'rematch': { const n = matchTrack(t).length; touch(); toast(`Matched ${n} places.`); break; }
+    case 'delTrack': if (confirm('Delete this hike and the visits it logged?')) { data.tracks = data.tracks.filter(x => x !== t); matchTrack({ id: t.id, segments: [] }); touch({ noRender: true }); goBack(); } break;
+    case 'saveTrack': {
+      t.name = $('tName').value.trim() || t.name; t.trip = $('tTrip').value.trim(); t.notes = $('tNotes').value;
+      const nd = $('tDate').value;
+      if (nd && nd !== t.date) { t.date = nd; for (const l of Object.values(data.visits)) for (const v of l) if (v.trackId === t.id) v.date = nd; }
+      touch(); toast('Saved.'); break;
+    }
+    case 'savePin': {
+      p.name = $('pName').value.trim(); p.type = $('pType').value; p.status = $('pStatus').value; p.icon = $('pIcon').value.trim(); p.date = $('pDate').value; p.note = $('pNote').value;
+      touch(); toast('Pin saved.'); break;
+    }
+    case 'delPin': if (confirm('Delete this pin?')) { data.pins = data.pins.filter(x => x !== p); selectedPinId = null; touch({ noRender: true }); goBack(); } break;
+    case 'edUndo': undoPoint(); break;
+    case 'edClear': editor.wps = []; editor.legs = []; redrawEditor(); renderSide(); break;
+    case 'edDay': { const w = editor.wps[editor.wps.length - 1]; w.brk = !w.brk; redrawEditor(); renderSide(); break; }
+    case 'edSave': if (editor && $('edName')) editor.name = $('edName').value; saveEditor(); break;
+    case 'edCancel': { const back = editor && editor.kind === 'extend' ? { type: 'track', id: editor.trackId } : null; stopEditor(); view.detail = back; renderSide(); break; }
+    case 'saveSettings': data.settings.pace = Math.max(0.5, Math.min(5, +$('sPace').value || 2)); data.settings.snap = $('sSnap').checked; touch(); toast('Settings saved.'); break;
+  }
+}
+$('side').addEventListener('click', e => {
+  const a = e.target.closest('[data-act]'); if (a) { e.preventDefault(); onAction(a.dataset.act, a); return; }
+  const o = e.target.closest('[data-open]');
+  if (o) { e.preventDefault(); const d = JSON.parse(o.dataset.open); openDetail(d); const c = coordsOf(d); if (c) { if (c.length === 1) map.flyTo({ center: c[0], zoom: Math.max(map.getZoom(), 13.5), duration: 900 }); else fitTo(c); } return; }
+  const ch = e.target.closest('[data-chip]'); if (ch) { view.explore.chip = ch.dataset.chip; view.explore.limit = 120; renderSide(); return; }
+  const cl = e.target.closest('[data-color]');
+  if (cl) {
+    const d = view.detail;
+    if (d.type === 'route') { findRoute(d.id).color = cl.dataset.color; touch(); }
+    if (d.type === 'pin') { findPin(d.id).color = cl.dataset.color; touch(); }
+    return;
+  }
+  const ec = e.target.closest('[data-ecolor]'); if (ec) { editor.color = ec.dataset.ecolor; redrawEditor(); renderSide(); return; }
+  const em = e.target.closest('[data-emoji]'); if (em) { $('pIcon').value = em.dataset.emoji; return; }
+  const bk = e.target.closest('[data-brk]'); if (bk) { const w = editor.wps[+bk.dataset.brk]; w.brk = !w.brk; redrawEditor(); renderSide(); return; }
+  const dw = e.target.closest('[data-delwp]'); if (dw) { removePoint(+dw.dataset.delwp); return; }
+});
+$('side').addEventListener('change', e => {
+  const id = e.target.id;
+  if (id === 'exSt') { view.explore.st = e.target.value; renderSide(); }
+  if (id === 'exSort') { view.explore.sort = e.target.value; renderSide(); }
+  if (id === 'edSnap') { editor.snap = e.target.checked; }
+  if (id === 'edName' && editor) editor.name = e.target.value;
+  if (id === 'edDate' && editor) editor.date = e.target.value;
+  if (e.target.dataset.filter) setFilter(e.target.dataset.filter, e.target.value);
+});
+document.addEventListener('change', e => { if (e.target.id === 'exSt' || e.target.id === 'exSort') { /* restore selected value after re-render */ } });
+function setFilter(k, v) { filter[k] = v; updateSources(); renderSide(); if (!$('layers').hidden) renderLayers(); }
+$('q').addEventListener('input', () => { view.detail = view.detail && view.detail.type === 'editor' ? view.detail : null; renderSide(); });
+document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => { $('q').value = ''; setTab(b.dataset.tab); }));
+document.querySelectorAll('#toolbar [data-mode]').forEach(b => b.addEventListener('click', () => {
+  const m = b.dataset.mode;
+  if (m === 'route') startEditor('route');
+  else if (m === 'track') startEditor('track');
+  else { if (editor) { stopEditor(true); view.detail = null; renderSide(); } setMode(m); }
+}));
+$('btn3d').addEventListener('click', () => { set3D(!data.settings.terrain); touch({ noRender: true }); if (!$('layers').hidden) renderLayers(); });
+$('menuBtn').addEventListener('click', e => { e.stopPropagation(); $('layers').hidden = true; $('menu').hidden = !$('menu').hidden; });
+$('layersBtn').addEventListener('click', e => { e.stopPropagation(); $('menu').hidden = true; const L = $('layers'); L.hidden = !L.hidden; if (!L.hidden) renderLayers(); });
+document.addEventListener('click', e => { if (!e.target.closest('#menu,#menuBtn')) $('menu').hidden = true; if (!e.target.closest('#layers,#layersBtn')) $('layers').hidden = true; });
+$('menu').addEventListener('click', e => {
+  const b = e.target.closest('[data-menu]'); if (!b) return;
+  $('menu').hidden = true;
+  const m = b.dataset.menu;
+  if (m === 'save') saveFile();
+  if (m === 'importOld') $('oldFile').click();
+  if (m === 'importJson') $('jsonFile').click();
+  if (m === 'gpx') $('gpxFile').click();
+  if (m === 'fetchAll' || m === 'fetchView') onAction(m);
+  if (m === 'exportJson') { const { osm, ...rest } = data; download(`Teton Atlas backup ${today()}.json`, JSON.stringify(rest, null, 1), 'application/json'); }
+  if (['history', 'settings', 'help'].includes(m)) { if (editor) stopEditor(); openDetail({ type: m }); }
+});
+$('layers').addEventListener('change', e => {
+  const el = e.target;
+  if (el.dataset.layer) { data.settings.layers = Object.assign({}, data.settings.layers, { [el.dataset.layer]: el.checked }); applyLayerVisibility(); touch({ noRender: true }); }
+  if (el.id === 'heatMode') { data.settings.heatMode = el.value; updateSources(); touch({ noRender: true }); }
+  if (el.dataset.filter) setFilter(el.dataset.filter, el.value);
+  if (el.id === 'l3d') { set3D(el.checked); touch({ noRender: true }); }
+});
+$('layers').addEventListener('input', e => {
+  if (e.target.id === 'exag') { data.settings.exag = +e.target.value; $('exagV').textContent = (+e.target.value).toFixed(1) + '×'; if (data.settings.terrain) map.setTerrain({ source: 'dem', exaggeration: +e.target.value }); }
+});
+$('layers').addEventListener('click', e => { const b = e.target.closest('[data-base]'); if (b) { setBase(b.dataset.base); renderLayers(); touch({ noRender: true }); } });
+$('gpxFile').addEventListener('change', async e => { const files = [...e.target.files]; e.target.value = ''; if (files.length) await importGPXFiles(files); });
+$('oldFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try { const n = mergeData(extractEmbedded(await f.text())); for (const t of data.tracks) matchTrack(t); touch(); toast(`Imported ${n} items from ${f.name}.`, 6000); }
+  catch (err) { toast('Could not import: ' + err.message, 7000); }
+});
+$('jsonFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try { const n = mergeData(JSON.parse(await f.text())); touch(); toast(`Imported ${n} items.`); } catch (err) { toast('Could not import: ' + err.message, 7000); }
+});
+document.addEventListener('keydown', e => {
+  const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+  if (e.key === 'Escape') { stopPreview(); if (mode === 'pin' || mode === 'split') setMode('browse'); }
+  if (!typing && editor && (e.key === 'Backspace' || (e.key === 'z' && (e.metaKey || e.ctrlKey)))) { e.preventDefault(); undoPoint(); }
+  if (!typing && (e.key === 's') && (e.metaKey || e.ctrlKey)) { e.preventDefault(); saveFile(); }
+});
+window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+// ================= Collapsible side panel =================
+function setCollapsed(on) {
+  document.body.classList.toggle('collapsed', on);
+  $('collapseBtn').title = on ? 'Show panel' : 'Hide panel';
+  data.settings.collapsed = on;
+  if (map) { const t0 = performance.now(); const tick = () => { map.resize(); if (performance.now() - t0 < 320) requestAnimationFrame(tick); }; tick(); }
+}
+$('collapseBtn').addEventListener('click', () => setCollapsed(!document.body.classList.contains('collapsed')));
+
+// ================= Map init =================
+const HIT = ['poi', 'route-line', 'track-hit', 'trail-hit', 'lake-fill'];
+function initMap() {
+  map = new maplibregl.Map({ container: 'map', style: buildStyle(), center: [-110.80, 43.74], zoom: 10.3, maxPitch: 85, hash: true, attributionControl: { compact: true } });
+  map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
+  map.addControl(new maplibregl.ScaleControl({ unit: 'imperial' }), 'bottom-left');
+  map.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true } }), 'bottom-right');
+  // Overlays (trails, routes, pins...) are added as soon as the style itself is ready. Waiting for the
+  // map's 'load' event is fragile: it only fires once every base-map tile has arrived, so a slow or failing
+  // vector-tile request would leave the map without any of your data on it.
+  let overlaysDone = false;
+  const startOverlays = () => {
+    if (overlaysDone) return; overlaysDone = true;
+    try { addOverlays(); } catch (e) { console.error('Overlay setup failed', e); }
+    mapReady = true;
+    try { if (data.settings.terrain) set3D(true); } catch (e) { console.warn(e); }
+    try { updateSources(); } catch (e) { console.error(e); }
+  };
+  map.on('style.load', startOverlays);
+  map.on('load', () => {
+    startOverlays();
+    try { addContours(); applyLayerVisibility(); } catch (e) { console.warn('Contours unavailable', e); }
+  });
+  setTimeout(() => { if (!overlaysDone && map.isStyleLoaded()) startOverlays(); }, 3000);
+  map.on('mousedown', stopPreview); map.on('wheel', stopPreview);
+  map.on('mousemove', e => {
+    if (!mapReady || mode !== 'browse') return;
+    const hit = map.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: HIT.filter(l => map.getLayer(l)) });
+    map.getCanvas().style.cursor = hit.length ? 'pointer' : '';
+  });
+  map.on('click', e => {
+    if (!mapReady) return;
+    const ll = [e.lngLat.lng, e.lngLat.lat];
+    if (mode === 'pin') {
+      const p = { id: uid(), lon: +ll[0].toFixed(6), lat: +ll[1].toFixed(6), name: '', type: 'other', status: 'been', note: '', date: today(), icon: '', color: '' };
+      data.pins.push(p); setMode('browse'); touch({ noRender: true }); openDetail({ type: 'pin', id: p.id });
+      elevations([ll]).then(el => { if (el[0] != null && !p.note) { p.note = `Elevation about ${fmtFt(el[0])} ft.`; touch({ noRender: true }); if (view.detail && view.detail.id === p.id) renderSide(); } });
+      return;
+    }
+    if (editor) { addPoint(ll); return; }
+    const box = [[e.point.x - 7, e.point.y - 7], [e.point.x + 7, e.point.y + 7]];
+    if (mode === 'split') {
+      const h = map.queryRenderedFeatures(box, { layers: ['track-garmin'] });
+      if (h.length) splitAt(h[0].properties.tid, +h[0].properties.si, ll[0], ll[1]); else toast('Click right on a blue Garmin line.', 3000);
+      return;
+    }
+    for (const l of HIT) {
+      if (!map.getLayer(l) || map.getLayoutProperty(l, 'visibility') === 'none') continue;
+      const h = map.queryRenderedFeatures(box, { layers: [l] }); if (!h.length) continue;
+      const pr = h[0].properties;
+      if (l === 'route-line') return openDetail({ type: 'route', id: pr.rid });
+      if (l === 'track-hit') return openDetail({ type: 'track', id: pr.tid });
+      if (l === 'trail-hit') return openDetail({ type: 'feature', id: WAY2GROUP[pr.id] || pr.id });
+      return openDetail({ type: 'feature', id: pr.id });
+    }
+    if (view.detail && view.detail.type !== 'editor') { view.detail = null; viewStack = []; selectedPinId = null; renderSide(); updateSources(); }
+  });
+}
+
+// ================= Startup =================
+(async function start() {
+  try {
+    const local = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+    if (local && local.data && (local.savedAt || 0) > (data.editedAt || 0)) {
+      const osm = data.osm; data = normalize(Object.assign({}, local.data, { osm })); dirty = true;
+      setTimeout(() => toast('Restored your latest changes from this browser. Save the file to keep them in it.', 7000), 800);
+    }
+  } catch (e) { /* ignore */ }
+  if (!(data.osm && data.osm.features && data.osm.features.length)) { const cached = await idbGet('osm'); if (cached && cached.features) data.osm = cached; }
+  indexFeatures();
+  if (window.maplibregl) initMap(); else toast('The map engine could not load. Connect to the internet and reload.', 0);
+  if (data.settings.collapsed) setCollapsed(true);
+  updateSaveState(); renderSide();
+  if (!FEATS.length) setTimeout(() => toast('No trail data in this file yet. Open the menu (top right) and choose "Download trails & places".', 12000), 1500);
+})();
+</script>
+</body>
+</html>
