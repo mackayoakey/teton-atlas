@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Teton Atlas V5</title>
+<title>Teton Atlas V7</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#1f5e2c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Teton Atlas">
@@ -184,7 +184,7 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 <aside id="side">
   <header>
     <svg width="34" height="34" viewBox="0 0 34 34"><rect width="34" height="34" rx="9" fill="#1f5e2c"/><path d="M4 26 L13 12 L16 16 L20 7 L30 26 Z" fill="#fff"/><path d="M20 7 L17.5 12 L19.5 11 L21.5 13 Z" fill="#aef07f"/></svg>
-    <h1>Teton Atlas</h1><span class="chip-v">V6</span>
+    <h1>Teton Atlas</h1><span class="chip-v">V7</span>
   </header>
   <div class="search">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b6f6b" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
@@ -248,7 +248,7 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V6';
+const APP_VERSION = 'V7';
 const BBOX = { s: 43.40, w: -111.25, n: 44.15, e: -110.50 }; // whole Teton Range, WY + ID sides
 const OVERPASS_URLS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
@@ -332,7 +332,10 @@ const VERSIONS = [
     'Layers → "Color peaks & lakes by last visit" (off by default): green within a year, yellow 1–3 years, orange older, grey never been.',
     'Photos: choose a size in Settings (800, 1200 or 1600 px) and shrink the photos you already have to save space.',
     'Offline terrain is also used for contour lines, so contours work offline once terrain is saved.',
-    'Menu → Map view as PDF opens the print dialog with the map image; choose "Save as PDF".'] }
+    'Menu → Map view as PDF opens the print dialog with the map image; choose "Save as PDF".'] },
+  { name: 'Teton Atlas V7', date: '2026-11-16', notes: [
+    'New app icon: the Tetons, cropped from your photo. Home-screen icons on iPhone and desktop use the new PNG files.',
+    'Under the hood: the offline cache is updated so the new icon and files load on the next visit.'] }
 ];
 
 // ================= State =================
