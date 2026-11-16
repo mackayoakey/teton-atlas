@@ -42,6 +42,16 @@ body.collapsed #toolbar,body.collapsed #toast{left:50%}
 .photos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
 .ph{position:relative}
 .ph img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;display:block}
+.banner{margin:0 16px 8px;background:#fff4e5;color:#7a3e00;border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center;font-size:13px}
+.banner .btn{flex:none}
+.pbar{height:6px;background:var(--soft);border-radius:4px;overflow:hidden;margin-top:5px}
+.pbar.big{height:10px;margin:0 0 10px}
+.pbar i{display:block;height:100%;background:var(--green);border-radius:4px}
+.cardx{display:flex;align-items:center}
+.cardx .card{flex:1;min-width:0}
+.yrsel{cursor:pointer;border-radius:8px}
+.yrsel.on{background:var(--soft)}
+.yrsel.on span:first-child{font-weight:800}
 @media print{
   #map,#toolbar,#menu,#layers,#menuBtn,#layersBtn,#collapseBtn,#toast,nav.tabs,.search,#side header,.actions,.back,.btn,.x,.ph-x,.chips,.photos,.stats .muted{display:none!important}
   #side{position:static!important;width:auto!important;height:auto!important;border:0!important;transform:none!important;display:block!important;background:#fff}
@@ -104,7 +114,7 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 .stat b small{font-size:15px;font-weight:600;margin-left:3px}
 .stat div{color:var(--muted);font-size:13px;margin-top:2px}
 .chart{position:relative;margin:4px 0 0}
-.chart svg{width:100%;height:190px;display:block;overflow:visible}
+.chart svg{width:100%;height:190px;display:block;overflow:visible;touch-action:pan-y}
 .chart .tip{position:absolute;top:-6px;background:var(--pill);color:#fff;font-size:12px;border-radius:8px;padding:3px 8px;pointer-events:none;white-space:nowrap;transform:translateX(-50%)}
 .seg{display:flex;gap:12px;padding:12px 0}
 .seg i{flex:none;width:5px;border-radius:4px}
@@ -227,6 +237,7 @@ details.set[open]{padding-bottom:6px}
     <svg width="34" height="34" viewBox="0 0 34 34"><rect width="34" height="34" rx="9" fill="#1f5e2c"/><path d="M4 26 L13 12 L16 16 L20 7 L30 26 Z" fill="#fff"/><path d="M20 7 L17.5 12 L19.5 11 L21.5 13 Z" fill="#aef07f"/></svg>
     <h1>Teton Atlas</h1><span class="chip-v">V11</span>
   </header>
+  <div id="syncBanner" class="banner" hidden></div>
   <div class="search">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b6f6b" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
     <input id="q" placeholder="Search trails, peaks, lakes, routes" autocomplete="off">
@@ -258,6 +269,7 @@ details.set[open]{padding-bottom:6px}
   <button data-menu="fetchAll"><span>Download trails &amp; places (whole range)</span></button>
   <button data-menu="fetchView"><span>Add trails &amp; places for this view</span></button>
   <hr>
+  <button data-menu="newArea"><span>Draw an area<span class="sub">Basins, meadows and other off-trail places</span></span></button>
   <button data-menu="ideas"><span>Ideas (Sooner &amp; Later)</span></button>
   <button data-menu="exportJson"><span>Export full backup (JSON)<span class="sub">Includes photos, ideas and ratings</span></span></button>
   <button data-menu="pngMap"><span>Export map view (PNG)</span></button>
@@ -316,6 +328,10 @@ const PIN_TYPES = {
   wildlife: { label: 'Wildlife', icon: '🦌', color: '#f57c00' },
   hazard: { label: 'Hazard', icon: '⚠️', color: '#fbc02d' },
   other: { label: 'Other', icon: '📍', color: '#455a64' }
+};
+const AREA_TYPES = {
+  basin: { label: 'Basin', icon: '🏞️' }, meadow: { label: 'Meadow', icon: '🌼' }, cirque: { label: 'Cirque', icon: '⛰️' },
+  forest: { label: 'Forest', icon: '🌲' }, camp: { label: 'Camp zone', icon: '⛺' }, other: { label: 'Other area', icon: '🟩' }
 };
 const COLORS = ['#ff6d00', '#d62828', '#8e24aa', '#1e88e5', '#00897b', '#2e7d32', '#6d4c41', '#111111'];
 const DAY_COLORS = ['#9be15d', '#72d6e0', '#7b6cf6', '#f6a76c', '#f06292', '#ffd54f', '#4db6ac'];
@@ -400,7 +416,7 @@ const VERSIONS = [
 
 // ================= State =================
 const ORIGINAL_HTML = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
-const EMPTY = () => ({ version: 3, editedAt: 0, visits: {}, names: {}, tracks: [], pins: [], routes: [], wish: {}, settings: {}, ideas: { sooner: [], later: [] }, photos: {}, yds: {}, osm: null });
+const EMPTY = () => ({ version: 3, editedAt: 0, visits: {}, names: {}, tracks: [], pins: [], routes: [], wish: {}, settings: {}, ideas: { sooner: [], later: [] }, photos: {}, yds: {}, areas: [], peakLists: [], osm: null });
 let data = normalize(JSON.parse(document.getElementById('embedded-data').textContent || '{}'));
 let dirty = false, fileHandle = null, map = null, mapReady = false;
 let mode = 'browse', view = { tab: 'explore' }, viewStack = [];
@@ -415,12 +431,14 @@ function normalize(d) {
   for (const k of ['visits', 'names', 'wish', 'settings', 'photos', 'yds']) if (!d[k] || typeof d[k] !== 'object') d[k] = {};
   if (!d.ideas || typeof d.ideas !== 'object') d.ideas = {};
   for (const k of ['sooner', 'later']) if (!Array.isArray(d.ideas[k])) d.ideas[k] = [];
-  for (const k of ['tracks', 'pins', 'routes']) if (!Array.isArray(d[k])) d[k] = [];
+  for (const k of ['tracks', 'pins', 'routes', 'areas', 'peakLists']) if (!Array.isArray(d[k])) d[k] = [];
   for (const list of Object.values(d.visits)) for (const v of list) { if (!v.status) v.status = 'been'; if (!v.vid) v.vid = uid(); }
   for (const p of d.pins) {
     if (!PIN_TYPES[p.type]) p.type = ({ peak: 'summit', viewpoint: 'view' })[p.type] || (p.type === 'lake' || p.type === 'camp' || p.type === 'trailhead' ? p.type : 'other');
     if (!p.status) p.status = 'been';
   }
+  for (const a of d.areas) { if (!a.id) a.id = uid(); if (!Array.isArray(a.ring)) a.ring = []; if (!AREA_TYPES[a.type]) a.type = 'other'; if (a.note == null) a.note = ''; if (a.name == null) a.name = ''; }
+  for (const l of d.peakLists) { if (!l.id) l.id = uid(); if (!Array.isArray(l.ids)) l.ids = []; if (!l.name) l.name = 'My peak list'; }
   for (const t of d.tracks) {
     if (!t.notes) t.notes = '';
     for (const s of t.segments || []) s.pts = s.pts || [];
@@ -463,6 +481,14 @@ function pointInRing(x, y, ring) {
   return inside;
 }
 function ringCentroid(ring) { let x = 0, y = 0; for (const p of ring) { x += p[0]; y += p[1]; } return [x / ring.length, y / ring.length]; }
+const closeRing = r => r.length && (r[0][0] !== r[r.length - 1][0] || r[0][1] !== r[r.length - 1][1]) ? r.concat([r[0]]) : r;
+function ringAcres(r) {
+  if (r.length < 3) return 0;
+  const lat0 = r.reduce((a, q) => a + q[1], 0) / r.length, kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 110540, o = r[0];
+  let s = 0;
+  for (let i = 0; i < r.length; i++) { const a = r[i], b = r[(i + 1) % r.length]; s += ((a[0] - o[0]) * kx) * ((b[1] - o[1]) * ky) - ((b[0] - o[0]) * kx) * ((a[1] - o[1]) * ky); }
+  return Math.abs(s) / 2 / 4046.86;
+}
 // Resample a polyline every `step` metres (keeps 3rd value e.g. elevation, interpolated)
 function resample(coords, step) {
   if (coords.length < 2) return coords.slice();
@@ -586,6 +612,7 @@ function climb(prof, from, to) {
   }
   return { gain, loss, min, max };
 }
+function estHours(meters, gainM) { const pace = +data.settings.pace || 2; return meters / M_PER_MI / pace + gainM * FT_PER_M / 2000; }
 function estTime(meters, gainM) {
   const pace = +data.settings.pace || 2;
   const h = meters / M_PER_MI / pace + gainM * FT_PER_M / 2000;
@@ -849,7 +876,7 @@ function matchTrack(t) {
     if (kept.length) data.visits[id] = kept; else delete data.visits[id];
   }
   const samples = trackSamples(t);
-  if (samples.length < 2 || !FEATS.length) return [];
+  if (samples.length < 2) return [];
   const near = sampleGrid(samples), tb = bboxOf(samples), hits = [];
   const add = (id, extra) => { (data.visits[id] = data.visits[id] || []).push(Object.assign({ vid: uid(), date: t.date, src: 'track', trackId: t.id, status: 'been', note: '' }, extra)); hits.push(id); };
   for (const f of FEATS) {
@@ -870,8 +897,17 @@ function matchTrack(t) {
       if (ok) add(f.id);
     }
   }
+  // Areas you drew: counted when the track spends at least ~45 m inside the shape
+  for (const a of data.areas) {
+    if (a.ring.length < 3) continue;
+    const ab = bboxOf(a.ring); if (!bboxHit(ab, tb, 0.0005)) continue;
+    let inside = 0;
+    for (const s of samples) if (s[0] >= ab[0] && s[0] <= ab[2] && s[1] >= ab[1] && s[1] <= ab[3] && pointInRing(s[0], s[1], a.ring)) inside++;
+    if (inside >= 3) add(a.id, { cov: 1 });
+  }
   return hits;
 }
+function rematchAll() { let n = 0; for (const t of data.tracks) if (!t.planned && t.approved !== false) n += matchTrack(t).length; return n; }
 
 // ================= GPX =================
 function parseGPX(text, filename) {
@@ -905,10 +941,42 @@ function parseGPX(text, filename) {
   if (!out.length) for (const rte of kids(doc, 'rte')) make(rte, [kids(rte, 'rtept')]);
   return out;
 }
-function toGPX(name, lines) {
+// lines: arrays of [lon, lat, ele]. wpts: optional waypoints. names: optional, one track per line (for day-by-day files).
+function toGPX(name, lines, wpts, names) {
   const x = s => esc(s);
-  const segs = lines.map(l => '<trkseg>' + l.map(p => `<trkpt lat="${p[1]}" lon="${p[0]}">${p[2] != null ? `<ele>${(+p[2]).toFixed(1)}</ele>` : ''}</trkpt>`).join('') + '</trkseg>').join('');
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Teton Atlas" xmlns="http://www.topografix.com/GPX/1/1"><metadata><name>${x(name)}</name></metadata><trk><name>${x(name)}</name>${segs}</trk></gpx>`;
+  const seg = l => '<trkseg>' + l.map(p => `<trkpt lat="${p[1]}" lon="${p[0]}">${p[2] != null ? `<ele>${(+p[2]).toFixed(1)}</ele>` : ''}</trkpt>`).join('') + '</trkseg>';
+  const wp = (wpts || []).map(q => `<wpt lat="${q.lat}" lon="${q.lon}">${q.ele != null ? `<ele>${(+q.ele).toFixed(1)}</ele>` : ''}<name>${x(q.name)}</name>${q.sym ? `<sym>${x(q.sym)}</sym>` : ''}</wpt>`).join('');
+  const trks = names ? lines.map((l, i) => `<trk><name>${x(names[i])}</name>${seg(l)}</trk>`).join('') : `<trk><name>${x(name)}</name>${lines.map(seg).join('')}</trk>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Teton Atlas" xmlns="http://www.topografix.com/GPX/1/1"><metadata><name>${x(name)}</name></metadata>${wp}${trks}</gpx>`;
+}
+// Waypoints for a trip file: your camps, plus named peaks and passes the line goes right over
+function tripWaypoints(lines, campPins) {
+  const out = (campPins || []).map(q => ({ lat: q.lat, lon: q.lon, name: q.name || 'Camp', sym: 'Campground' }));
+  const pts = lines.flatMap(l => resample(l, 15));
+  if (pts.length < 2 || !FEATS.length) return out;
+  const near = sampleGrid(pts), tb = bboxOf(pts);
+  for (const f of FEATS) {
+    if (!f.coord || (f.kind !== 'peak' && f.kind !== 'pass') || !nameOf(f)) continue;
+    if (f.coord[0] < tb[0] - 0.002 || f.coord[0] > tb[2] + 0.002 || f.coord[1] < tb[1] - 0.002 || f.coord[1] > tb[3] + 0.002) continue;
+    if (near(f.coord[0], f.coord[1], f.kind === 'pass' ? 60 : 80)) out.push({ lat: f.coord[1], lon: f.coord[0], ele: f.ele, name: nameOf(f), sym: f.kind === 'peak' ? 'Summit' : 'Flag, Blue' });
+  }
+  return out;
+}
+// A route's days as separate lines (split where you ended a day)
+function routeDays(r) {
+  const days = []; let cur = [];
+  (r.legs || []).forEach((l, i) => { cur = cur.concat(l.pts.map(q => q.slice())); if (r.wps[i + 1] && r.wps[i + 1].brk && i < r.legs.length - 1) { days.push(cur); cur = []; } });
+  if (cur.length) days.push(cur);
+  return days;
+}
+function plannedGPX() {
+  const lines = [], names = [], w = [], seen = new Set();
+  for (const t of plannedList()) {
+    const segs = t.segments.filter(s => s.src !== 'ignored' && s.pts.length > 1);
+    segs.forEach((s, i) => { lines.push(s.pts); names.push(segs.length > 1 ? `${t.name} - Day ${i + 1}` : t.name); });
+    for (const q of tripWaypoints(segs.map(s => s.pts), (t.camps || []).map(findPin).filter(Boolean))) { const k = q.name + q.lat + q.lon; if (!seen.has(k)) { seen.add(k); w.push(q); } }
+  }
+  return { lines, names, w };
 }
 function download(name, text, type) {
   const a = document.createElement('a');
@@ -1015,7 +1083,7 @@ async function saveFile() {
 function mergeData(inc) {
   inc = normalize(inc);
   let n = 0;
-  for (const key of ['tracks', 'pins', 'routes']) {
+  for (const key of ['tracks', 'pins', 'routes', 'areas', 'peakLists']) {
     const have = new Set(data[key].map(x => x.id));
     for (const x of inc[key]) if (!have.has(x.id)) { data[key].push(x); n++; }
   }
@@ -1147,10 +1215,12 @@ function addOverlays() {
   // Range boundary: the Grand Teton NP outline once loaded, otherwise the BBOX rectangle
   map.addSource('boundary', { type: 'geojson', data: boundaryFC() });
   map.addLayer({ id: 'boundary-line', type: 'line', source: 'boundary', layout: { visibility: layerOn('boundary') ? 'visible' : 'none' }, paint: { 'line-color': '#7b1fa2', 'line-width': 2, 'line-dasharray': [4, 2] } });
-  for (const id of ['trails', 'trail-text', 'lakes', 'lake-pts', 'pois', 'poi-text', 'tracks', 'routes', 'heat', 'edit', 'sel', 'hover']) map.addSource(id, { type: 'geojson', data: fc([]) });
+  for (const id of ['trails', 'trail-text', 'lakes', 'lake-pts', 'pois', 'poi-text', 'tracks', 'routes', 'heat', 'edit', 'sel', 'hover', 'areas', 'area-text', 'areaedit', 'listpts']) map.addSource(id, { type: 'geojson', data: fc([]) });
   const halo = { 'text-color': '#1b1b1b', 'text-halo-color': '#ffffff', 'text-halo-width': 1.6 };
   map.addLayer({ id: 'lake-fill', type: 'fill', source: 'lakes', paint: { 'fill-color': LAKE_FILL_EXPR, 'fill-opacity': ['match', ['get', 'st'], 'none', 0.25, 0.45] } });
   map.addLayer({ id: 'lake-line', type: 'line', source: 'lakes', paint: { 'line-color': ['match', ['get', 'st'], 'been', '#1b7a34', 'seen', '#d97706', '#2b7bbd'], 'line-width': ['match', ['get', 'st'], 'none', 1, 2] } });
+  map.addLayer({ id: 'area-fill', type: 'fill', source: 'areas', paint: { 'fill-color': ['match', ['get', 'st'], 'been', '#2e7d32', 'seen', '#f4a261', '#7cb342'], 'fill-opacity': ['match', ['get', 'st'], 'none', 0.14, 0.28] } });
+  map.addLayer({ id: 'area-line', type: 'line', source: 'areas', paint: { 'line-color': ['match', ['get', 'st'], 'been', '#1b5e20', 'seen', '#d97706', '#558b2f'], 'line-width': 2, 'line-dasharray': [3, 1.5] } });
   map.addLayer({ id: 'heat-layer', type: 'heatmap', source: 'heat', layout: { visibility: layerOn('heat') ? 'visible' : 'none' }, paint: {
     'heatmap-weight': ['get', 'w'], 'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 8, 0.35, 12, 0.6, 16, 1],
     'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 8, 9, 12, 22, 14, 34, 16, 60],
@@ -1177,6 +1247,9 @@ function addOverlays() {
   map.addLayer({ id: 'edit-case', type: 'line', source: 'edit', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 8 } });
   map.addLayer({ id: 'edit-line', type: 'line', source: 'edit', filter: ['!', ['get', 'off']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': 4.5 } });
   map.addLayer({ id: 'edit-off', type: 'line', source: 'edit', filter: ['get', 'off'], paint: { 'line-color': ['get', 'color'], 'line-width': 4.5, 'line-dasharray': [1.5, 1.2] } });
+  map.addLayer({ id: 'areaedit-fill', type: 'fill', source: 'areaedit', filter: ['==', ['get', 'k'], 'fill'], paint: { 'fill-color': '#7cb342', 'fill-opacity': 0.3 } });
+  map.addLayer({ id: 'areaedit-line', type: 'line', source: 'areaedit', filter: ['==', ['get', 'k'], 'line'], paint: { 'line-color': '#33691e', 'line-width': 3 } });
+  map.addLayer({ id: 'list-ring', type: 'circle', source: 'listpts', paint: { 'circle-radius': 15, 'circle-color': 'rgba(30,136,229,0.14)', 'circle-stroke-color': '#1e88e5', 'circle-stroke-width': 3 } });
   map.addLayer({ id: 'poi-rec', type: 'circle', source: 'pois', layout: { visibility: 'none' }, paint: { 'circle-radius': 15, 'circle-color': RC_COLORS, 'circle-opacity': 0.55 } });
   map.addLayer({ id: 'poi', type: 'symbol', source: 'pois', layout: {
     'icon-image': ['concat', ['get', 'kind'], '-', ['get', 'st']], 'icon-size': ['interpolate', ['linear'], ['zoom'], 9, 0.85, 14, 1.3],
@@ -1185,12 +1258,13 @@ function addOverlays() {
     'text-field': POI_LABEL, 'text-font': FONT, 'text-size': 12, 'text-offset': [0, 1.0], 'text-anchor': 'top', 'text-optional': true, 'symbol-sort-key': ['-', 0, ['get', 'ele']] }, paint: halo });
   map.addLayer({ id: 'lake-label', type: 'symbol', source: 'lake-pts', minzoom: 11, layout: { 'text-field': ['get', 'label'], 'text-font': FONT, 'text-size': 12 }, paint: { 'text-color': '#0d47a1', 'text-halo-color': '#ffffff', 'text-halo-width': 1.4 } });
   map.addLayer({ id: 'trail-label', type: 'symbol', source: 'trail-text', minzoom: 12.5, layout: { 'symbol-placement': 'line', 'text-field': ['get', 'label'], 'text-font': FONT, 'text-size': 11.5 }, paint: halo });
+  map.addLayer({ id: 'area-label', type: 'symbol', source: 'area-text', minzoom: 11, layout: { 'text-field': ['get', 'label'], 'text-font': FONT_IT, 'text-size': 12 }, paint: { 'text-color': '#33691e', 'text-halo-color': '#ffffff', 'text-halo-width': 1.4 } });
   map.addLayer({ id: 'hover-pt', type: 'circle', source: 'hover', paint: { 'circle-radius': 7, 'circle-color': '#151515', 'circle-stroke-color': '#aef07f', 'circle-stroke-width': 3 } });
   applyLayerVisibility();
 }
 const LAYER_GROUPS = {
   trails: ['trail-line', 'trail-done', 'trail-hit'], places: ['poi', 'poi-label'], lakes: ['lake-fill', 'lake-line'], tracks: ['track-garmin', 'track-manual', 'track-ignored', 'track-planned', 'track-pending', 'track-hit'],
-  routes: ['route-line'], labels: ['trail-label', 'lake-label', 'poi-label'], heat: ['heat-layer']
+  routes: ['route-line'], labels: ['trail-label', 'lake-label', 'poi-label', 'area-label'], heat: ['heat-layer'], areas: ['area-fill', 'area-line', 'area-label']
 };
 function applyLayerVisibility() {
   if (!mapReady && !map.getLayer('poi')) return;
@@ -1244,6 +1318,12 @@ function updateSources() {
       poiF.push({ type: 'Feature', properties: { id: f.id, kind: f.kind, st: statusOf(f.id) || 'none', rc: rcOf(f.id), ele: f.ele || 0, label: f.kind === 'peak' ? [nm, ft].filter(Boolean).join('\n') : nm }, geometry: { type: 'Point', coordinates: f.coord } });
     }
   }
+  const areaF = [], areaT = [];
+  for (const a of data.areas) {
+    if (a.ring.length < 3) continue;
+    areaF.push({ type: 'Feature', properties: { id: a.id, st: statusOf(a.id) || 'none' }, geometry: { type: 'Polygon', coordinates: [closeRing(a.ring)] } });
+    if (a.name) areaT.push({ type: 'Feature', properties: { label: a.name }, geometry: { type: 'Point', coordinates: ringCentroid(a.ring) } });
+  }
   const sel = view.detail || {};
   const trackF = [], heatF = [], hm = data.settings.heatMode || 'both';
   for (const t of data.tracks) {
@@ -1275,6 +1355,9 @@ function updateSources() {
   map.getSource('routes').setData(fc(routeF));
   map.getSource('heat').setData(fc(heatF));
   map.getSource('boundary').setData(boundaryFC());
+  map.getSource('areas').setData(fc(areaF));
+  map.getSource('area-text').setData(fc(areaT));
+  map.getSource('listpts').setData(fc(listPointFeatures()));
   updateSelection();
   syncPins();
 }
@@ -1288,6 +1371,7 @@ function updateSelection() {
       if (f.kind === 'lake') feats.push({ type: 'Feature', properties: {}, geometry: { type: 'MultiPolygon', coordinates: f.polys.map(r => [r]) } });
     }
   }
+  if (d && d.type === 'area') { const a = findArea(d.id); if (a && a.ring.length > 2) feats.push({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [closeRing(a.ring)] } }); }
   map.getSource('sel').setData(fc(feats));
 }
 function setHover(c) { if (mapReady) map.getSource('hover').setData(fc(c ? [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [c[0], c[1]] } }] : [])); }
@@ -1404,15 +1488,20 @@ function chartHTML(prof, breaks, colors) {
 function wireChart(id, pts, total, W) {
   const el = $(id); if (!el) return;
   const svg = el.querySelector('svg'), tip = el.querySelector('.tip'), cur = el.querySelector('.cur');
-  svg.addEventListener('mousemove', e => {
-    const r = svg.getBoundingClientRect(), x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), d = x * total;
-    let best = pts[0]; for (const p of pts) if (Math.abs(p.d - d) < Math.abs(best.d - d)) best = p;
+  // Pointer events so a finger can scrub the chart on iPhone (vertical swipes still scroll the panel)
+  const show = clientX => {
+    const r = svg.getBoundingClientRect(), x = Math.max(0, Math.min(1, (clientX - r.left) / r.width)), d = x * total;
+    let bi = 0; for (let i = 0; i < pts.length; i++) if (Math.abs(pts[i].d - d) < Math.abs(pts[bi].d - d)) bi = i;
+    const best = pts[bi], a = pts[Math.max(0, bi - 3)], b = pts[Math.min(pts.length - 1, bi + 3)];
+    const grade = b.d > a.d ? (b.e - a.e) / (b.d - a.d) * 100 : 0;
     cur.setAttribute('x1', best.d / total * W); cur.setAttribute('x2', best.d / total * W); cur.setAttribute('visibility', 'visible');
-    tip.hidden = false; tip.style.left = (best.d / total * 100) + '%';
-    tip.textContent = `${(best.d / M_PER_MI).toFixed(2)} mi · ${fmtFt(best.e)} ft`;
+    tip.hidden = false; tip.style.left = Math.max(16, Math.min(84, best.d / total * 100)) + '%';
+    tip.textContent = `${(best.d / M_PER_MI).toFixed(2)} mi · ${fmtFt(best.e)} ft · ${grade < 0 ? '−' : '+'}${Math.abs(grade).toFixed(0)}%`;
     setHover(best.c);
-  });
-  svg.addEventListener('mouseleave', () => { tip.hidden = true; cur.setAttribute('visibility', 'hidden'); setHover(null); });
+  };
+  svg.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') show(e.clientX); });
+  svg.addEventListener('pointermove', e => show(e.clientX));
+  svg.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { tip.hidden = true; cur.setAttribute('visibility', 'hidden'); setHover(null); } });
 }
 const statHTML = (val, unit, label) => `<div class="stat"><b>${val}${unit ? `<small>${unit}</small>` : ''}</b><div>${label}</div></div>`;
 const ICON = {
@@ -1563,16 +1652,270 @@ async function saveEditor() {
   }
 }
 
+// ================= Areas (polygons you draw) =================
+let areaEd = null;
+const findArea = id => data.areas.find(a => a.id === id);
+const ringPerim = r => lineLen(closeRing(r));
+function startAreaEditor(area) {
+  if (editor) stopEditor(true);
+  stopAreaEditor(true);
+  areaEd = { id: area ? area.id : null, name: area ? area.name : '', type: area ? area.type : 'basin', pts: area ? area.ring.map(q => q.slice()) : [], markers: [] };
+  setMode('area', true);
+  redrawArea();
+  view.detail = { type: 'areaEditor' }; viewStack = []; renderSide();
+  if (!area) toast('Click the map around the edge of the area. Drag points to adjust.', 5000);
+}
+function stopAreaEditor(silent) {
+  if (!areaEd) return;
+  for (const m of areaEd.markers) m.remove();
+  areaEd = null;
+  if (mapReady) map.getSource('areaedit').setData(fc([]));
+  if (!silent) setMode('browse', true);
+}
+function addAreaPt(c) { areaEd.pts.push([+c[0].toFixed(6), +c[1].toFixed(6)]); redrawArea(); renderSide(); }
+function redrawArea() {
+  if (!areaEd || !mapReady) return;
+  const pts = areaEd.pts, feats = [];
+  if (pts.length >= 3) feats.push({ type: 'Feature', properties: { k: 'fill' }, geometry: { type: 'Polygon', coordinates: [closeRing(pts)] } });
+  if (pts.length >= 2) feats.push({ type: 'Feature', properties: { k: 'line' }, geometry: { type: 'LineString', coordinates: pts.length >= 3 ? closeRing(pts) : pts } });
+  map.getSource('areaedit').setData(fc(feats));
+  for (const m of areaEd.markers) m.remove();
+  areaEd.markers = pts.map((q, i) => {
+    const el = document.createElement('div'); el.className = 'wpm' + (i === 0 ? ' first' : ''); el.title = 'Point ' + (i + 1);
+    const m = new maplibregl.Marker({ element: el, draggable: true }).setLngLat(q).addTo(map);
+    m.on('dragend', () => { const ll = m.getLngLat(); areaEd.pts[i] = [+ll.lng.toFixed(6), +ll.lat.toFixed(6)]; redrawArea(); renderSide(); });
+    el.addEventListener('click', e => e.stopPropagation());
+    return m;
+  });
+}
+function pageAreaEditor() {
+  const e = areaEd; if (!e) return '';
+  const ac = ringAcres(e.pts);
+  return `${backBtn()}
+    <div class="d-title">${e.id ? 'Edit area' : 'Draw an area'}</div>
+    <div class="d-sub">Click the map around the edge of a basin, meadow or other off-trail place. Drag points to adjust. You need at least three points.</div>
+    <label class="f">Name</label><input id="arName" value="${esc(e.name)}" placeholder="e.g. Garnet Canyon meadows">
+    <label class="f">Type</label><select id="arType">${Object.entries(AREA_TYPES).map(([k, v]) => `<option value="${k}" ${e.type === k ? 'selected' : ''}>${v.icon} ${v.label}</option>`).join('')}</select>
+    <div class="stats three"><div class="stat"><b>${e.pts.length}</b><div>Points</div></div>${statHTML(ac < 10 ? ac.toFixed(1) : Math.round(ac).toLocaleString(), 'ac', 'Area')}${statHTML(e.pts.length > 2 ? fmtMi(ringPerim(e.pts)) : '—', 'mi', 'Perimeter')}</div>
+    <div class="row"><button class="btn" data-act="areaUndo">↶ Undo point</button><button class="btn" data-act="areaClear">Clear</button></div>
+    <div class="row"><button class="btn primary" style="flex:1;padding:12px" data-act="areaSave">Save area</button><button class="btn" data-act="areaCancel">Cancel</button></div>
+    <div class="small muted">When you save, your approved hikes are checked against the shape. A hike that spends at least about 45 m inside it counts as a visit.</div>
+    <h3 class="sec">Points</h3>
+    ${e.pts.map((q, i) => `<div class="wp"><span class="num">${i + 1}</span><span style="flex:1">${i === 0 ? 'Start' : 'Point'}</span><button class="x" data-act="areaDelPt" data-i="${i}">×</button></div>`).join('') || '<div class="empty small">No points yet.</div>'}`;
+}
+function saveArea() {
+  const e = areaEd; if (!e) return;
+  if (e.pts.length < 3) { toast('Add at least three points around the area first.'); return; }
+  const type = ($('arType') && $('arType').value) || e.type, nm = ($('arName') && $('arName').value.trim()) || e.name || '';
+  let a = e.id && findArea(e.id);
+  if (!a) { a = { id: uid(), name: '', type, ring: [], note: '', created: today() }; data.areas.push(a); }
+  a.name = nm || AREA_TYPES[type].label; a.type = type; a.ring = e.pts.map(q => q.slice());
+  stopAreaEditor(); const n = rematchAll();
+  touch({ noRender: true }); openDetail({ type: 'area', id: a.id }, true);
+  toast(`Area saved${n ? '. Your hikes were re-checked against it' : ''}.`);
+}
+function pageArea(d) {
+  const a = findArea(d.id); if (!a) return backBtn() + '<div class="empty">Area not found.</div>';
+  const T = AREA_TYPES[a.type] || AREA_TYPES.other, st = statusOf(a.id), vs = visitsFor(a.id), ac = ringAcres(a.ring);
+  return `${backBtn()}
+    <div class="d-title">${esc(T.icon)} ${esc(a.name || T.label)}</div>
+    <div class="d-sub">${esc(T.label)} · drawn by you</div>
+    <div class="stats">${statHTML(ac < 10 ? ac.toFixed(1) : Math.round(ac).toLocaleString(), 'ac', 'Area')}${statHTML(fmtMi(ringPerim(a.ring)), 'mi', 'Perimeter')}${statHTML(vs.length, '', 'Visits')}${statHTML(st === 'been' ? '✓' : st === 'seen' ? '👁' : '—', '', 'Status')}</div>
+    <div class="actions">
+      ${actionBtn('been', "I've been here", SVG.check, st === 'been')}
+      ${actionBtn('seen', "I've seen it", SVG.eye, st === 'seen')}
+      ${actionBtn('wish', 'Save to my list', SVG.heart, isWish(a.id))}
+      ${actionBtn('view3d', 'View in 3D', SVG.cube)}
+    </div>
+    ${visitsHTML(a.id)}
+    ${photosHTML(a.id)}
+    <h2 class="sec">Details</h2>
+    <label class="f">Name</label><input id="arNameD" value="${esc(a.name)}">
+    <label class="f">Type</label><select id="arTypeD">${Object.entries(AREA_TYPES).map(([k, v]) => `<option value="${k}" ${a.type === k ? 'selected' : ''}>${v.icon} ${v.label}</option>`).join('')}</select>
+    <label class="f">Notes</label><textarea id="arNote" rows="3" placeholder="Water, bugs, route-finding…">${esc(a.note || '')}</textarea>
+    <div class="row"><button class="btn primary" data-act="saveAreaInfo">Save details</button><button class="btn" data-act="editArea">Edit shape</button><button class="btn danger" data-act="delArea">Delete</button></div>`;
+}
+
+// ================= Peak lists =================
+const namedPeaks = () => FEATS.filter(f => f.kind === 'peak' && nameOf(f) && f.ele);
+function bestPeak(q) {
+  const m = namedPeaks().filter(f => nameOf(f).toLowerCase().includes(q));
+  m.sort((a, b) => (nameOf(a).toLowerCase() === q ? 0 : 1) - (nameOf(b).toLowerCase() === q ? 0 : 1) || b.ele - a.ele);
+  return m[0] || null;
+}
+const PRESET_LISTS = [
+  { id: 'pl:12k', name: '12,000-footers', note: 'Named peaks at 12,000 ft or higher, from the map data.', pick: () => namedPeaks().filter(f => f.ele * FT_PER_M >= 12000) },
+  { id: 'pl:11k', name: '11,000-footers', note: 'Named peaks at 11,000 ft or higher.', pick: () => namedPeaks().filter(f => f.ele * FT_PER_M >= 11000) },
+  { id: 'pl:top10', name: 'Ten highest peaks', note: 'The ten highest named peaks in the map data.', pick: () => namedPeaks().sort((a, b) => b.ele - a.ele).slice(0, 10) },
+  { id: 'pl:cathedral', name: 'Cathedral Group', note: 'Grand Teton, Mount Owen and Teewinot, matched by name.', names: ['grand teton', 'owen', 'teewinot'] }
+];
+function allLists() {
+  const pre = PRESET_LISTS.map(p => ({ id: p.id, name: p.name, note: p.note, preset: true, ids: (p.names ? p.names.map(bestPeak).filter(Boolean) : p.pick()).map(f => f.id) }));
+  return pre.concat(data.peakLists.map(l => ({ id: l.id, name: l.name, custom: true, ids: l.ids.filter(id => FEAT[id]) })));
+}
+const beenEver = id => visitsFor(id).some(v => v.status === 'been');
+const listProg = l => ({ done: l.ids.filter(beenEver).length, total: l.ids.length });
+function listPointFeatures() {
+  const id = data.settings.activeList; if (!id || !FEATS.length) return [];
+  const l = allLists().find(x => x.id === id); if (!l) return [];
+  return l.ids.map(i => FEAT[i]).filter(f => f && f.coord).map(f => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: f.coord } }));
+}
+function listCardHTML(l) {
+  const p = listProg(l);
+  return `<div class="card" data-open='${esc(JSON.stringify({ type: 'list', id: l.id }))}'><div class="ic">🏔️</div><div class="tx"><div class="t">${esc(l.name)}</div><div class="s">${p.done} of ${p.total} done${data.settings.activeList === l.id ? ' · on map' : ''}</div><div class="pbar"><i style="width:${p.total ? (p.done / p.total * 100).toFixed(0) : 0}%"></i></div></div></div>`;
+}
+function pageList(d) {
+  const l = allLists().find(x => x.id === d.id); if (!l) return backBtn() + '<div class="empty">List not found.</div>';
+  const p = listProg(l), active = data.settings.activeList === l.id;
+  const items = l.ids.map(id => FEAT[id]).filter(Boolean).sort((a, b) => (b.ele || 0) - (a.ele || 0));
+  return `${backBtn()}<div class="d-title">${esc(l.name)}</div>
+    <div class="d-sub">${p.done} of ${p.total} done${l.note ? ' · ' + esc(l.note) : ''}</div>
+    <div class="pbar big"><i style="width:${p.total ? (p.done / p.total * 100).toFixed(0) : 0}%"></i></div>
+    <div class="row"><button class="btn ${active ? 'primary' : ''}" data-act="lpShow">${active ? 'Showing on map' : 'Show on map'}</button>${l.preset ? '<button class="btn" data-act="lpCopy">Make an editable copy</button>' : ''}</div>
+    ${items.map(f => `<div class="cardx">${cardHTML({ title: nameOf(f), icon: '⛰️', sub: f.ele ? fmtFt(f.ele) + ' ft' : 'Peak', st: statusOf(f.id), wish: isWish(f.id), open: { type: 'feature', id: f.id } })}${l.custom ? `<button class="x" data-act="lpDel" data-id="${f.id}" title="Remove from list">×</button>` : ''}</div>`).join('') || '<div class="empty">No peaks in this list yet.</div>'}
+    ${l.custom ? `<h2 class="sec">Edit list</h2>
+      <label class="f">Name</label><input id="lpName" value="${esc(l.name)}"><div class="row"><button class="btn" data-act="lpRename">Save name</button></div>
+      <label class="f">Add a peak</label><input id="lpQ" placeholder="Start typing a peak name" autocomplete="off"><div id="lpRes"></div>
+      <div class="row"><button class="btn danger" data-act="lpDelete">Delete list</button></div>` : ''}`;
+}
+
+// ================= Trip planning card, trip report =================
+const TZ = 'America/Denver';
+const fmtClock = ms => new Date(ms).toLocaleTimeString('en-US', { timeZone: TZ, hour: 'numeric', minute: '2-digit' });
+// Sunrise and sunset (NOAA sunrise equation). Good to a few minutes, which is plenty for planning.
+function sunTimes(dateStr, lat, lon) {
+  const rad = Math.PI / 180, [Y, M, D] = dateStr.split('-').map(Number);
+  if (!Y || !M || !D) return null;
+  const jd = Date.UTC(Y, M - 1, D, 12) / 864e5 + 2440587.5, n = Math.round(jd - 2451545.0 + 0.0008), Js = n - lon / 360;
+  const Mm = (357.5291 + 0.98560028 * Js) % 360, Mr = Mm * rad;
+  const C = 1.9148 * Math.sin(Mr) + 0.02 * Math.sin(2 * Mr) + 0.0003 * Math.sin(3 * Mr);
+  const lam = ((Mm + C + 180 + 102.9372) % 360) * rad;
+  const Jt = 2451545.0 + Js + 0.0053 * Math.sin(Mr) - 0.0069 * Math.sin(2 * lam);
+  const sd = Math.sin(lam) * Math.sin(23.4397 * rad), cd = Math.cos(Math.asin(sd));
+  const cw = (Math.sin(-0.833 * rad) - Math.sin(lat * rad) * sd) / (Math.cos(lat * rad) * cd);
+  if (cw > 1 || cw < -1) return null;
+  const w = Math.acos(cw) / rad, ms = j => (j - 2440587.5) * 864e5;
+  return { rise: ms(Jt - w / 360), set: ms(Jt + w / 360) };
+}
+const hiHours = s => { const v = parseFloat(String(s).split('–').pop()); return isNaN(v) ? 0 : v; };
+function planCardHTML(t) {
+  if (!t.planned) return '';
+  const segs = t.segments.filter(s => s.src !== 'ignored' && s.pts.length > 1);
+  if (!segs.length) return '';
+  const line = joinLegs(segs.map(s => ({ pts: s.pts }))), prof = profileSync(line), len = lineLen(line), start = line[0];
+  const breaks = []; let acc = 0; segs.forEach((s, i) => { acc += lineLen(s.pts); if (i < segs.length - 1) breaks.push(acc); });
+  const days = segmentStats(prof, len, breaks), nights = t.nights || 0;
+  const links = [['Park alerts and conditions', 'https://www.nps.gov/grte/planyourvisit/conditions.htm'], ['Backcountry trail conditions', 'https://www.nps.gov/grte/planyourvisit/backcountry-trail-conditions.htm'], ['Weather forecast (NWS)', `https://forecast.weather.gov/MapClick.php?lat=${start[1].toFixed(4)}&lon=${start[0].toFixed(4)}`]];
+  if (nights > 0) links.unshift(['Backcountry camping permits', 'https://www.nps.gov/grte/planyourvisit/bcres.htm']);
+  const mon = t.date ? +t.date.slice(5, 7) : 0;
+  if (mon && (mon >= 11 || mon <= 5)) links.push(['Avalanche forecast (Bridger-Teton)', 'https://bridgertetonavalanchecenter.org/']);
+  let h = '';
+  if (!t.date) h += '<p class="small muted">Set a date under Details to see daylight and the forecast.</p>';
+  else {
+    const sun = sunTimes(t.date, start[1], start[0]);
+    if (sun) {
+      const dl = (sun.set - sun.rise) / 36e5;
+      h += `<div class="stats three">${statHTML(fmtClock(sun.rise), '', 'Sunrise')}${statHTML(fmtClock(sun.set), '', 'Sunset')}${statHTML(Math.floor(dl) + 'h ' + String(Math.round((dl % 1) * 60)).padStart(2, '0'), '', 'Daylight')}</div>`;
+      h += days.map((s, i) => {
+        const hi = hiHours(s.time), latest = sun.set - (hi + 1) * 36e5;
+        return `<div class="small" style="margin:4px 0">${days.length > 1 ? `<b>Day ${i + 1}</b> · ` : ''}about ${s.time} hr moving${hi ? ` · latest start ${fmtClock(latest)}${latest < sun.rise ? ' (before sunrise, bring a headlamp)' : ''}` : ''}</div>`;
+      }).join('') + '<div class="small muted">Latest start leaves a 1 hour cushion before sunset, using the long end of the time estimate. Times are Mountain.</div>';
+    }
+    const dt = (new Date(t.date + 'T12:00:00') - new Date(today() + 'T12:00:00')) / 864e5, fc = view.fc && view.fc[t.id];
+    if (fc) h += forecastHTML(fc);
+    else if (dt >= 0 && dt <= 6) h += `<div class="row"><button class="btn sm" data-act="loadForecast">Check the forecast</button></div>`;
+    else if (dt > 6) h += '<p class="small muted">The forecast opens up to a week before the trip.</p>';
+  }
+  if (nights > 0) h += '<p class="small" style="margin:8px 0">Overnight trip: a backcountry camping permit is required in Grand Teton National Park.</p>';
+  h += `<div class="small" style="line-height:1.9;margin-top:6px">${links.map(([l, u]) => `<a href="${u}" target="_blank" rel="noopener">${esc(l)}</a>`).join(' · ')}</div>`;
+  return `<details class="set" data-k="plan" ${setOpen('plan', true)}><summary>Trip planning<span class="sv">${t.date ? esc(fmtDate(t.date)) : 'no date yet'}</span></summary>${h}</details>`;
+}
+function forecastHTML(fc) {
+  if (fc.err) return `<p class="small" style="color:#b45309">Could not load the forecast: ${esc(fc.err)}</p><div class="row"><button class="btn sm" data-act="loadForecast">Try again</button></div>`;
+  if (!fc.periods.length) return '<p class="small muted">The National Weather Service has no forecast for that date yet.</p>';
+  const colder = fc.gridFt != null && fc.maxFt > fc.gridFt + 500 ? Math.round(3.5 * (fc.maxFt - fc.gridFt) / 1000) : 0;
+  return `<h3 class="sec">Forecast · National Weather Service</h3>${fc.periods.map(q => `<div class="small" style="margin:4px 0"><b>${esc(q.name)}</b> · ${q.temperature}°${esc(q.temperatureUnit)} · ${esc(q.shortForecast)} · wind ${esc(q.windSpeed)} ${esc(q.windDirection)}${q.probabilityOfPrecipitation && q.probabilityOfPrecipitation.value ? ` · ${q.probabilityOfPrecipitation.value}% precip` : ''}</div>`).join('')}
+    ${colder ? `<div class="small muted">The forecast is for the valley point near your start. Expect roughly ${colder}°F colder at your high point (${fmtFt(fc.maxFt / FT_PER_M)} ft), about 3.5°F per 1,000 ft.</div>` : ''}`;
+}
+async function loadForecast(t) {
+  const line = trackLine(t); if (!line.length || !t.date) return;
+  const start = line[0], maxE = Math.max(...line.map(q => q[2] || 0)), hdr = { Accept: 'application/geo+json' };
+  view.fc = view.fc || {};
+  toast('Checking the forecast…', 2500);
+  try {
+    const pt = await fetch(`https://api.weather.gov/points/${start[1].toFixed(4)},${start[0].toFixed(4)}`, { headers: hdr });
+    if (!pt.ok) throw new Error('weather.gov answered ' + pt.status);
+    const fr = await fetch((await pt.json()).properties.forecast, { headers: hdr });
+    if (!fr.ok) throw new Error('weather.gov answered ' + fr.status);
+    const fj = (await fr.json()).properties, el = fj.elevation && fj.elevation.value;
+    view.fc[t.id] = { periods: (fj.periods || []).filter(q => (q.startTime || '').slice(0, 10) === t.date), gridFt: el != null ? el * FT_PER_M : null, maxFt: maxE * FT_PER_M };
+  } catch (e) { view.fc[t.id] = { err: e.message || String(e), periods: [] }; }
+  toast(null); if (view.detail && view.detail.type === 'track' && view.detail.id === t.id) renderSide();
+}
+// A map of the hike drawn from your own data (no map tiles needed, so it prints and works offline)
+function miniMapSVG(t) {
+  const segs = t.segments.filter(s => s.src !== 'ignored' && s.pts.length > 1), all = segs.flatMap(s => s.pts);
+  if (all.length < 2) return '';
+  const bb = bboxOf(all), px = (bb[2] - bb[0]) * 0.12 || 0.002, py = (bb[3] - bb[1]) * 0.12 || 0.002;
+  const x0 = bb[0] - px, x1 = bb[2] + px, y0 = bb[1] - py, y1 = bb[3] + py, kx = Math.cos((y0 + y1) / 2 * Math.PI / 180);
+  const sx = (x1 - x0) * kx, sy = y1 - y0, s = Math.min(640 / sx, 400 / sy), Wd = Math.round(sx * s), Hd = Math.round(sy * s);
+  const X = lon => ((lon - x0) * kx * s).toFixed(1), Y = lat => ((y1 - lat) * s).toFixed(1), B = [x0, y0, x1, y1];
+  const poly = c => c.map((q, i) => (i ? 'L' : 'M') + X(q[0]) + ' ' + Y(q[1])).join('');
+  let g = '';
+  for (const f of FEATS) if (f.kind === 'lake' && bboxHit(f.bb, B, 0)) for (const r of f.polys) g += `<path d="${poly(r)}Z" fill="#cfe6f7" stroke="#8fc1e8" stroke-width="1"/>`;
+  let nt = 0;
+  for (const f of FEATS) if (f.kind === 'trail' && nt < 300 && bboxHit(f.bb, B, 0)) { g += `<path d="${poly(f.coords)}" fill="none" stroke="#d5c3ad" stroke-width="1" stroke-dasharray="3 2"/>`; nt++; }
+  segs.forEach((sg, i) => { g += `<path d="${poly(sg.pts)}" fill="none" stroke="${t.planned ? DAY_COLORS[i % DAY_COLORS.length] : sg.src === 'garmin' ? '#1e88e5' : '#8e24aa'}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"${t.planned ? ' stroke-dasharray="7 4"' : ''}/>`; });
+  for (const q of tripWaypoints(segs.map(sg => sg.pts), [])) g += `<path d="M${X(q.lon)} ${(+Y(q.lat) - 9).toFixed(1)}l6 10h-12z" fill="#d62828" stroke="#fff" stroke-width="1"/><text x="${(+X(q.lon) + 8).toFixed(1)}" y="${(+Y(q.lat) + 3).toFixed(1)}" font-size="12" fill="#222" stroke="#fff" stroke-width="3" paint-order="stroke">${esc(q.name)}</text>`;
+  for (const p of (t.camps || []).map(findPin).filter(Boolean)) g += `<text x="${X(p.lon)}" y="${Y(p.lat)}" font-size="16" text-anchor="middle">⛺</text>`;
+  const a = all[0], z = all[all.length - 1];
+  g += `<circle cx="${X(a[0])}" cy="${Y(a[1])}" r="6" fill="#2e7d32" stroke="#fff" stroke-width="2"/><circle cx="${X(z[0])}" cy="${Y(z[1])}" r="6" fill="#c62828" stroke="#fff" stroke-width="2"/>`;
+  return `<svg class="mm" viewBox="0 0 ${Wd} ${Hd}" xmlns="http://www.w3.org/2000/svg">${g}</svg>`;
+}
+const REPORT_CSS = `.rep{font:14px/1.45 -apple-system,system-ui,Segoe UI,Roboto,sans-serif;color:#1b1b1b}.rep h1{font-size:26px;margin:0;letter-spacing:-.01em}.rep .rsub{color:#6b6f6b;margin:2px 0 12px}.rep svg.mm{width:100%;height:auto;display:block;border:1px solid #e7e7e3;border-radius:12px;background:#f7f5ee}.rep .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}.rep .stat b{font-size:22px}.rep .stat b small{font-size:13px;margin-left:2px}.rep .stat div{color:#6b6f6b;font-size:12px}.rep .chart svg{width:100%;height:150px;display:block;overflow:visible}.rep .chart .tip{display:none}.rep h2{font-size:16px;margin:18px 0 6px;border-bottom:1px solid #e7e7e3;padding-bottom:4px}.rep ul{margin:0;padding-left:18px}.rep .photos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.rep .photos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;display:block}.rep .notes{white-space:pre-wrap}`;
+function reportBodyHTML(t, photos) {
+  const segs = t.segments.filter(s => s.src !== 'ignored' && s.pts.length > 1), line = joinLegs(segs.map(s => ({ pts: s.pts }))), prof = profileSync(line), len = lineLen(line), c = climb(prof);
+  const breaks = []; let acc = 0; segs.forEach((s, i) => { acc += lineLen(s.pts); if (i < segs.length - 1) breaks.push(acc); });
+  const dur = t.start && t.end && !t.segments.some(s => s.src === 'manual') ? fmtDur(t.end - t.start) : null;
+  const ids = [...new Set(Object.entries(data.visits).filter(([, l]) => l.some(v => v.trackId === t.id)).map(([id]) => WAY2GROUP[id] || id))];
+  const items = ids.map(id => { const g = GROUPS[id], f = FEAT[id], a = findArea(id); if (g) return { k: 'trail', n: g.name }; if (f && f.kind !== 'trail') return { k: f.kind, n: nameOf(f) || '', e: f.ele }; if (a) return { k: 'area', n: a.name }; return null; }).filter(x => x && x.n);
+  const order = { peak: 0, pass: 1, lake: 2, waterfall: 3, area: 4, trail: 5 }; items.sort((a, b) => (order[a.k] - order[b.k]) || (b.e || 0) - (a.e || 0));
+  const camps = (t.camps || []).map(findPin).filter(Boolean);
+  const label = { peak: 'Peak', pass: 'Pass', lake: 'Lake', waterfall: 'Waterfall', area: 'Area', trail: 'Trail' };
+  return `<h1>${esc(t.name)}</h1><div class="rsub">${t.date ? esc(fmtDate(t.date)) : 'No date'} · ${esc(tripLabel(t))}${t.trip ? ' · ' + esc(t.trip) : ''}</div>
+    ${miniMapSVG(t)}
+    <div class="stats">${statHTML(fmtMi(len), 'mi', 'Length')}${statHTML(fmtFt(c.gain), 'ft', 'Climbing')}${dur ? statHTML(dur, '', 'Time') : statHTML(estTime(len, c.gain), 'hr', 'Est. time')}${statHTML(t.nights || 0, '', 'Nights out')}</div>
+    ${prof.length > 1 ? `<h2>Elevation <span style="font-weight:400;color:#6b6f6b">· ${fmtFt(c.min)} to ${fmtFt(c.max)} ft</span></h2>${chartHTML(prof, breaks)}` : ''}
+    ${items.length ? `<h2>Places on this ${t.planned ? 'trip' : 'hike'}</h2><ul>${items.map(i => `<li>${esc(i.n)} <span style="color:#6b6f6b">${label[i.k]}${i.e ? ' · ' + fmtFt(i.e) + ' ft' : ''}</span></li>`).join('')}</ul>` : ''}
+    ${camps.length ? `<h2>Camps</h2><ul>${camps.map(p => `<li>${esc(p.name || 'Camp')}</li>`).join('')}</ul>` : ''}
+    ${t.notes ? `<h2>Notes</h2><div class="notes">${esc(t.notes)}</div>` : ''}
+    ${photos && photos.length ? `<h2>Photos</h2><div class="photos">${photos.map(s => `<img src="${s}" alt="">`).join('')}</div>` : ''}`;
+}
+function pageReport(d) {
+  const t = findTrack(d.id); if (!t) return backBtn() + '<div class="empty">Trip not found.</div>';
+  return `${backBtn()}<div class="row"><button class="btn primary" data-act="reportPrint">Save as PDF or print</button></div>
+    <style>${REPORT_CSS}</style><div class="rep">${reportBodyHTML(t, data.photos[t.id] || [])}</div>`;
+}
+async function printReport(t) {
+  const w = window.open('', '_blank');   // opened first, while the tap is still fresh, so pop-up blockers allow it
+  if (!w) { toast('Allow pop-ups for this page to save the report as a PDF.', 7000); return; }
+  const photos = await resolvePhotos(t.id);
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(t.name)}</title><style>@page{margin:12mm}body{margin:0}${REPORT_CSS}</style></head><body><div class="rep">${reportBodyHTML(t, photos)}</div><script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script></body></html>`);
+  w.document.close();
+}
+async function resolvePhotos(id) { return (data.photos[id] || []).slice(); }
+
 // ================= Sidebar: navigation =================
 const body = () => $('sideBody');
 function setTab(t) {
   if (editor) stopEditor();
+  if (areaEd) stopAreaEditor();
   view = { tab: t, detail: null }; viewStack = []; selectedPinId = null;
   document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   renderSide(); updateSources();
 }
 function openDetail(d, replace) {
-  if (view.detail && !replace && view.detail.type !== 'editor') viewStack.push(view.detail);
+  if (view.detail && !replace && view.detail.type !== 'editor' && view.detail.type !== 'areaEditor') viewStack.push(view.detail);
   view.detail = d;
   selectedPinId = d.type === 'pin' ? d.id : null;
   if (document.body.classList.contains('collapsed')) setCollapsed(false);
@@ -1581,13 +1924,14 @@ function openDetail(d, replace) {
 }
 function goBack() {
   if (editor) { stopEditor(); }
+  if (areaEd) { stopAreaEditor(); }
   view.detail = viewStack.pop() || null; selectedPinId = view.detail && view.detail.type === 'pin' ? view.detail.id : null;
   renderSide(); updateSources();
 }
 function renderSide() {
   const d = view.detail;
   if (d) {
-    const fn = { feature: pageFeature, route: pageRoute, track: pageTrack, pin: pagePin, editor: pageEditor, history: pageHistory, settings: pageSettings, help: pageHelp, ideas: pageIdeas, offline: pageOffline }[d.type];
+    const fn = { feature: pageFeature, route: pageRoute, track: pageTrack, pin: pagePin, editor: pageEditor, history: pageHistory, settings: pageSettings, help: pageHelp, ideas: pageIdeas, offline: pageOffline, report: pageReport, area: pageArea, areaEditor: pageAreaEditor, list: pageList }[d.type];
     if (fn) { body().innerHTML = fn(d); return; }
   }
   const q = $('q').value.trim().toLowerCase();
@@ -1604,6 +1948,8 @@ function coordsOf(d) {
   if (d.type === 'route') { const r = findRoute(d.id); return r ? routeLine(r) : null; }
   if (d.type === 'track') { const t = findTrack(d.id); return t ? t.segments.flatMap(s => s.pts) : null; }
   if (d.type === 'pin') { const p = findPin(d.id); return p ? [[p.lon, p.lat]] : null; }
+  if (d.type === 'area') { const a = findArea(d.id); return a && a.ring.length > 2 ? closeRing(a.ring) : null; }
+  if (d.type === 'list') { const l = allLists().find(x => x.id === d.id); const c = l ? l.ids.map(id => FEAT[id]).filter(Boolean).map(f => f.coord) : []; return c.length ? c : null; }
   if (d.type === 'feature') {
     if (isGroup(d.id)) return GROUPS[d.id] ? GROUPS[d.id].ways.flatMap(w => w.coords) : null;
     const f = FEAT[d.id]; if (!f) return null;
@@ -1629,6 +1975,10 @@ function featureItems() {
     const cov = g.ways.reduce((a, w) => a + w.len * wayCoverage(w.id), 0) / g.len;
     items.push({ kind: 'trail', title: g.name, icon: '🥾', sub: `Trail · ${fmtMi(g.len)} mi${cov > 0.02 ? ` · ${Math.round(cov * 100)}% hiked` : ''}`, st: statusOf(g.id), wish: isWish(g.id), ele: 0, len: g.len, rc: rcOf(g.id), photo: !!data.photos[g.id], open: { type: 'feature', id: g.id } });
   }
+  for (const a of data.areas) {
+    const T = AREA_TYPES[a.type] || AREA_TYPES.other, ac = ringAcres(a.ring);
+    items.push({ kind: 'area', title: a.name || T.label, icon: T.icon, sub: `Area · ${T.label} · ${ac < 10 ? ac.toFixed(1) : Math.round(ac).toLocaleString()} ac`, st: statusOf(a.id), wish: isWish(a.id), ele: 0, rc: rcOf(a.id), photo: !!data.photos[a.id], open: { type: 'area', id: a.id } });
+  }
   for (const p of data.pins) {
     const t = PIN_TYPES[p.type] || PIN_TYPES.other;
     items.push({ kind: 'pin', title: p.name || t.label, icon: p.icon || t.icon, color: p.color || t.color, sub: 'Pin · ' + t.label + (p.date ? ' · ' + fmtDate(p.date) : ''), st: p.status, ele: 0, rc: rcFromDate(p.status === 'been' ? p.date : ''), photo: !!data.photos[p.id], open: { type: 'pin', id: p.id } });
@@ -1643,11 +1993,11 @@ function noDataHTML() {
     <p class="muted small" style="margin-top:22px">Coming from an older version? Menu (☰, top right) → Import from an older version.</p></div>`;
 }
 function pageExplore() {
-  if (!FEATS.length) return noDataHTML();
+  if (!FEATS.length && !data.areas.length) return noDataHTML();
   const ex = view.explore = view.explore || { chip: 'all', st: 'any', sort: 'name', limit: 120 };
   // V6 filters: all off by default
   if (ex.recent === undefined) { ex.recent = 'any'; ex.minEle = 'any'; ex.photo = false; ex.more = false; }
-  const chips = [['all', 'All'], ['peak', 'Peaks'], ['lake', 'Lakes'], ['trail', 'Trails'], ['pass', 'Passes'], ['waterfall', 'Waterfalls'], ['pin', 'Pins'], ['saved', '❤️ Saved']];
+  const chips = [['all', 'All'], ['peak', 'Peaks'], ['lake', 'Lakes'], ['trail', 'Trails'], ['pass', 'Passes'], ['waterfall', 'Waterfalls'], ['area', 'Areas'], ['pin', 'Pins'], ['saved', '❤️ Saved']];
   let items = featureItems();
   if (ex.chip === 'saved') items = items.filter(i => i.wish || i.st === 'want');
   else if (ex.chip !== 'all') items = items.filter(i => i.kind === ex.chip);
@@ -1662,7 +2012,7 @@ function pageExplore() {
   return `<div class="chips">${chips.map(([k, l]) => `<button data-chip="${k}" class="${ex.chip === k ? 'on' : ''}">${l}</button>`).join('')}</div>
     <div class="row"><select id="exSt" style="flex:1">${[['any', 'Any status'], ['been', 'Been'], ['seen', 'Seen'], ['not', 'Not been yet']].map(([v, l]) => `<option value="${v}" ${ex.st === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
     <select id="exSort" style="flex:1"><option value="name" ${ex.sort === 'name' ? 'selected' : ''}>Sort: name</option><option value="ele" ${ex.sort === 'ele' ? 'selected' : ''}>Sort: highest / longest</option></select></div>
-    <div class="row"><button class="btn sm" data-act="exMore">${ex.more ? 'Hide filters' : 'Filters'}${activeFilters ? ` · ${activeFilters} on` : ''}</button></div>
+    <div class="row"><button class="btn sm" data-act="newArea">＋ Draw an area</button><button class="btn sm" data-act="exMore">${ex.more ? 'Hide filters' : 'Filters'}${activeFilters ? ` · ${activeFilters} on` : ''}</button></div>
     ${ex.more ? `<div class="exmore">
       <label class="f">Last visited</label>
       <select id="exRecent" style="width:100%"><option value="any" ${ex.recent === 'any' ? 'selected' : ''}>Any time</option><option value="y1" ${ex.recent === 'y1' ? 'selected' : ''}>Within a year</option><option value="y3" ${ex.recent === 'y3' ? 'selected' : ''}>1 to 3 years ago</option><option value="old" ${ex.recent === 'old' ? 'selected' : ''}>Over 3 years ago</option><option value="none" ${ex.recent === 'none' ? 'selected' : ''}>Never been</option></select>
@@ -1702,6 +2052,7 @@ function pageActivity() {
     ${pending.map(t => { const st = lineStats(trackLine(t)); return cardHTML({ title: t.name, icon: '⌚', sub: `${fmtDate(t.date)} · ${fmtMi(st.len)} mi · ${fmtFt(st.gain)} ft · waiting`, open: { type: 'track', id: t.id } }); }).join('')}`;
   if (planned.length) extra += `<h2 class="sec">Planned trips <span class="small muted">${planned.length}</span></h2>
     <div class="small muted">Drag a trip to reorder it, or use the Up and Down buttons. Dates show on each card.</div>
+    <div class="row"><button class="btn sm" data-act="gpxPlanned">Export all planned trips (GPX)</button></div>
     ${planned.map((t, i) => `<div class="dragrow" draggable="true" data-drag="${t.id}">${cardHTML({ title: t.name, icon: '🗓️', sub: `${t.date ? fmtDate(t.date) : 'No date yet'}${t.trip ? ' · ' + esc(t.trip) : ''}`, open: { type: 'track', id: t.id } })}
       <div class="row mv"><button class="btn sm" data-act="planUp" data-id="${t.id}" ${i === 0 ? 'disabled' : ''}>↑ Up</button><button class="btn sm" data-act="planDown" data-id="${t.id}" ${i === planned.length - 1 ? 'disabled' : ''}>↓ Down</button></div></div>`).join('')}`;
   return pageActivityList(extra);
@@ -1769,15 +2120,14 @@ function filterSelects() {
 }
 function pageStats() {
   const tracks = data.tracks.filter(t => inFilter(t.date) && !t.planned && t.approved !== false);
-  let miles = 0, gain = 0; const byYear = {};
-  for (const t of tracks) { const st = lineStats(trackLine(t)); miles += st.len; gain += st.gain; const y = (t.date || '').slice(0, 4); byYear[y] = (byYear[y] || 0) + st.len; }
+  let miles = 0, gain = 0;
+  for (const t of tracks) { const st = lineStats(trackLine(t)); miles += st.len; gain += st.gain; }
   const kinds = k => FEATS.filter(f => f.kind === k);
   const been = list => list.filter(f => statusOf(f.id) === 'been').length;
   const peaks = kinds('peak'), lakes = kinds('lake'), passes = kinds('pass'), falls = kinds('waterfall');
   let trailM = 0; for (const f of kinds('trail')) trailM += f.len * wayCoverage(f.id);
   const allTrailM = kinds('trail').reduce((a, f) => a + f.len, 0);
-  const years = Object.keys(byYear).sort(), max = Math.max(1, ...Object.values(byYear));
-  const namedPeaks = peaks.filter(f => nameOf(f)).sort((a, b) => (b.ele || 0) - (a.ele || 0));
+  const namedPk = peaks.filter(f => nameOf(f)).sort((a, b) => (b.ele || 0) - (a.ele || 0));
   return `${filterSelects()}
     <div class="grid">
       <div class="tile"><b>${(miles / M_PER_MI).toFixed(1)}</b><span>miles hiked</span></div>
@@ -1791,15 +2141,80 @@ function pageStats() {
     </div>
     <h2 class="sec">Range checklist</h2>
     <div class="grid">
-      <div class="tile"><b>${been(namedPeaks)}<small class="muted" style="font-size:14px"> / ${namedPeaks.length}</small></b><span>named peaks done</span></div>
+      <div class="tile"><b>${been(namedPk)}<small class="muted" style="font-size:14px"> / ${namedPk.length}</small></b><span>named peaks done</span></div>
       <div class="tile"><b>${been(lakes.filter(f => nameOf(f)))}<small class="muted" style="font-size:14px"> / ${lakes.filter(f => nameOf(f)).length}</small></b><span>named lakes done</span></div>
       <div class="tile"><b>${data.pins.filter(p => p.type === 'camp' && p.status === 'been').length}<small class="muted" style="font-size:14px"> / ${data.pins.filter(p => p.type === 'camp').length}</small></b><span>camp sites done (your pins)</span></div>
       <div class="tile"><b>${Object.values(data.yds).filter(l => l.some(r => r.yds)).length}</b><span>peaks with a YDS rating</span></div>
     </div>
-    <h2 class="sec">Miles by year</h2>
-    ${years.map(y => `<div class="yr"><span>${y || '—'}</span><div class="bar"><i style="width:${(byYear[y] / max * 100).toFixed(1)}%"></i></div><span>${(byYear[y] / M_PER_MI).toFixed(1)} mi</span></div>`).join('') || '<div class="empty">No hikes in this period.</div>'}
+    <h2 class="sec">Peak lists <button class="btn sm" data-act="newList">＋ New list</button></h2>
+    ${FEATS.length ? allLists().map(listCardHTML).join('') : '<div class="empty small">Download map data to see peak lists.</div>'}
+    ${yearsHTML()}
     <h2 class="sec">Peak checklist</h2>
-    ${namedPeaks.slice(0, 60).map(f => cardHTML({ title: nameOf(f), icon: '⛰️', sub: f.ele ? fmtFt(f.ele) + ' ft' : 'Peak', st: statusOf(f.id), wish: isWish(f.id), open: { type: 'feature', id: f.id } })).join('') || '<div class="empty">Download map data to see the peak list.</div>'}`;
+    ${namedPk.slice(0, 60).map(f => cardHTML({ title: nameOf(f), icon: '⛰️', sub: f.ele ? fmtFt(f.ele) + ' ft' : 'Peak', st: statusOf(f.id), wish: isWish(f.id), open: { type: 'feature', id: f.id } })).join('') || '<div class="empty">Download map data to see the peak list.</div>'}
+    ${suggestionsHTML()}`;
+}
+
+// By year: miles, climbing, hikes and peaks per year, plus what was new to you
+function yearData() {
+  const Y = {}, y = k => Y[k] || (Y[k] = { hikes: 0, m: 0, gainM: 0, nights: 0, peaks: new Set(), lakes: new Set(), passes: new Set(), fresh: [] });
+  for (const t of data.tracks) {
+    if (t.planned || t.approved === false) continue;
+    const k = (t.date || '').slice(0, 4); if (!k) continue;
+    const st = lineStats(trackLine(t)), r = y(k); r.hikes++; r.m += st.len; r.gainM += st.gain; r.nights += t.nights || 0;
+  }
+  for (const [id, list] of Object.entries(data.visits)) {
+    const f = FEAT[id] || null, a = f ? null : findArea(id);
+    if (!f && !a) continue;
+    if (f && (f.kind === 'trail' || !nameOf(f))) continue;
+    const beens = list.filter(v => v.status === 'been' && v.date).map(v => v.date).sort();
+    if (!beens.length) continue;
+    const kind = a ? 'area' : f.kind;
+    for (const k of new Set(beens.map(s => s.slice(0, 4)))) { const r = y(k); if (kind === 'peak') r.peaks.add(id); else if (kind === 'lake') r.lakes.add(id); else if (kind === 'pass') r.passes.add(id); }
+    y(beens[0].slice(0, 4)).fresh.push({ id, kind, name: a ? a.name : nameOf(f), ele: f ? f.ele || 0 : 0, icon: a ? (AREA_TYPES[a.type] || AREA_TYPES.other).icon : KIND_INFO[kind].icon, open: a ? { type: 'area', id } : { type: 'feature', id } });
+  }
+  return Y;
+}
+function yearsHTML() {
+  const Y = yearData(), years = Object.keys(Y).sort().reverse();
+  if (!years.length) return '<h2 class="sec">By year</h2><div class="empty">No hikes yet.</div>';
+  const sel = view.yr && Y[view.yr] ? view.yr : years[0], metric = view.yrMetric || 'miles';
+  const val = r => metric === 'miles' ? r.m / M_PER_MI : metric === 'gain' ? r.gainM * FT_PER_M : metric === 'hikes' ? r.hikes : r.peaks.size;
+  const label = v => metric === 'miles' ? v.toFixed(1) + ' mi' : metric === 'gain' ? Math.round(v).toLocaleString() + ' ft' : String(v);
+  const max = Math.max(1, ...years.map(k => val(Y[k]))), r = Y[sel];
+  const tile = (b, s) => `<div class="tile"><b>${b}</b><span>${s}</span></div>`;
+  return `<h2 class="sec">By year</h2>
+    <div class="chips">${[['miles', 'Miles'], ['gain', 'Climbing'], ['hikes', 'Hikes'], ['peaks', 'Peaks']].map(([k, l]) => `<button class="${metric === k ? 'on' : ''}" data-act="yrMetric" data-k="${k}">${l}</button>`).join('')}</div>
+    ${years.map(k => `<div class="yr yrsel ${k === sel ? 'on' : ''}" data-act="yrPick" data-k="${k}"><span>${k}</span><div class="bar"><i style="width:${(val(Y[k]) / max * 100).toFixed(1)}%"></i></div><span>${label(val(Y[k]))}</span></div>`).join('')}
+    <h3 class="sec">${sel}</h3>
+    <div class="grid">${tile(r.hikes, 'hikes')}${tile((r.m / M_PER_MI).toFixed(1), 'miles')}${tile(fmtFt(r.gainM), 'feet climbed')}${tile(r.nights, 'nights out')}${tile(r.peaks.size, 'peaks summited')}${tile(r.lakes.size + r.passes.size, 'lakes and passes')}</div>
+    ${r.fresh.length ? `<h3 class="sec">New to you in ${sel} <span class="muted">${r.fresh.length}</span></h3>${r.fresh.sort((a, b) => b.ele - a.ele || a.name.localeCompare(b.name)).slice(0, 15).map(f => cardHTML({ title: f.name, icon: f.icon, sub: KIND_INFO[f.kind] ? KIND_INFO[f.kind].label + (f.ele ? ' · ' + fmtFt(f.ele) + ' ft' : '') : 'Area', st: 'been', open: f.open })).join('')}` : ''}`;
+}
+// "Maybe next": unvisited named places that sit closest to hikes you have done. Kept at the bottom of Stats, collapsed.
+let sugCache = { key: '', list: [] };
+function suggestions() {
+  const key = data.editedAt + ':' + FEATS.length + ':' + data.tracks.length;
+  if (sugCache.key === key) return sugCache.list;
+  const pts = [];
+  for (const t of data.tracks) { if (t.planned || t.approved === false) continue; for (const q of resample(trackLine(t), 250)) pts.push(q); }
+  for (const q of data.pins) if (q.status === 'been') pts.push([q.lon, q.lat]);
+  const out = [];
+  if (pts.length) for (const f of FEATS) {
+    if (!['peak', 'lake', 'pass', 'waterfall'].includes(f.kind) || !nameOf(f) || beenEver(f.id)) continue;
+    const c = f.coord || f.center, kx = 111320 * Math.cos(c[1] * Math.PI / 180); let best = Infinity;
+    for (const q of pts) { const dx = (q[0] - c[0]) * kx, dy = (q[1] - c[1]) * 110540, d2 = dx * dx + dy * dy; if (d2 < best) best = d2; }
+    out.push({ f, d: Math.sqrt(best) });
+  }
+  out.sort((a, b) => a.d - b.d);
+  const per = {}, list = [];
+  for (const s of out) { per[s.f.kind] = (per[s.f.kind] || 0) + 1; if (per[s.f.kind] <= 4) list.push(s); if (list.length >= 8) break; }
+  sugCache = { key, list };
+  return list;
+}
+function suggestionsHTML() {
+  if (!FEATS.length) return '';
+  const list = suggestions();
+  return `<details class="set" data-k="sug" ${setOpen('sug', false)}><summary>Maybe next<span class="sv">near places you've been</span></summary>
+    ${list.length ? list.map(s => cardHTML({ title: nameOf(s.f), icon: KIND_INFO[s.f.kind].icon, sub: `${KIND_INFO[s.f.kind].label}${s.f.ele ? ' · ' + fmtFt(s.f.ele) + ' ft' : ''} · ${fmtMi(s.d)} mi from your hikes`, st: statusOf(s.f.id), open: { type: 'feature', id: s.f.id } })).join('') : '<div class="empty small">Approve a few hikes and places close to where you have been will show up here.</div>'}</details>`;
 }
 
 // ================= Detail pages =================
@@ -1893,6 +2308,7 @@ function pageRoute(d) {
     <div class="stats">${statHTML(fmtMi(len), 'mi', 'Length')}${statHTML(fmtFt(c.gain), 'ft', 'Elev. gain')}${statHTML(estTime(len, c.gain), 'hr', 'Est. time')}${statHTML(segs.length, '', segs.length > 1 ? 'Segments' : 'Segment')}</div>
     ${chartHTML(prof, breaks)}
     <button class="btn wide" data-act="preview">Preview route</button>
+    <div class="row"><button class="btn" data-act="planRoute">🗓️ Add to planned trips</button></div>
     <div class="actions">
       ${actionBtn('editRoute', 'Edit route', SVG.pencil, true)}
       ${actionBtn('gpxRoute', 'Export GPX for your Garmin', SVG.share)}
@@ -1900,7 +2316,7 @@ function pageRoute(d) {
       ${actionBtn('delRoute', 'Delete route', SVG.trash)}
     </div>
     <h2 class="sec">Segments</h2>
-    ${segs.map((s, i) => segHTML(segs.length > 1 ? 'Day ' + (i + 1) : 'Full route', DAY_COLORS[i % DAY_COLORS.length], s)).join('')}
+    ${segs.map((s, i) => segHTML(segs.length > 1 ? 'Day ' + (i + 1) : 'Full route', DAY_COLORS[i % DAY_COLORS.length], s) + (segs.length > 1 ? `<div class="row" style="margin:-2px 0 6px 17px"><button class="btn sm" data-act="gpxDay" data-i="${i}">GPX for day ${i + 1}</button></div>` : '')).join('')}
     <div class="small muted">Lowest ${fmtFt(c.min)} ft · highest ${fmtFt(c.max)} ft · loss ${fmtFt(c.loss)} ft. Time assumes ${data.settings.pace} mph plus 1 hour per 2,000 ft of climbing (change in Settings).</div>
     <h2 class="sec">Details</h2>
     <label class="f">Name</label><input id="rName" value="${esc(r.name)}">
@@ -1924,6 +2340,8 @@ function pageTrack(d) {
     ${t.approved === false ? `<div class="small" style="background:#fff4e5;border-radius:12px;padding:10px 12px;margin:8px 0">Waiting for your review. Its places and stats count after you approve it.</div><div class="row"><button class="btn primary" data-act="approveTrack">Approve hike</button><button class="btn danger" data-act="rejectTrack">Delete</button></div>` : ''}
     <div class="stats">${statHTML(fmtMi(len), 'mi', 'Length')}${statHTML(fmtFt(c.gain), 'ft', 'Elev. gain')}${dur ? statHTML(dur, '', 'Time') : statHTML(estTime(len, c.gain), 'hr', 'Est. time')}${statHTML(places.length, '', 'Places')}</div>
     ${chartHTML(prof, breaks)}
+    <div class="row"><button class="btn" data-act="openReport">📄 ${t.planned ? 'Trip plan' : 'Trip report'}</button></div>
+    ${planCardHTML(t)}
     <div class="actions">
       ${t.segments.some(s => s.src === 'garmin') ? actionBtn('split', 'Mark where Garmin stopped, then draw the rest', SVG.scissors) : ''}
       ${hasSplit ? actionBtn('unsplit', 'Undo Garmin split and remove manual parts', SVG.undo) : ''}
@@ -1931,7 +2349,7 @@ function pageTrack(d) {
       ${actionBtn('rematch', 'Re-match places', SVG.refresh)}
       ${actionBtn('delTrack', 'Delete hike', SVG.trash)}
     </div>
-    ${segs.length > 1 ? `<h2 class="sec">Segments</h2>${segs.map((s, i) => segHTML(s.src === 'garmin' ? 'Garmin recorded' : 'Drawn by me', s.src === 'garmin' ? '#1e88e5' : '#8e24aa', sstats[i])).join('')}` : ''}
+    ${segs.length > 1 ? `<h2 class="sec">Segments</h2>${segs.map((s, i) => segHTML(t.planned ? 'Day ' + (i + 1) : s.src === 'garmin' ? 'Garmin recorded' : 'Drawn by me', t.planned ? DAY_COLORS[i % DAY_COLORS.length] : s.src === 'garmin' ? '#1e88e5' : '#8e24aa', sstats[i])).join('')}` : ''}
     <h2 class="sec">Places on this hike <span class="small muted">${places.length}</span></h2>
     ${places.map(id => { const g = GROUPS[id], f = FEAT[id]; if (!g && !f) return ''; const k = g ? 'trail' : f.kind; return cardHTML({ title: g ? g.name : (nameOf(f) || 'Unnamed ' + KIND_INFO[k].label.toLowerCase()), icon: KIND_INFO[k].icon, sub: KIND_INFO[k].label + (f && f.ele ? ' · ' + fmtFt(f.ele) + ' ft' : ''), open: { type: 'feature', id } }); }).join('') || '<div class="empty small">No mapped places matched yet.' + (FEATS.length ? '' : ' Download map data first.') + '</div>'}
     <h2 class="sec">Details</h2>
@@ -2041,10 +2459,12 @@ function pageHelp() {
 // ================= Modes =================
 function setMode(m, keepEditor) {
   if (!keepEditor && editor && m !== 'route' && m !== 'track') stopEditor(true);
+  if (m !== 'area' && areaEd) stopAreaEditor(true);
   mode = m;
   document.querySelectorAll('#toolbar [data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
   if (map) { map.getCanvas().style.cursor = m === 'browse' ? '' : 'crosshair'; if (m === 'browse') map.doubleClickZoom.enable(); else map.doubleClickZoom.disable(); }
   if (m === 'pin') toast('Click the map to drop a pin.', 0);
+  else if (m === 'area') toast(null);
   else if (m === 'split') toast('Click the blue Garmin line where the watch stopped recording.', 0);
   else if (m === 'browse') toast(null);
 }
@@ -2106,7 +2526,7 @@ function stopPreview() { if (previewing) { previewing = false; toast(null); } }
 
 // ================= Layers panel =================
 function renderLayers() {
-  const s = data.settings, toggles = [['trails', 'Trails'], ['places', 'Peaks, passes, waterfalls'], ['lakes', 'Lakes'], ['tracks', 'My hikes'], ['routes', 'My routes'], ['pins', 'Pins'], ['labels', 'Labels'], ['contours', 'Contour lines (Outdoor map)'], ['hillshade', 'Hillshade'], ['heat', 'Heatmap'], ['recency', 'Color peaks & lakes by last visit (off by default)'], ['boundary', 'Grand Teton NP boundary (dashed)']];
+  const s = data.settings, toggles = [['trails', 'Trails'], ['places', 'Peaks, passes, waterfalls'], ['lakes', 'Lakes'], ['tracks', 'My hikes'], ['routes', 'My routes'], ['pins', 'Pins'], ['areas', 'Areas I drew'], ['labels', 'Labels'], ['contours', 'Contour lines (Outdoor map)'], ['hillshade', 'Hillshade'], ['heat', 'Heatmap'], ['recency', 'Color peaks & lakes by last visit (off by default)'], ['boundary', 'Grand Teton NP boundary (dashed)']];
   $('layers').innerHTML = `<h3 class="sec" style="margin-top:0">Map type</h3>
     <div class="bases">${Object.entries(BASES).map(([k, b]) => `<button data-base="${k}" class="${(s.base || 'topo') === k ? 'on' : ''}"><i style="background:${b.sw}"></i>${b.label}</button>`).join('')}</div>
     <h3 class="sec">Show</h3>
@@ -2124,6 +2544,7 @@ function renderLayers() {
       <span style="color:#1e88e5">━</span> Garmin hike · <span style="color:#8e24aa">┅</span> drawn hike<br>
       <span style="color:#fbc02d">┅</span> planned hike · <span style="color:#e65100">┈</span> waiting for approval<br>
       ▲ white = not yet · <span style="color:#d62828">▲</span> summited · <span style="color:#f77f00">▲</span> seen · ◆ pass · ● waterfall<br>
+      <span style="color:#558b2f">▭</span> area you drew · <span style="color:#1e88e5">◯</span> peak list on map<br>
       Recency (when on): <span style="color:#2bb24c">●</span> within a year · <span style="color:#fbc02d">●</span> 1–3 years · <span style="color:#f57c00">●</span> over 3 years · <span style="color:#90a4ae">●</span> never been</div>`;
   $('heatMode').value = s.heatMode || 'both';
 }
@@ -2147,6 +2568,25 @@ function onAction(act, el) {
     case 'recompressPhotos': recompressPhotos().catch(e => toast('Could not shrink photos: ' + e.message, 7000)); break;
     case 'planUp': case 'planDown': { const ids = plannedList().map(x => x.id), i = ids.indexOf(el.dataset.id); if (i >= 0) movePlanned(el.dataset.id, act === 'planUp' ? i - 1 : i + 1); break; }
     case 'newRoute': startEditor('route'); break;
+    case 'newArea': startAreaEditor(); break;
+    case 'editArea': { const a = findArea(d.id); if (a) startAreaEditor(a); break; }
+    case 'areaUndo': areaEd.pts.pop(); redrawArea(); renderSide(); break;
+    case 'areaClear': areaEd.pts = []; redrawArea(); renderSide(); break;
+    case 'areaSave': saveArea(); break;
+    case 'areaCancel': { const back = areaEd && areaEd.id ? { type: 'area', id: areaEd.id } : null; stopAreaEditor(); view.detail = back; renderSide(); break; }
+    case 'areaDelPt': areaEd.pts.splice(+el.dataset.i, 1); redrawArea(); renderSide(); break;
+    case 'saveAreaInfo': { const a = findArea(d.id); if (!a) break; a.name = $('arNameD').value.trim() || a.name; a.type = $('arTypeD').value; a.note = $('arNote').value; touch(); toast('Saved.'); break; }
+    case 'delArea': { const a = findArea(d.id); if (a && confirm('Delete this area and its visits?')) { data.areas = data.areas.filter(x => x !== a); delete data.visits[a.id]; delete data.photos[a.id]; delete data.wish[a.id]; touch({ noRender: true }); goBack(); } break; }
+    case 'newList': { const nm = prompt('Name for the new peak list:', ''); if (!nm || !nm.trim()) break; const l = { id: uid(), name: nm.trim(), ids: [] }; data.peakLists.push(l); touch({ noRender: true }); openDetail({ type: 'list', id: l.id }); break; }
+    case 'lpAdd': { const l = data.peakLists.find(x => x.id === d.id); if (l && !l.ids.includes(el.dataset.id)) { l.ids.push(el.dataset.id); touch(); } break; }
+    case 'lpDel': { const l = data.peakLists.find(x => x.id === d.id); if (l) { l.ids = l.ids.filter(x => x !== el.dataset.id); touch(); } break; }
+    case 'lpRename': { const l = data.peakLists.find(x => x.id === d.id); if (l && $('lpName').value.trim()) { l.name = $('lpName').value.trim(); touch(); toast('Saved.'); } break; }
+    case 'lpDelete': { const l = data.peakLists.find(x => x.id === d.id); if (l && confirm('Delete this peak list? Your visits are not affected.')) { data.peakLists = data.peakLists.filter(x => x !== l); if (data.settings.activeList === l.id) data.settings.activeList = ''; touch({ noRender: true }); goBack(); } break; }
+    case 'lpShow': { const was = data.settings.activeList === d.id; data.settings.activeList = was ? '' : d.id; touch(); if (!was) { const c = coordsOf(d); if (c) fitTo(c, 12); } break; }
+    case 'lpCopy': { const l = allLists().find(x => x.id === d.id); if (!l) break; const nl = { id: uid(), name: l.name + ' (mine)', ids: l.ids.slice() }; data.peakLists.push(nl); touch({ noRender: true }); openDetail({ type: 'list', id: nl.id }, true); toast('Copied. You can add and remove peaks now.'); break; }
+    case 'yrMetric': view.yrMetric = el.dataset.k; renderSide(); break;
+    case 'yrPick': view.yr = el.dataset.k; renderSide(); break;
+    case 'bannerFix': { view.setOpen = Object.assign(view.setOpen || {}, { sync: true }); if (editor) stopEditor(); if (areaEd) stopAreaEditor(); openDetail({ type: 'settings' }); break; }
     case 'drawHike': startEditor('track'); break;
     case 'gpx': $('gpxFile').click(); break;
     case 'importOld': $('oldFile').click(); break;
@@ -2179,7 +2619,19 @@ function onAction(act, el) {
     }
     case 'preview': previewRoute(routeLine(r)); break;
     case 'editRoute': startEditor('route', { route: r }); break;
-    case 'gpxRoute': download(r.name + '.gpx', toGPX(r.name, [routeLine(r)]), 'application/gpx+xml'); toast('GPX downloaded. Import it into Garmin Connect as a course.'); break;
+    case 'gpxRoute': {
+      const days = routeDays(r), wp = tripWaypoints(days, []);
+      days.slice(0, -1).forEach((dd, i) => { const e = dd[dd.length - 1]; wp.push({ lat: e[1], lon: e[0], ele: e[2], name: `End of day ${i + 1}`, sym: 'Campground' }); });
+      download(r.name + '.gpx', toGPX(r.name, days, wp, days.length > 1 ? days.map((_, i) => `${r.name} - Day ${i + 1}`) : null), 'application/gpx+xml');
+      toast('GPX downloaded. Import it into Garmin Connect as a course.'); break;
+    }
+    case 'gpxDay': { const days = routeDays(r), i = +el.dataset.i; if (!days[i]) break; download(`${r.name} day ${i + 1}.gpx`, toGPX(`${r.name} - Day ${i + 1}`, [days[i]], tripWaypoints([days[i]], [])), 'application/gpx+xml'); toast(`GPX for day ${i + 1} downloaded.`); break; }
+    case 'gpxPlanned': { const g = plannedGPX(); if (!g.lines.length) { toast('No planned trips with a line yet.'); break; } download('Teton Atlas planned trips.gpx', toGPX('Planned trips', g.lines, g.w, g.names), 'application/gpx+xml'); toast('GPX downloaded.'); break; }
+    case 'planRoute': {
+      const days = routeDays(r); if (!days.length) break;
+      const nt = { id: uid(), name: r.name, date: '', trip: '', notes: r.notes || '', planned: true, approved: true, camps: [], nights: Math.max(0, days.length - 1), routeId: r.id, segments: days.map(pts => ({ src: 'manual', pts })) };
+      data.tracks.push(nt); touch({ noRender: true }); openDetail({ type: 'track', id: nt.id }); toast('Added to Planned trips. Set a date under Details to see daylight and the forecast.', 6000); break;
+    }
     case 'hikedRoute': {
       const date = prompt('Date you hiked this (YYYY-MM-DD):', today()); if (!date) break;
       const nt = { id: uid(), name: r.name, date, trip: '', notes: 'Logged from planned route.', segments: [{ src: 'manual', pts: routeLine(r).map(q => q.slice()) }] };
@@ -2189,7 +2641,14 @@ function onAction(act, el) {
     case 'saveRoute': r.name = $('rName').value.trim() || r.name; r.notes = $('rNotes').value; touch(); toast('Saved.'); break;
     case 'split': setMode('split'); break;
     case 'unsplit': if (confirm('Undo the split? This removes the parts you drew and restores the full Garmin line.')) { unsplit(t); matchTrack(t); touch(); } break;
-    case 'gpxTrack': download(t.name + '.gpx', toGPX(t.name, t.segments.filter(s => s.src !== 'ignored').map(s => s.pts)), 'application/gpx+xml'); break;
+    case 'gpxTrack': {
+      const lines = t.segments.filter(s => s.src !== 'ignored').map(s => s.pts);
+      const wp = t.planned ? tripWaypoints(lines, (t.camps || []).map(findPin).filter(Boolean)) : null;
+      download(t.name + '.gpx', toGPX(t.name, lines, wp, t.planned && lines.length > 1 ? lines.map((_, i) => `${t.name} - Day ${i + 1}`) : null), 'application/gpx+xml'); break;
+    }
+    case 'openReport': openDetail({ type: 'report', id: d.id }); break;
+    case 'reportPrint': { const tt = findTrack(d.id); if (tt) printReport(tt); break; }
+    case 'loadForecast': { const tt = findTrack(d.id); if (tt) loadForecast(tt); break; }
     case 'rematch': { if (t.approved === false) { toast('Approve this hike first.'); break; } const n = matchTrack(t).length; touch(); toast(`Matched ${n} places.`); break; }
     case 'approveTrack': approveTrack(t); break;
     case 'approveAll': { const pend = data.tracks.filter(x => x.approved === false); pend.forEach(approveTrack); toast(`Approved ${pend.length} hike${pend.length === 1 ? '' : 's'}.`); break; }
@@ -2275,12 +2734,21 @@ $('side').addEventListener('change', e => {
   if (id === 'exPhoto') { view.explore.photo = e.target.checked; renderSide(); }
   if (id === 'edSnap') { editor.snap = e.target.checked; }
   if (id === 'edName' && editor) editor.name = e.target.value;
+  if (id === 'arName' && areaEd) areaEd.name = e.target.value;
+  if (id === 'arType' && areaEd) areaEd.type = e.target.value;
   if (id === 'edDate' && editor) editor.date = e.target.value;
   if (e.target.dataset.filter) setFilter(e.target.dataset.filter, e.target.value);
 });
+$('side').addEventListener('input', e => {
+  if (e.target.id !== 'lpQ') return;
+  const q = e.target.value.trim().toLowerCase(), box = $('lpRes'), d = view.detail; if (!box || !d) return;
+  const l = data.peakLists.find(x => x.id === d.id); if (!l) return;
+  const hits = q.length < 2 ? [] : namedPeaks().filter(f => nameOf(f).toLowerCase().includes(q) && !l.ids.includes(f.id)).sort((a, b) => b.ele - a.ele).slice(0, 8);
+  box.innerHTML = hits.map(f => `<div class="visit"><div class="tx"><b>${esc(nameOf(f))}</b> <span class="muted small">${fmtFt(f.ele)} ft</span></div><button class="btn sm" data-act="lpAdd" data-id="${f.id}">Add</button></div>`).join('') || (q.length >= 2 ? '<div class="empty small">No match.</div>' : '');
+});
 document.addEventListener('change', e => { if (e.target.id === 'exSt' || e.target.id === 'exSort') { /* restore selected value after re-render */ } });
 function setFilter(k, v) { filter[k] = v; updateSources(); renderSide(); if (!$('layers').hidden) renderLayers(); }
-$('q').addEventListener('input', () => { view.detail = view.detail && view.detail.type === 'editor' ? view.detail : null; renderSide(); });
+$('q').addEventListener('input', () => { view.detail = view.detail && (view.detail.type === 'editor' || view.detail.type === 'areaEditor') ? view.detail : null; renderSide(); });
 document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => { $('q').value = ''; setTab(b.dataset.tab); }));
 document.querySelectorAll('#toolbar [data-mode]').forEach(b => b.addEventListener('click', () => {
   const m = b.dataset.mode;
@@ -2298,6 +2766,7 @@ $('menu').addEventListener('click', e => {
   const m = b.dataset.menu;
   if (m === 'save') saveFile();
   if (m === 'sync') { if (syncOn()) syncNow(true); else { if (editor) stopEditor(); openDetail({ type: 'settings' }); } }
+  if (m === 'newArea') { if (editor) stopEditor(true); startAreaEditor(); }
   if (m === 'importOld') $('oldFile').click();
   if (m === 'importJson') $('jsonFile').click();
   if (m === 'gpx') $('gpxFile').click();
@@ -2306,7 +2775,7 @@ $('menu').addEventListener('click', e => {
   if (m === 'pngMap') exportMapPNG();
   if (m === 'pdfMap') exportMapPDF();
   if (m === 'printPdf') { if (editor) stopEditor(); view.detail = null; viewStack = []; setTab('stats'); setTimeout(() => window.print(), 350); }
-  if (['history', 'settings', 'help', 'ideas', 'offline'].includes(m)) { if (editor) stopEditor(); openDetail({ type: m }); if (m === 'offline') setTimeout(updateOffStatus, 50); }
+  if (['history', 'settings', 'help', 'ideas', 'offline'].includes(m)) { if (editor) stopEditor(); if (areaEd) stopAreaEditor(); openDetail({ type: m }); if (m === 'offline') setTimeout(updateOffStatus, 50); }
 });
 // Photos: how much space they take in the file, shown in Settings
 function photoSummary() {
@@ -2428,6 +2897,21 @@ function syncStatus(msg) {
   sync.msg = msg;
   const a = $('syncSub'); if (a) a.textContent = msg;
   const b = $('syncLine'); if (b) b.textContent = msg;
+  updateSyncBanner();
+}
+// Banner at the top of the panel: token rejected or about to expire, repeated failures, or changes stuck for a day
+function updateSyncBanner() {
+  const el = $('syncBanner'); if (!el) return;
+  const st = sync.st; let msg = '', act = 'bannerFix', label = 'Fix';
+  if (syncOn()) {
+    const exp = st.expires ? Date.parse(String(st.expires).replace(' UTC', 'Z').replace(' ', 'T')) : NaN, left = (exp - Date.now()) / 864e5;
+    if (st.authBad) msg = 'Sync is off: GitHub rejected your access token, which may have expired. Your edits are safe on this device but are not uploading.';
+    else if (st.fails >= 3) { msg = `Sync has failed ${st.fails} times in a row. ${st.err || ''}`; act = 'syncNow'; label = 'Retry'; }
+    else if (!isNaN(left) && left < 14) { msg = left <= 0 ? 'Your sync token has expired.' : `Your sync token expires in ${Math.ceil(left)} day${Math.ceil(left) === 1 ? '' : 's'}. Make a new one soon.`; }
+    else if (st.pending && st.last && Date.now() - st.last > 864e5) { msg = 'Some changes have been waiting more than a day to upload.'; act = 'syncNow'; label = 'Sync now'; }
+  }
+  el.hidden = !msg;
+  el.innerHTML = msg ? `<span>${esc(msg)}</span><button class="btn sm" data-act="${act}">${label}</button>` : '';
 }
 function syncIdle() { return !syncOn() ? 'Not connected' : sync.st.pending ? 'Changes waiting to upload' : sync.st.last ? 'Synced ' + syncClock() : 'Connected'; }
 function photoSig() {
@@ -2435,7 +2919,7 @@ function photoSig() {
   return n + ':' + len;
 }
 function hasLocalContent() {
-  return !!(data.tracks.length || data.pins.length || data.routes.length || Object.keys(data.visits).length || Object.keys(data.names).length || Object.keys(data.wish).length || data.ideas.sooner.length || data.ideas.later.length || Object.keys(data.photos).length);
+  return !!(data.tracks.length || data.pins.length || data.routes.length || Object.keys(data.visits).length || Object.keys(data.names).length || Object.keys(data.wish).length || data.ideas.sooner.length || data.ideas.later.length || Object.keys(data.photos).length || data.areas.length || data.peakLists.length);
 }
 function toB64(str) {
   const bytes = new TextEncoder().encode(str); let bin = '';
@@ -2446,7 +2930,8 @@ async function gh(path, opts) {
   const c = sync.cfg;
   const url = `https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}${path ? '/' + path : ''}`;
   const res = await fetch(url, Object.assign({ cache: 'no-store' }, opts, { headers: Object.assign({ Authorization: 'Bearer ' + c.token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }, (opts && opts.headers) || {}) }));
-  if (res.status === 401) throw new Error('GitHub rejected the token. Make a new one and paste it in Settings → Sync.');
+  const exp = res.headers.get('github-authentication-token-expiration'); if (exp && sync.st.expires !== exp) { sync.st.expires = exp; syncSaveState(); }
+  if (res.status === 401) { const e = new Error('GitHub rejected the token. Make a new one and paste it in Settings → Sync.'); e.auth = true; throw e; }
   if (res.status === 403 || res.status === 429) throw new Error('GitHub refused the request. Check the token has "Contents: Read and write" for the data repo, or try again in a minute.');
   return res;
 }
@@ -2530,9 +3015,10 @@ async function syncNow(manual) {
     let done = false;
     for (let i = 0; i < 3 && !done; i++) done = await syncOnce();
     if (!done) throw new Error('GitHub was busy. Try again.');
-    sync.st.last = Date.now(); syncSaveState(); syncStatus(syncIdle());
+    sync.st.last = Date.now(); sync.st.authBad = false; sync.st.fails = 0; sync.st.err = ''; syncSaveState(); syncStatus(syncIdle());
     if (manual) toast('Synced.');
   } catch (e) {
+    sync.st.err = e.message || String(e); if (e.auth) sync.st.authBad = true; else sync.st.fails = (sync.st.fails || 0) + 1;
     syncSaveState(); syncStatus('Sync failed: ' + (e.message || e));
     if (manual) toast('Sync failed: ' + (e.message || e), 8000);
   } finally {
@@ -2622,7 +3108,7 @@ function pageOffline() {
 }
 
 // ================= Map init =================
-const HIT = ['poi', 'route-line', 'track-hit', 'trail-hit', 'lake-fill'];
+const HIT = ['poi', 'route-line', 'track-hit', 'trail-hit', 'lake-fill', 'area-fill'];
 function initMap() {
   maplibregl.addProtocol('teton-dem', demProtocol);
   map = new maplibregl.Map({ container: 'map', style: buildStyle(), center: [-110.80, 43.74], zoom: 10.3, maxPitch: 85, hash: true, attributionControl: { compact: true } });
@@ -2664,6 +3150,7 @@ function initMap() {
       elevations([ll]).then(el => { if (el[0] != null && !p.note) { p.note = `Elevation about ${fmtFt(el[0])} ft.`; touch({ noRender: true }); if (view.detail && view.detail.id === p.id) renderSide(); } });
       return;
     }
+    if (areaEd) { addAreaPt(ll); return; }
     if (editor) { addPoint(ll); return; }
     const box = [[e.point.x - 7, e.point.y - 7], [e.point.x + 7, e.point.y + 7]];
     if (mode === 'split') {
@@ -2678,6 +3165,7 @@ function initMap() {
       if (l === 'route-line') return openDetail({ type: 'route', id: pr.rid });
       if (l === 'track-hit') return openDetail({ type: 'track', id: pr.tid });
       if (l === 'trail-hit') return openDetail({ type: 'feature', id: WAY2GROUP[pr.id] || pr.id });
+      if (l === 'area-fill') return openDetail({ type: 'area', id: pr.id });
       return openDetail({ type: 'feature', id: pr.id });
     }
     if (view.detail && view.detail.type !== 'editor') { view.detail = null; viewStack = []; selectedPinId = null; renderSide(); updateSources(); }
@@ -2702,7 +3190,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
   if (data.settings.collapsed === undefined && window.matchMedia('(max-width:800px)').matches) data.settings.collapsed = true;
   if (data.settings.collapsed) setCollapsed(true);
   updateSaveState(); renderSide();
-  if (syncOn()) { syncStatus(syncIdle()); syncNow(); }
+  if (syncOn()) { syncStatus(syncIdle()); syncNow(); } else updateSyncBanner();
   if (!FEATS.length) setTimeout(() => { if (!FEATS.length) toast('No trail data on this device yet.', 0, { label: 'Download now', run: () => onAction('fetchAll') }); }, 1500);
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* optional */ }
 })();
