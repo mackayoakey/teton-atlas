@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Teton Atlas V12</title>
+<title>Teton Atlas V13</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -54,7 +54,7 @@ body.collapsed #toolbar,body.collapsed #toast{left:50%}
 .yrsel.on{background:var(--soft)}
 .yrsel.on span:first-child{font-weight:800}
 @media print{
-  #map,#toolbar,#menu,#layers,#menuBtn,#layersBtn,#collapseBtn,#toast,nav.tabs,.search,#side header,.actions,.back,.btn,.x,.ph-x,.chips,.photos,.stats .muted{display:none!important}
+  #map,#toolbar,#menu,#layers,#markers,#markersBtn,#menuBtn,#layersBtn,#collapseBtn,#toast,nav.tabs,.search,#side header,.actions,.back,.btn,.x,.ph-x,.chips,.photos,.stats .muted{display:none!important}
   #side{position:static!important;width:auto!important;height:auto!important;border:0!important;transform:none!important;display:block!important;background:#fff}
   html,body{height:auto!important;overflow:visible!important;background:#fff}
   #sideBody{overflow:visible!important;padding:0!important}
@@ -168,9 +168,20 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 #toolbar button span{position:absolute;bottom:-26px;font-size:11px;color:#fff;background:var(--pill);padding:1px 6px;border-radius:6px;opacity:0;pointer-events:none;white-space:nowrap}
 #toolbar button:hover span{opacity:1}
 #toast{position:absolute;z-index:8;top:16px;left:calc(200px + 50%);transform:translateX(-50%);background:var(--pill);color:#fff;border-radius:999px;padding:9px 18px;font-size:13px;max-width:60vw;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.25)}
-.pin{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer}
-.pin span{transform:rotate(45deg);font-size:15px;line-height:1}
-.pin.sel{outline:3px solid var(--lime)}
+.pinw{position:relative;cursor:pointer}
+.pin{--s:32px;width:var(--s);height:var(--s);display:flex;align-items:center;justify-content:center;border:2.5px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,.4);box-sizing:border-box}
+.pin.s{--s:24px}.pin.l{--s:44px}
+.pin.drop{border-radius:50% 50% 50% 0;transform:rotate(-45deg)}
+.pin.drop span{transform:rotate(45deg)}
+.pin.circle{border-radius:50%}
+.pin.square{border-radius:9px}
+.pin span{font-size:calc(var(--s) * .5);line-height:1}
+.pinw.sel .pin{outline:3px solid var(--lime)}
+.pl{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;font-style:normal;font-size:11.5px;font-weight:700;color:#1b1b1b;white-space:nowrap;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff,0 0 4px #fff;pointer-events:none}
+.own{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px;margin:0 0 8px}
+.own.orig{background:#e3eef9;color:#1e5a8e}.own.mine{background:#e5f4df;color:#2e6b1f}
+#markersBtn{right:118px}
+#markers{width:310px}
 .wpm{width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid var(--ink);cursor:grab}
 .wpm.first{border-color:var(--green)}
 .wpm.brk{border-color:var(--orange);width:20px;height:20px}
@@ -215,7 +226,7 @@ details.set[open]{padding-bottom:6px}
   .mapbtn{top:calc(var(--sat) + 6px);z-index:6}
   .pop{top:calc(var(--bar) + 6px);max-height:calc(100vh - var(--bar) - 20px - var(--sab))}
   @supports (height:1dvh){.pop{max-height:calc(100dvh - var(--bar) - 20px - var(--sab))}}
-  #layers{width:min(300px,calc(100vw - 28px))}
+  #layers,#markers{width:min(310px,calc(100vw - 28px))}
   #toast{left:50%;top:calc(var(--bar) + 10px);max-width:88vw;border-radius:18px}
   input,select,textarea{font-size:16px}
   nav.tabs button{padding:12px 10px 13px}
@@ -232,12 +243,12 @@ details.set[open]{padding-bottom:6px}
 <body>
 <div id="topbar">
   <svg width="30" height="30" viewBox="0 0 34 34"><rect width="34" height="34" rx="9" fill="#fff" fill-opacity=".14"/><path d="M4 26 L13 12 L16 16 L20 7 L30 26 Z" fill="#fff"/><path d="M20 7 L17.5 12 L19.5 11 L21.5 13 Z" fill="#aef07f"/></svg>
-  <b>Teton Atlas</b><span class="chip-v">V12</span>
+  <b>Teton Atlas</b><span class="chip-v">V13</span>
 </div>
 <aside id="side">
   <header>
     <svg width="34" height="34" viewBox="0 0 34 34"><rect width="34" height="34" rx="9" fill="#1f5e2c"/><path d="M4 26 L13 12 L16 16 L20 7 L30 26 Z" fill="#fff"/><path d="M20 7 L17.5 12 L19.5 11 L21.5 13 Z" fill="#aef07f"/></svg>
-    <h1>Teton Atlas</h1><span class="chip-v">V12</span>
+    <h1>Teton Atlas</h1><span class="chip-v">V13</span>
   </header>
   <div id="syncBanner" class="banner" hidden></div>
   <div class="search">
@@ -257,6 +268,7 @@ details.set[open]{padding-bottom:6px}
 <div id="map"></div>
 
 <button id="layersBtn" class="mapbtn" title="Map layers"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1b1b1b" stroke-width="2"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg></button>
+<button id="markersBtn" class="mapbtn" title="Filter markers"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1b1b1b" stroke-width="2" stroke-linecap="round"><path d="M12 21s-7-6.5-7-12a7 7 0 0114 0c0 5.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg></button>
 <button id="menuBtn" class="mapbtn" title="Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1b1b1b" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
 
 <div id="menu" class="pop" hidden>
@@ -287,6 +299,7 @@ details.set[open]{padding-bottom:6px}
 </div>
 
 <div id="layers" class="pop" hidden></div>
+<div id="markers" class="pop" hidden></div>
 
 <div id="toolbar">
   <button data-mode="browse" class="on" title="Browse"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l7 16 2-7 7-2z"/></svg><span>Browse</span></button>
@@ -306,7 +319,7 @@ details.set[open]{padding-bottom:6px}
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V12';
+const APP_VERSION = 'V13';
 // Rough outline of the Teton Range (Teton Pass to Conant Pass, Jackson Hole side and Teton Valley side). Editable from the Layers panel.
 const RANGE_DEFAULT = [[-111.02, 43.48], [-110.88, 43.45], [-110.70, 43.58], [-110.62, 43.85], [-110.59, 44.05], [-110.68, 44.13], [-110.80, 44.12], [-110.93, 43.95], [-111.05, 43.78], [-111.10, 43.60], [-111.02, 43.48]];
 const BBOX = { s: 43.40, w: -111.25, n: 44.15, e: -110.50 }; // whole Teton Range, WY + ID sides
@@ -428,7 +441,15 @@ const VERSIONS = [
     'A banner warns when sync stops working or your GitHub token is about to expire.',
     'Optional photo store (Settings → Photos): photos are kept as separate files, so the saved file and sync data stay small. Backups still include every photo.',
     '1 m terrain from USGS 3DEP, downloaded for areas you choose (a High peaks preset or the current view): sharper 3D and hillshade.',
-    'Offline base map: install a .pmtiles file made with tools/build-offline-map.sh and the roads, water and place names work with no connection.'] }
+    'Offline base map: install a .pmtiles file made with tools/build-offline-map.sh and the roads, water and place names work with no connection.'] },
+  { name: 'Teton Atlas V13', date: '2026-11-16', notes: [
+    'Layers shelf: real sample tiles for each map style; Borders, Show, Heatmap & filters, 3D and Legend fold under arrows. The panel stays open when you switch styles.',
+    'Remove anything from the map: any trail, lake, peak, pass or waterfall has a "Remove from map" button. Removed items stop counting in your totals.',
+    'Clean up the map: draw a shape (menu → Clean up the map) and remove the trails, lakes, peaks, passes or waterfalls inside it in one go, for example the ski hills.',
+    'Deleted items (menu): restore anything you removed or deleted, including whole clean-ups, pins, hikes, routes, areas and peak lists.',
+    'Teton Range outline you can edit, plus toggles for the Grand Teton NP border and the range outline (Layers → Borders). Stats count only what is inside the range outline (switchable), plus your own summit and lake pins.',
+    'Markers shelf (new button beside Layers): filter by kind, original or mine, status, peak height and name; choose Clean or Classic marker looks and size.',
+    'Nicer markers. Pins can be a pin, circle or square, in three sizes, any color, with the name shown on the map. Original markers and your pins are labeled as such.'] }
 ];
 
 // ================= State =================
@@ -1382,7 +1403,33 @@ function makeIcon(draw) {
   const c = document.createElement('canvas'); c.width = c.height = 44; const g = c.getContext('2d');
   draw(g); return { width: 44, height: 44, data: g.getImageData(0, 0, 44, 44).data };
 }
+const ICON_NAMES = [];
+function cleanIcon(g, path, fill, stroke) {
+  g.save(); g.shadowColor = 'rgba(0,0,0,.4)'; g.shadowBlur = 5; g.shadowOffsetY = 2;
+  path(); g.lineJoin = 'round'; g.lineWidth = 7; g.strokeStyle = '#fff'; g.stroke(); g.restore();
+  path(); g.fillStyle = fill; g.fill(); g.lineWidth = 2; g.strokeStyle = stroke; g.stroke();
+}
+function addIconsClean() {
+  const fills = { none: '#ffffff', been: '#e63946', seen: '#f4a261' };
+  for (const [st, fill] of Object.entries(fills)) {
+    const reg = (name, img) => { map.addImage(name, img, { pixelRatio: 2 }); ICON_NAMES.push(name); };
+    reg('peak-' + st, makeIcon(g => cleanIcon(g, () => { g.beginPath(); g.moveTo(22, 8); g.lineTo(37, 35); g.lineTo(7, 35); g.closePath(); }, fill, '#263238')));
+    reg('pass-' + st, makeIcon(g => cleanIcon(g, () => { g.beginPath(); g.moveTo(22, 9); g.lineTo(35, 22); g.lineTo(22, 35); g.lineTo(9, 22); g.closePath(); }, fill, '#263238')));
+    reg('waterfall-' + st, makeIcon(g => cleanIcon(g, () => { g.beginPath(); g.arc(22, 22, 12, 0, Math.PI * 2); }, st === 'none' ? '#4fc3f7' : fill, '#0d47a1')));
+  }
+}
+function restyleIcons() {
+  for (const n of ICON_NAMES.splice(0)) if (map.hasImage(n)) map.removeImage(n);
+  for (const st of ['none', 'been', 'seen']) for (const k of ['peak', 'pass', 'waterfall']) if (map.hasImage(k + '-' + st)) map.removeImage(k + '-' + st);
+  addIcons(); updateSources();
+}
+function applyMarkerStyle() {
+  if (!map || !map.getLayer('poi')) return;
+  const k = MK().size;
+  map.setLayoutProperty('poi', 'icon-size', ['interpolate', ['linear'], ['zoom'], 9, +(0.85 * k).toFixed(3), 14, +(1.3 * k).toFixed(3)]);
+}
 function addIcons() {
+  if ((data.settings.mk && data.settings.mk.style) !== 'classic') { addIconsClean(); return; }
   const fills = { none: '#ffffff', been: '#d62828', seen: '#f77f00' };
   for (const [st, fill] of Object.entries(fills)) {
     map.addImage('peak-' + st, makeIcon(g => { g.beginPath(); g.moveTo(22, 6); g.lineTo(39, 36); g.lineTo(5, 36); g.closePath(); g.fillStyle = fill; g.fill(); g.lineWidth = 4; g.strokeStyle = '#1b1b1b'; g.stroke(); }), { pixelRatio: 2 });
@@ -1443,7 +1490,7 @@ function addOverlays() {
   map.addLayer({ id: 'trail-label', type: 'symbol', source: 'trail-text', minzoom: 12.5, layout: { 'symbol-placement': 'line', 'text-field': ['get', 'label'], 'text-font': FONT, 'text-size': 11.5 }, paint: halo });
   map.addLayer({ id: 'area-label', type: 'symbol', source: 'area-text', minzoom: 11, layout: { 'text-field': ['get', 'label'], 'text-font': FONT_IT, 'text-size': 12 }, paint: { 'text-color': '#33691e', 'text-halo-color': '#ffffff', 'text-halo-width': 1.4 } });
   map.addLayer({ id: 'hover-pt', type: 'circle', source: 'hover', paint: { 'circle-radius': 7, 'circle-color': '#151515', 'circle-stroke-color': '#aef07f', 'circle-stroke-width': 3 } });
-  applyLayerVisibility();
+  applyLayerVisibility(); applyMarkerStyle();
 }
 const LAYER_GROUPS = {
   trails: ['trail-line', 'trail-done', 'trail-hit'], places: ['poi', 'poi-label'], lakes: ['lake-fill', 'lake-line'], tracks: ['track-garmin', 'track-manual', 'track-ignored', 'track-planned', 'track-pending', 'track-hit'],
@@ -1501,10 +1548,11 @@ function updateSources() {
       const c = wayCoverage(f.id);
       trailF.push({ type: 'Feature', properties: { id: f.id, label: nameOf(f), hw: f.hw, cov: c >= 0.75 ? 2 : c > 0 ? 1 : 0 }, geometry: { type: 'LineString', coordinates: f.coords } });
     } else if (f.kind === 'lake') {
-      const st = statusOf(f.id) || 'none';
+      const st = statusOf(f.id) || 'none', showL = featShown(f);
       lakeF.push({ type: 'Feature', properties: { id: f.id, st, rc: rcOf(f.id) }, geometry: { type: 'MultiPolygon', coordinates: f.polys.map(r => [r]) } });
-      if (nameOf(f)) lakeP.push({ type: 'Feature', properties: { label: nameOf(f) }, geometry: { type: 'Point', coordinates: f.center } });
+      if (nameOf(f) && showL) lakeP.push({ type: 'Feature', properties: { label: nameOf(f) }, geometry: { type: 'Point', coordinates: f.center } });
     } else {
+      if (!featShown(f)) continue;
       const nm = nameOf(f), ft = f.ele ? Math.round(f.ele * FT_PER_M).toLocaleString() + ' ft' : '';
       poiF.push({ type: 'Feature', properties: { id: f.id, kind: f.kind, st: statusOf(f.id) || 'none', rc: rcOf(f.id), ele: f.ele || 0, label: f.kind === 'peak' ? [nm, ft].filter(Boolean).join('\n') : nm }, geometry: { type: 'Point', coordinates: f.coord } });
     }
@@ -1568,30 +1616,95 @@ function updateSelection() {
 }
 function setHover(c) { if (mapReady) map.getSource('hover').setData(fc(c ? [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [c[0], c[1]] } }] : [])); }
 
-// Pins are HTML markers so they can show emoji icons and be dragged
+// ---- Marker filters (the Markers shelf) ----
+const MK_DEFAULT = { kinds: {}, pinTypes: {}, src: 'all', st: 'any', minEle: 0, q: '', size: 1, style: 'clean' };
+const MK = () => Object.assign({}, MK_DEFAULT, data.settings.mk || {});
+function mkActive() { const m = MK(); return m.src !== 'all' || m.st !== 'any' || m.minEle || m.q || Object.values(m.kinds).includes(false) || Object.values(m.pinTypes).includes(false); }
+function statusKey(id) { const s = statusOf(id); return s === 'been' ? 'been' : s === 'seen' ? 'seen' : isWish(id) ? 'want' : 'none'; }
+function featShown(f) {
+  const m = MK();
+  if (m.src === 'mine' || m.kinds[f.kind] === false) return false;
+  if (m.st !== 'any' && statusKey(f.id) !== m.st) return false;
+  if (m.minEle && f.kind === 'peak' && (f.ele || 0) * FT_PER_M < m.minEle) return false;
+  if (m.q && !(nameOf(f) || '').toLowerCase().includes(m.q.toLowerCase())) return false;
+  return true;
+}
+function pinShown(p) {
+  const m = MK();
+  if (m.src === 'orig' || m.kinds.pin === false || m.pinTypes[p.type] === false) return false;
+  if (m.st !== 'any' && (p.status || 'none') !== m.st) return false;
+  if (m.q && !((p.name || (PIN_TYPES[p.type] || PIN_TYPES.other).label) || '').toLowerCase().includes(m.q.toLowerCase())) return false;
+  return true;
+}
+function mkCounts() {
+  const orig = FEATS.filter(f => f.kind !== 'trail'), by = {}; for (const f of orig) by[f.kind] = (by[f.kind] || 0) + 1;
+  return { by, orig: orig.length, mine: data.pins.length, shownO: orig.filter(featShown).length, shownM: data.pins.filter(pinShown).length };
+}
+const mkOpen = {};
+function renderMarkers() {
+  const m = MK(), c = mkCounts(), sec = (k, t, body, open) => `<details class="set" data-msec="${k}" ${(mkOpen[k] ?? open) ? 'open' : ''}><summary>${t}</summary>${body}</details>`;
+  const pinCt = {}; for (const p of data.pins) pinCt[p.type] = (pinCt[p.type] || 0) + 1;
+  $('markers').innerHTML = `<div class="row" style="align-items:center"><h3 class="sec" style="margin:0;flex:1">Markers</h3><button class="btn sm" data-mk="reset" ${mkActive() ? '' : 'disabled'}>Reset filters</button></div>
+    <div class="small muted" id="mkCount" style="margin:4px 0 8px">Showing ${c.shownO + c.shownM} of ${c.orig + c.mine} · ${c.shownO} original, ${c.shownM} mine</div>
+    <div class="chips" style="margin-bottom:6px">${[['all', 'All'], ['orig', 'Original'], ['mine', 'Mine']].map(([k, l]) => `<button class="${m.src === k ? 'on' : ''}" data-mk="src" data-v="${k}">${l}${k === 'orig' ? ' · ' + c.orig : k === 'mine' ? ' · ' + c.mine : ''}</button>`).join('')}</div>
+    ${sec('kinds', 'What to show', ['peak', 'pass', 'waterfall', 'lake'].map(k => `<label class="toggle"><input type="checkbox" data-mkkind="${k}" ${m.kinds[k] === false ? '' : 'checked'}> ${KIND_INFO[k].icon} ${({peak:'Peaks',pass:'Passes',waterfall:'Waterfalls',lake:'Lakes'})[k]} <span class="muted small">· ${c.by[k] || 0}</span></label>`).join('') + `<label class="toggle"><input type="checkbox" data-mkkind="pin" ${m.kinds.pin === false ? '' : 'checked'}> 📍 My pins <span class="muted small">· ${c.mine}</span></label>`, true)}
+    ${sec('pins', 'My pin types', Object.entries(PIN_TYPES).map(([k, t]) => `<label class="toggle"><input type="checkbox" data-mkpin="${k}" ${m.pinTypes[k] === false ? '' : 'checked'}> ${t.icon} ${t.label} <span class="muted small">· ${pinCt[k] || 0}</span></label>`).join(''), false)}
+    ${sec('filters', 'Filter by', `<label class="f">Status</label><select id="mkSt">${[['any', 'Any'], ['been', 'Been / summited'], ['seen', 'Seen'], ['want', 'Want to go / saved'], ['none', 'Not yet']].map(([k, l]) => `<option value="${k}" ${m.st === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      <label class="f">Peaks at least</label><select id="mkEle">${[[0, 'Any height'], [8000, '8,000 ft'], [10000, '10,000 ft'], [11000, '11,000 ft'], [12000, '12,000 ft'], [13000, '13,000 ft']].map(([k, l]) => `<option value="${k}" ${+m.minEle === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      <label class="f">Name contains</label><input id="mkQ" value="${esc(m.q)}" placeholder="e.g. Teton, Lake">`, true)}
+    ${sec('look', 'Marker look', `<div class="chips">${[['clean', 'Clean'], ['classic', 'Classic']].map(([k, l]) => `<button class="${m.style === k ? 'on' : ''}" data-mk="style" data-v="${k}">${l}</button>`).join('')}</div>
+      <label class="f">Size: <b id="mkSizeV">${(+m.size).toFixed(1)}×</b></label><input type="range" id="mkSize" min="0.7" max="1.8" step="0.1" value="${m.size}" style="padding:0">
+      <div class="small muted" style="margin-top:6px">Original markers: ▲ peak, ◆ pass, ● waterfall (red = summited, orange = seen). Your pins are the colored badges; change their shape, size and color on each pin.</div>`, false)}`;
+}
+function mkSet(patch, rerender) {
+  data.settings.mk = Object.assign({}, MK(), patch);
+  touch({ noRender: true }); updateSources();
+  if (rerender) renderMarkers(); else { const c = mkCounts(), el = $('mkCount'); if (el) el.textContent = `Showing ${c.shownO + c.shownM} of ${c.orig + c.mine} · ${c.shownO} original, ${c.shownM} mine`; }
+}
+$('markersBtn').addEventListener('click', e => { e.stopPropagation(); $('menu').hidden = true; $('layers').hidden = true; const L = $('markers'); L.hidden = !L.hidden; if (!L.hidden) renderMarkers(); });
+$('markers').addEventListener('toggle', e => { const k = e.target.dataset && e.target.dataset.msec; if (k) mkOpen[k] = e.target.open; }, true);
+$('markers').addEventListener('click', e => {
+  const b = e.target.closest('[data-mk]'); if (!b) return;
+  if (b.dataset.mk === 'reset') mkSet({ kinds: {}, pinTypes: {}, src: 'all', st: 'any', minEle: 0, q: '' }, true);
+  if (b.dataset.mk === 'src') mkSet({ src: b.dataset.v }, true);
+  if (b.dataset.mk === 'style') { mkSet({ style: b.dataset.v }, true); restyleIcons(); }
+});
+$('markers').addEventListener('change', e => {
+  const t = e.target, m = MK();
+  if (t.dataset.mkkind) mkSet({ kinds: Object.assign({}, m.kinds, { [t.dataset.mkkind]: t.checked }) }, true);
+  else if (t.dataset.mkpin) mkSet({ pinTypes: Object.assign({}, m.pinTypes, { [t.dataset.mkpin]: t.checked }) }, true);
+  else if (t.id === 'mkSt') mkSet({ st: t.value }, true);
+  else if (t.id === 'mkEle') mkSet({ minEle: +t.value }, true);
+});
+$('markers').addEventListener('input', e => {
+  if (e.target.id === 'mkQ') mkSet({ q: e.target.value }, false);
+  if (e.target.id === 'mkSize') { mkSet({ size: +e.target.value }, false); $('mkSizeV').textContent = (+e.target.value).toFixed(1) + '×'; applyMarkerStyle(); }
+});
+
+// Pins are HTML markers so they can show emoji icons and be dragged// Pins are HTML markers so they can show emoji icons and be dragged
 function syncPins() {
   if (!map) return;
   const show = layerOn('pins'), live = new Set();
   for (const p of data.pins) {
     live.add(p.id);
     let m = pinMarkers.get(p.id);
-    const t = PIN_TYPES[p.type] || PIN_TYPES.other;
+    const t = PIN_TYPES[p.type] || PIN_TYPES.other, shape = p.shape || 'drop', size = p.size || 'm', sig = shape + size;
+    if (m && m._sig !== sig) { m.remove(); pinMarkers.delete(p.id); m = null; }
     if (!m) {
-      const el = document.createElement('div'); el.className = 'pin';
+      const el = document.createElement('div'); el.className = 'pinw';
       el.addEventListener('click', e => { e.stopPropagation(); if (mode === 'browse') openDetail({ type: 'pin', id: p.id }); });
-      m = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -6] }).setLngLat([p.lon, p.lat]);
+      m = new maplibregl.Marker({ element: el, anchor: shape === 'drop' ? 'bottom' : 'center', offset: shape === 'drop' ? [0, -2] : [0, 0] }).setLngLat([p.lon, p.lat]); m._sig = sig;
       m.on('dragend', () => { const ll = m.getLngLat(), pin = findPin(p.id); if (pin) { pin.lon = +ll.lng.toFixed(6); pin.lat = +ll.lat.toFixed(6); touch(); toast('Pin moved.'); } });
       pinMarkers.set(p.id, m);
     }
     const el = m.getElement();
-    el.style.background = p.color || t.color;
-    el.innerHTML = `<span>${esc(p.icon || t.icon)}</span>`;
+    el.innerHTML = `<div class="pin ${shape} ${size}" style="background:${esc(p.color || t.color)}"><span>${esc(p.icon || t.icon)}</span></div>${p.label ? `<em class="pl">${esc(p.name || t.label)}</em>` : ''}`;
     el.title = p.name || t.label;
     el.classList.toggle('sel', selectedPinId === p.id);
     el.style.opacity = p.status === 'want' ? 0.7 : 1;
     m.setLngLat([p.lon, p.lat]);
     m.setDraggable(selectedPinId === p.id);
-    if (show && inFilterPin(p)) { if (!m._map) m.addTo(map); } else m.remove();
+    if (show && inFilterPin(p) && pinShown(p)) { if (!m._map) m.addTo(map); } else m.remove();
   }
   for (const [id, m] of pinMarkers) if (!live.has(id)) { m.remove(); pinMarkers.delete(id); }
 }
@@ -2225,11 +2338,11 @@ function featureItems() {
   }
   for (const a of data.areas) {
     const T = AREA_TYPES[a.type] || AREA_TYPES.other, ac = ringAcres(a.ring);
-    items.push({ kind: 'area', title: a.name || T.label, icon: T.icon, sub: `Area · ${T.label} · ${ac < 10 ? ac.toFixed(1) : Math.round(ac).toLocaleString()} ac`, st: statusOf(a.id), wish: isWish(a.id), ele: 0, rc: rcOf(a.id), photo: !!data.photos[a.id], open: { type: 'area', id: a.id } });
+    items.push({ kind: 'area', title: a.name || T.label, icon: T.icon, sub: `Your area · ${T.label} · ${ac < 10 ? ac.toFixed(1) : Math.round(ac).toLocaleString()} ac`, st: statusOf(a.id), wish: isWish(a.id), ele: 0, rc: rcOf(a.id), photo: !!data.photos[a.id], open: { type: 'area', id: a.id } });
   }
   for (const p of data.pins) {
     const t = PIN_TYPES[p.type] || PIN_TYPES.other;
-    items.push({ kind: 'pin', title: p.name || t.label, icon: p.icon || t.icon, color: p.color || t.color, sub: 'Pin · ' + t.label + (p.date ? ' · ' + fmtDate(p.date) : ''), st: p.status, ele: 0, rc: rcFromDate(p.status === 'been' ? p.date : ''), photo: !!data.photos[p.id], open: { type: 'pin', id: p.id } });
+    items.push({ kind: 'pin', title: p.name || t.label, icon: p.icon || t.icon, color: p.color || t.color, sub: 'Your pin · ' + t.label + (p.date ? ' · ' + fmtDate(p.date) : ''), st: p.status, ele: 0, rc: rcFromDate(p.status === 'been' ? p.date : ''), photo: !!data.photos[p.id], open: { type: 'pin', id: p.id } });
   }
   return items;
 }
@@ -2532,7 +2645,7 @@ function pageFeature(d) {
   }
   return `${backBtn()}
     <div class="d-title">${esc(name || 'Unnamed ' + info.label.toLowerCase())}</div>
-    <div class="d-sub">${esc(sub)}</div>
+    <div class="own orig">Original map data</div><div class="d-sub">${esc(sub)}</div>
     ${stats}${extra}
     <div class="actions">
       ${actionBtn('been', kind === 'peak' ? 'I summited this' : "I've been here", SVG.check, st === 'been')}
@@ -2618,13 +2731,16 @@ function pagePin(d) {
   const t = PIN_TYPES[p.type] || PIN_TYPES.other;
   return `${backBtn()}
     <div class="d-title">${esc(p.icon || t.icon)} ${esc(p.name || t.label)}</div>
-    <div class="d-sub">${t.label} · ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)} · drag the pin on the map to move it</div>
+    <div class="own mine">Your pin</div><div class="d-sub">${t.label} · ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)} · drag the pin on the map to move it</div>
     <label class="f">Name</label><input id="pName" value="${esc(p.name)}">
     <div class="row"><div style="flex:1"><label class="f">Type</label><select id="pType">${Object.entries(PIN_TYPES).map(([k, v]) => `<option value="${k}" ${k === p.type ? 'selected' : ''}>${v.icon} ${v.label}</option>`).join('')}</select></div>
       <div style="flex:1"><label class="f">Status</label><select id="pStatus">${[['been', 'Been here'], ['seen', 'Seen it'], ['want', 'Want to go']].map(([k, l]) => `<option value="${k}" ${p.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
     <div class="row"><div style="flex:1"><label class="f">Icon (any emoji)</label><input id="pIcon" value="${esc(p.icon || '')}" placeholder="${t.icon}" maxlength="4"></div><div style="flex:1"><label class="f">Date</label><input type="date" id="pDate" value="${esc(p.date || '')}"></div></div>
-    <div class="row">${['⛰️', '💧', '⛺', '🥾', '📷', '🦌', '🐻', '🌼', '🍄', '🎣', '❄️', '⭐'].map(e => `<button class="btn sm" data-emoji="${e}">${e}</button>`).join('')}</div>
-    <label class="f">Color</label><div class="swatches">${[t.color, ...COLORS.filter(c => c !== t.color)].map(cl => `<button data-color="${cl}" class="${(p.color || t.color) === cl ? 'on' : ''}" style="background:${cl}"></button>`).join('')}</div>
+    <div class="row" style="flex-wrap:wrap">${['⛰️', '🏔️', '💧', '⛺', '🥾', '📷', '🦌', '🐻', '🦅', '🌼', '🍄', '🎣', '❄️', '⭐', '🚩', '🅿️', '🚽', '🔥', '🌲', '🪨', '🌊', '🐟', '🧗', '🎿'].map(e => `<button class="btn sm" data-emoji="${e}">${e}</button>`).join('')}</div>
+    <label class="f">Color</label><div class="swatches">${[t.color, ...COLORS.filter(c => c !== t.color)].map(cl => `<button data-color="${cl}" class="${(p.color || t.color) === cl ? 'on' : ''}" style="background:${cl}"></button>`).join('')}<input type="color" id="pColorPick" value="${/^#[0-9a-f]{6}$/i.test(p.color || t.color) ? (p.color || t.color) : '#455a64'}" title="Any color" style="width:34px;height:34px;padding:0;border:0;background:none"></div>
+    <div class="row"><div style="flex:1"><label class="f">Shape</label><select id="pShape">${[['drop', 'Pin'], ['circle', 'Circle'], ['square', 'Square']].map(([k, l]) => `<option value="${k}" ${(p.shape || 'drop') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      <div style="flex:1"><label class="f">Size</label><select id="pSize">${[['s', 'Small'], ['m', 'Medium'], ['l', 'Large']].map(([k, l]) => `<option value="${k}" ${(p.size || 'm') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
+    <label class="toggle"><input type="checkbox" id="pLabel" ${p.label ? 'checked' : ''}> Show the name on the map</label>
     <label class="f">Notes</label><textarea id="pNote" rows="4">${esc(p.note || '')}</textarea>
     ${photosHTML(p.id)}
     <div class="row"><button class="btn primary" data-act="savePin">Save pin</button><button class="btn danger" data-act="delPin">Delete</button></div>`;
@@ -3001,7 +3117,7 @@ $('side').addEventListener('click', e => {
     return;
   }
   const ec = e.target.closest('[data-ecolor]'); if (ec) { editor.color = ec.dataset.ecolor; redrawEditor(); renderSide(); return; }
-  const em = e.target.closest('[data-emoji]'); if (em) { $('pIcon').value = em.dataset.emoji; return; }
+  const em = e.target.closest('[data-emoji]'); if (em) { $('pIcon').value = em.dataset.emoji; const pn = view.detail && view.detail.type === 'pin' && findPin(view.detail.id); if (pn) { pn.icon = em.dataset.emoji; touch({ noRender: true }); syncPins(); } return; }
   const bk = e.target.closest('[data-brk]'); if (bk) { const w = editor.wps[+bk.dataset.brk]; w.brk = !w.brk; redrawEditor(); renderSide(); return; }
   const dw = e.target.closest('[data-delwp]'); if (dw) { removePoint(+dw.dataset.delwp); return; }
 });
@@ -3009,6 +3125,9 @@ $('side').addEventListener('change', e => {
   const id = e.target.id;
   if (id === 'pmFile' && e.target.files[0]) { const f = e.target.files[0]; pmInstall(f, f.name); e.target.value = ''; }
   if (id === 'pmOn') pmToggle(e.target.checked);
+  if (['pShape', 'pSize', 'pLabel', 'pColorPick'].includes(id) && view.detail && view.detail.type === 'pin') {
+    const pn = findPin(view.detail.id); if (pn) { if (id === 'pShape') pn.shape = e.target.value; if (id === 'pSize') pn.size = e.target.value; if (id === 'pLabel') pn.label = e.target.checked; if (id === 'pColorPick') pn.color = e.target.value; touch({ noRender: true }); syncPins(); }
+  }
   if (id === 'rangeOnlyCk') { data.settings.rangeOnly = e.target.checked; touch(); }
   if (e.target.dataset && e.target.dataset.cutkind && areaEd) { areaEd.cut.kinds[e.target.dataset.cutkind] = e.target.checked; highlightCut(); renderSide(); }
   if (id === 'cutTouch' && areaEd) { areaEd.cut.touch = e.target.checked; highlightCut(); renderSide(); }
@@ -3044,9 +3163,9 @@ document.querySelectorAll('#toolbar [data-mode]').forEach(b => b.addEventListene
 }));
 $('btn3d').addEventListener('click', () => { set3D(!data.settings.terrain); touch({ noRender: true }); if (!$('layers').hidden) renderLayers(); });
 $('menuBtn').addEventListener('click', e => { e.stopPropagation(); $('layers').hidden = true; $('menu').hidden = !$('menu').hidden; });
-$('layersBtn').addEventListener('click', e => { e.stopPropagation(); $('menu').hidden = true; const L = $('layers'); L.hidden = !L.hidden; if (!L.hidden) renderLayers(); });
+$('layersBtn').addEventListener('click', e => { e.stopPropagation(); $('menu').hidden = true; $('markers').hidden = true; const L = $('layers'); L.hidden = !L.hidden; if (!L.hidden) renderLayers(); });
 document.addEventListener('click', e => { if (!e.target.isConnected) return;   // the click re-drew its own panel: not an outside click
-  if (!e.target.closest('#menu,#menuBtn')) $('menu').hidden = true; if (!e.target.closest('#layers,#layersBtn')) $('layers').hidden = true; });
+  if (!e.target.closest('#menu,#menuBtn')) $('menu').hidden = true; if (!e.target.closest('#layers,#layersBtn')) $('layers').hidden = true; if (!e.target.closest('#markers,#markersBtn')) $('markers').hidden = true; });
 $('menu').addEventListener('click', e => {
   const b = e.target.closest('[data-menu]'); if (!b) return;
   $('menu').hidden = true;
