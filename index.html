@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Teton Atlas V9</title>
+<title>Teton Atlas V10</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -207,7 +207,7 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 <aside id="side">
   <header>
     <svg width="34" height="34" viewBox="0 0 34 34"><rect width="34" height="34" rx="9" fill="#1f5e2c"/><path d="M4 26 L13 12 L16 16 L20 7 L30 26 Z" fill="#fff"/><path d="M20 7 L17.5 12 L19.5 11 L21.5 13 Z" fill="#aef07f"/></svg>
-    <h1>Teton Atlas</h1><span class="chip-v">V9</span>
+    <h1>Teton Atlas</h1><span class="chip-v">V10</span>
   </header>
   <div class="search">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b6f6b" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
@@ -246,6 +246,7 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
   <button data-menu="pdfMap"><span>Map view as PDF<span class="sub">Opens the print dialog; choose "Save as PDF"</span></span></button>
   <button data-menu="offline"><span>Offline terrain (download)</span></button>
   <button data-menu="printPdf"><span>Stats &amp; checklist as PDF<span class="sub">Opens the print dialog; choose "Save as PDF"</span></span></button>
+  <button data-menu="sync"><span>Sync between devices<span class="sub" id="syncSub">Not connected</span></span></button>
   <button data-menu="settings"><span>Settings</span></button>
   <button data-menu="history"><span>Version history</span></button>
   <button data-menu="help"><span>How to use</span></button>
@@ -271,7 +272,7 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V9';
+const APP_VERSION = 'V10';
 const BBOX = { s: 43.40, w: -111.25, n: 44.15, e: -110.50 }; // whole Teton Range, WY + ID sides
 const OVERPASS_URLS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
@@ -367,7 +368,11 @@ const VERSIONS = [
     'Asks the browser to keep this app\'s saved map data from being cleared.'] },
   { name: 'Teton Atlas V9', date: '2026-11-16', notes: [
     'Double-tap and pinch no longer zoom the page; only the map zooms.',
-    'Removed the emoji from the menu.'] }
+    'Removed the emoji from the menu.'] },
+  { name: 'Teton Atlas V10', date: '2026-11-16', notes: [
+    'Sync between devices: Settings → Sync between devices. Your trips, pins, ideas, notes and photos are kept in a private GitHub repo and stay the same on iPhone and computer.',
+    'Changes upload a few seconds after you make them, and are fetched when you open or return to the app. Edits made offline upload when you reconnect.',
+    'Your access token stays in each device\'s browser only; it is never in the app file or in backups.'] }
 ];
 
 // ================= State =================
@@ -953,6 +958,7 @@ function touch(opts) {
   dirty = true; data.editedAt = Date.now();
   updateSaveState();
   clearTimeout(touch.tm); touch.tm = setTimeout(saveLocal, 500);
+  syncMarkPending();
   if (!opts || !opts.noRender) { updateSources(); renderSide(); }
 }
 function updateSaveState() { const b = document.querySelector('[data-menu=save]'); if (b) b.innerHTML = dirty ? '<span>Save file<span class="sub">You have unsaved changes</span></span>' : '<span>Save file</span>'; }
@@ -1970,6 +1976,15 @@ function pageSettings() {
     <p class="muted small">${photoSummary()}</p>
     <div class="row"><button class="btn" data-act="recompressPhotos">Shrink existing photos to this size</button></div>
     <div class="row"><button class="btn primary" data-act="saveSettings">Save settings</button></div>
+    <h2 class="sec">Sync between devices</h2>
+    <p class="muted small">Keeps your trips, pins, ideas, notes and photos the same on every device, through a private GitHub repository. Set it up once per device.</p>
+    <p class="small" id="syncLine"><b>${esc(sync.msg || syncIdle())}</b></p>
+    <label class="f">GitHub username</label><input id="syOwner" autocapitalize="none" autocorrect="off" value="${esc((sync.cfg && sync.cfg.owner) || 'mackayoakey')}">
+    <label class="f">Private data repository</label><input id="syRepo" autocapitalize="none" autocorrect="off" value="${esc((sync.cfg && sync.cfg.repo) || 'teton-atlas-data')}">
+    <label class="f">Folder in the repo</label><input id="syDir" autocapitalize="none" autocorrect="off" value="${esc((sync.cfg && sync.cfg.dir) || 'data')}">
+    <label class="f">Branch</label><input id="syBranch" autocapitalize="none" autocorrect="off" value="${esc((sync.cfg && sync.cfg.branch) || 'main')}">
+    <label class="f">Access token ${sync.cfg && sync.cfg.token ? '(saved on this device; leave blank to keep it)' : '(starts with github_pat_)'}</label><input id="syToken" type="password" autocapitalize="none" autocorrect="off" autocomplete="off" placeholder="${sync.cfg && sync.cfg.token ? '••••••••' : 'github_pat_…'}">
+    <div class="row"><button class="btn primary" data-act="syncSave">Save and sync</button>${syncOn() ? '<button class="btn" data-act="syncNow">Sync now</button><button class="btn" data-act="syncOff">Disconnect this device</button>' : ''}</div>
     <h2 class="sec">Map data</h2>
     <p class="muted small">${FEATS.length ? `${FEATS.length.toLocaleString()} features, downloaded ${data.osm && data.osm.fetchedAt ? new Date(data.osm.fetchedAt).toLocaleString() : ''}.` : 'Not downloaded yet.'} Data © OpenStreetMap contributors (ODbL).</p>
     <p class="muted small">${data.parkOutline ? 'Grand Teton NP outline is loaded.' : 'Grand Teton NP outline is not loaded yet. The boundary shows the rectangle until it is.'}</p>
@@ -2190,6 +2205,16 @@ function onAction(act, el) {
     case 'edDay': { const w = editor.wps[editor.wps.length - 1]; w.brk = !w.brk; redrawEditor(); renderSide(); break; }
     case 'edSave': if (editor && $('edName')) editor.name = $('edName').value; saveEditor(); break;
     case 'edCancel': { const back = editor && editor.kind === 'extend' ? { type: 'track', id: editor.trackId } : null; stopEditor(); view.detail = back; renderSide(); break; }
+    case 'syncSave': {
+      const token = $('syToken').value.trim() || (sync.cfg && sync.cfg.token) || '';
+      const cfg = { owner: $('syOwner').value.trim(), repo: $('syRepo').value.trim(), dir: $('syDir').value.trim() || 'data', branch: $('syBranch').value.trim() || 'main', token };
+      if (!cfg.owner || !cfg.repo || !token) { toast('Enter the username, repository and token.', 5000); break; }
+      if (!sync.cfg || sync.cfg.owner !== cfg.owner || sync.cfg.repo !== cfg.repo || sync.cfg.dir !== cfg.dir) { sync.st.sha = {}; sync.st.photoSig = ''; sync.st.last = 0; }
+      sync.cfg = cfg; try { localStorage.setItem(SYNC_KEY, JSON.stringify(cfg)); } catch (e) { toast('Could not save on this device.'); break; }
+      syncSaveState(); syncNow(true); renderSide(); break;
+    }
+    case 'syncNow': syncNow(true); break;
+    case 'syncOff': sync.cfg = null; sync.st = { sha: {}, pending: false, last: 0, photoSig: '' }; try { localStorage.removeItem(SYNC_KEY); localStorage.removeItem(SYNC_STATE_KEY); } catch (e) { /* ok */ } syncStatus('Not connected'); toast('This device is disconnected from sync. Your data stays here.'); renderSide(); break;
     case 'saveSettings': data.settings.pace = Math.max(0.5, Math.min(5, +$('sPace').value || 2)); data.settings.snap = $('sSnap').checked; if ($('sPhoto')) data.settings.photoMax = +$('sPhoto').value || 1200; touch(); toast('Settings saved.'); break;
   }
 }
@@ -2241,6 +2266,7 @@ $('menu').addEventListener('click', e => {
   $('menu').hidden = true;
   const m = b.dataset.menu;
   if (m === 'save') saveFile();
+  if (m === 'sync') { if (syncOn()) syncNow(true); else { if (editor) stopEditor(); openDetail({ type: 'settings' }); } }
   if (m === 'importOld') $('oldFile').click();
   if (m === 'importJson') $('jsonFile').click();
   if (m === 'gpx') $('gpxFile').click();
@@ -2354,6 +2380,138 @@ function setCollapsed(on) {
   if (map) { const t0 = performance.now(); const tick = () => { map.resize(); if (performance.now() - t0 < 320) requestAnimationFrame(tick); }; tick(); }
 }
 $('collapseBtn').addEventListener('click', () => setCollapsed(!document.body.classList.contains('collapsed')));
+
+// ================= GitHub sync (private data repo) =================
+// Your data lives in two files in a private repo: <folder>/atlas.json (trips, pins, ideas, notes...) and <folder>/photos.json.
+// The access token is kept only in this browser (its own storage key), never in the app file or in backups.
+const SYNC_KEY = 'teton-sync-v1', SYNC_STATE_KEY = 'teton-sync-state-v1';
+const sync = { cfg: null, st: { sha: {}, pending: false, last: 0, photoSig: '' }, busy: false, again: false, msg: '' };
+try { sync.cfg = JSON.parse(localStorage.getItem(SYNC_KEY) || 'null'); } catch (e) { /* none */ }
+try { Object.assign(sync.st, JSON.parse(localStorage.getItem(SYNC_STATE_KEY) || '{}')); } catch (e) { /* none */ }
+sync.st.sha = sync.st.sha || {};
+const syncOn = () => !!(sync.cfg && sync.cfg.token && sync.cfg.owner && sync.cfg.repo);
+function syncSaveState() { try { localStorage.setItem(SYNC_STATE_KEY, JSON.stringify(sync.st)); } catch (e) { /* optional */ } }
+function syncClock() { return new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+function syncStatus(msg) {
+  sync.msg = msg;
+  const a = $('syncSub'); if (a) a.textContent = msg;
+  const b = $('syncLine'); if (b) b.textContent = msg;
+}
+function syncIdle() { return !syncOn() ? 'Not connected' : sync.st.pending ? 'Changes waiting to upload' : sync.st.last ? 'Synced ' + syncClock() : 'Connected'; }
+function photoSig() {
+  let n = 0, len = 0; for (const l of Object.values(data.photos || {})) { n += l.length; for (const p of l) len += (p || '').length; }
+  return n + ':' + len;
+}
+function hasLocalContent() {
+  return !!(data.tracks.length || data.pins.length || data.routes.length || Object.keys(data.visits).length || Object.keys(data.names).length || Object.keys(data.wish).length || data.ideas.sooner.length || data.ideas.later.length || Object.keys(data.photos).length);
+}
+function toB64(str) {
+  const bytes = new TextEncoder().encode(str); let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+async function gh(path, opts) {
+  const c = sync.cfg;
+  const url = `https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}${path ? '/' + path : ''}`;
+  const res = await fetch(url, Object.assign({ cache: 'no-store' }, opts, { headers: Object.assign({ Authorization: 'Bearer ' + c.token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }, (opts && opts.headers) || {}) }));
+  if (res.status === 401) throw new Error('GitHub rejected the token. Make a new one and paste it in Settings → Sync.');
+  if (res.status === 403 || res.status === 429) throw new Error('GitHub refused the request. Check the token has "Contents: Read and write" for the data repo, or try again in a minute.');
+  return res;
+}
+async function syncListing() {
+  const c = sync.cfg, dir = (c.dir || 'data').replace(/^\/+|\/+$/g, '');
+  const res = await gh(`contents/${dir}?ref=${encodeURIComponent(c.branch || 'main')}`);
+  if (res.status === 404) {
+    const r = await gh('');
+    if (r.status === 404) throw new Error('Not found on GitHub. Check the username and repository name, and that the token includes this repo.');
+    return { dir, shas: {} };                         // repo exists, folder not created yet
+  }
+  if (!res.ok) throw new Error('GitHub error ' + res.status);
+  const list = await res.json(), shas = {};
+  for (const f of list) shas[f.name] = f.sha;
+  return { dir, shas };
+}
+async function syncRead(sha) {
+  const res = await gh('git/blobs/' + sha, { headers: { Accept: 'application/vnd.github.raw+json' } });
+  if (!res.ok) throw new Error('Could not read from GitHub (' + res.status + ').');
+  return JSON.parse(await res.text());
+}
+async function syncWrite(dir, name, obj, sha) {
+  const c = sync.cfg;
+  const body = { message: 'Teton Atlas sync ' + new Date().toISOString(), content: toB64(JSON.stringify(obj)), branch: c.branch || 'main' };
+  if (sha) body.sha = sha;
+  const res = await gh(`contents/${dir}/${name}`, { method: 'PUT', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
+  if (res.status === 409 || res.status === 422) return null;   // someone else wrote first: caller retries
+  if (!res.ok) throw new Error(res.status === 404 ? 'Not found on GitHub. Check the repo name, branch and token.' : 'Upload failed (' + res.status + ').');
+  return (await res.json()).content.sha;
+}
+function syncPayload() {
+  const { osm, photos, parkOutline, ...rest } = data;
+  const settings = Object.assign({}, rest.settings); delete settings.collapsed; delete settings.base; // per-device view choices
+  return { app: 'teton-atlas', savedAt: data.editedAt, photoSig: photoSig(), data: Object.assign({}, rest, { settings }) };
+}
+function syncAdopt(remote, remotePhotos) {
+  const keep = { osm: data.osm, parkOutline: data.parkOutline };
+  const localSettings = { collapsed: data.settings.collapsed, base: data.settings.base };
+  const next = normalize(Object.assign({}, remote.data, keep, { photos: remotePhotos || data.photos }));
+  next.settings = Object.assign({}, next.settings, localSettings);
+  next.editedAt = remote.savedAt || next.editedAt;
+  data = next;
+}
+async function syncOnce() {
+  const { dir, shas } = await syncListing();
+  const st = sync.st;
+  let needPush = st.pending || !shas['atlas.json'];
+  if (shas['atlas.json'] && shas['atlas.json'] !== st.sha.atlas) {            // remote has changes we have not seen
+    const remote = await syncRead(shas['atlas.json']);
+    let rphotos = null;
+    if (shas['photos.json'] && (shas['photos.json'] !== st.sha.photos || remote.photoSig !== photoSig())) rphotos = (await syncRead(shas['photos.json'])).photos || {};
+    if (!st.pending && !(!st.sha.atlas && hasLocalContent())) {
+      syncAdopt(remote, rphotos);                                             // nothing waiting here: take the other device's copy
+      st.photoSig = remote.photoSig || photoSig();
+    } else {
+      mergeData(Object.assign({}, remote.data, { photos: rphotos || {} }));    // both sides have changes: combine, then upload
+      needPush = true;
+    }
+    st.sha.atlas = shas['atlas.json']; if (shas['photos.json']) st.sha.photos = shas['photos.json'];
+    saveLocal(); updateSources(); renderSide();
+  }
+  if (needPush) {
+    const sig = photoSig();
+    if (sig !== st.photoSig || !shas['photos.json']) {
+      const ns = await syncWrite(dir, 'photos.json', { photos: data.photos }, shas['photos.json']);
+      if (ns === null) return false;
+      st.sha.photos = ns; st.photoSig = sig;
+    }
+    const na = await syncWrite(dir, 'atlas.json', syncPayload(), shas['atlas.json']);
+    if (na === null) return false;
+    st.sha.atlas = na; st.pending = false;
+  }
+  return true;
+}
+async function syncNow(manual) {
+  if (!syncOn()) return;
+  if (sync.busy) { sync.again = true; return; }
+  if (!navigator.onLine) { syncStatus(sync.st.pending ? 'Offline. Changes will upload when you are back online.' : 'Offline'); return; }
+  sync.busy = true; syncStatus('Syncing…');
+  try {
+    let done = false;
+    for (let i = 0; i < 3 && !done; i++) done = await syncOnce();
+    if (!done) throw new Error('GitHub was busy. Try again.');
+    sync.st.last = Date.now(); syncSaveState(); syncStatus(syncIdle());
+    if (manual) toast('Synced.');
+  } catch (e) {
+    syncSaveState(); syncStatus('Sync failed: ' + (e.message || e));
+    if (manual) toast('Sync failed: ' + (e.message || e), 8000);
+  } finally {
+    sync.busy = false;
+    if (sync.again) { sync.again = false; syncSoon(); }
+  }
+}
+function syncSoon() { if (!syncOn()) return; clearTimeout(syncSoon.tm); syncSoon.tm = setTimeout(() => syncNow(), 4000); }
+function syncMarkPending() { if (syncOn()) { sync.st.pending = true; syncSaveState(); syncStatus(syncIdle()); syncSoon(); } }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(); });
+window.addEventListener('online', () => syncNow());
 
 // ================= Offline terrain =================
 // Terrain (elevation and hillshade) tiles can be saved on the device. The base map's vector tiles are not
@@ -2508,6 +2666,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
   if (!data.parkOutline && FEATS.length && navigator.onLine) fetchParkOutline(true).catch(() => { /* Overpass unreachable: the rectangle stays until loaded */ });
   if (data.settings.collapsed) setCollapsed(true);
   updateSaveState(); renderSide();
+  if (syncOn()) { syncStatus(syncIdle()); syncNow(); }
   if (!FEATS.length) setTimeout(() => { if (!FEATS.length) toast('No trail data on this device yet.', 0, { label: 'Download now', run: () => onAction('fetchAll') }); }, 1500);
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* optional */ }
 })();
