@@ -1,5 +1,7 @@
 // Teton Atlas app shell cache. Map tiles and map data are NOT cached here.
-const CACHE = 'teton-atlas-shell-v5';
+// Saved terrain (offline terrain) lives in DEM_CACHE and must survive app updates.
+const CACHE = 'teton-atlas-shell-v6';
+const DEM_CACHE = 'teton-dem-offline';
 const SHELL = ['./', './index.html', './manifest.json', './icon.svg',
   'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css',
   'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js',
@@ -11,11 +13,16 @@ self.addEventListener('install', e => {
   ).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE && k !== DEM_CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', e => {
   const req = e.request, url = new URL(req.url);
   if (req.method !== 'GET') return;
+  // Saved terrain tiles: use the offline copy first, so contour lines and hillshade also work without a connection
+  if (url.hostname === 's3.amazonaws.com' && url.pathname.startsWith('/elevation-tiles-prod/')) {
+    e.respondWith(caches.open(DEM_CACHE).then(c => c.match(req.url)).then(hit => hit || fetch(req)));
+    return;
+  }
   const ours = url.origin === self.location.origin;
   if (!ours && url.hostname !== 'unpkg.com') return; // tiles, Overpass, etc. go straight to the network
   if (ours) {
