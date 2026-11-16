@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Teton Atlas V13</title>
+<title>Teton Atlas V14</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -54,7 +54,7 @@ body.collapsed #toolbar,body.collapsed #toast{left:50%}
 .yrsel.on{background:var(--soft)}
 .yrsel.on span:first-child{font-weight:800}
 @media print{
-  #map,#toolbar,#menu,#layers,#markers,#markersBtn,#menuBtn,#layersBtn,#collapseBtn,#toast,nav.tabs,.search,#side header,.actions,.back,.btn,.x,.ph-x,.chips,.photos,.stats .muted{display:none!important}
+  #map,#toolbar,#viewCtl,#menu,#layers,#markers,#markersBtn,#menuBtn,#layersBtn,#collapseBtn,#toast,nav.tabs,.search,#side header,.actions,.back,.btn,.x,.ph-x,.chips,.photos,.stats .muted{display:none!important}
   #side{position:static!important;width:auto!important;height:auto!important;border:0!important;transform:none!important;display:block!important;background:#fff}
   html,body{height:auto!important;overflow:visible!important;background:#fff}
   #sideBody{overflow:visible!important;padding:0!important}
@@ -181,6 +181,10 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 .own{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px;margin:0 0 8px}
 .own.orig{background:#e3eef9;color:#1e5a8e}.own.mine{background:#e5f4df;color:#2e6b1f}
 #markersBtn{right:118px}
+#viewCtl{position:absolute;z-index:5;top:124px;right:14px;display:flex;flex-direction:column;gap:8px}
+#viewCtl button{width:44px;height:44px;border-radius:50%;border:0;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.18);font-weight:800;font-size:15px;line-height:1}
+#viewCtl button:hover{background:var(--soft)}
+#viewCtl[hidden]{display:none}
 #markers{width:310px}
 .wpm{width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid var(--ink);cursor:grab}
 .wpm.first{border-color:var(--green)}
@@ -242,13 +246,13 @@ details.set[open]{padding-bottom:6px}
 </head>
 <body>
 <div id="topbar">
-  <svg width="30" height="30" viewBox="0 0 34 34"><rect width="34" height="34" rx="9" fill="#fff" fill-opacity=".14"/><path d="M4 26 L13 12 L16 16 L20 7 L30 26 Z" fill="#fff"/><path d="M20 7 L17.5 12 L19.5 11 L21.5 13 Z" fill="#aef07f"/></svg>
-  <b>Teton Atlas</b><span class="chip-v">V13</span>
+  <img src="icon-192.png" width="30" height="30" alt="" style="border-radius:8px;object-fit:cover;flex:none">
+  <b>Teton Atlas</b><span class="chip-v">V14</span>
 </div>
 <aside id="side">
   <header>
-    <svg width="34" height="34" viewBox="0 0 34 34"><rect width="34" height="34" rx="9" fill="#1f5e2c"/><path d="M4 26 L13 12 L16 16 L20 7 L30 26 Z" fill="#fff"/><path d="M20 7 L17.5 12 L19.5 11 L21.5 13 Z" fill="#aef07f"/></svg>
-    <h1>Teton Atlas</h1><span class="chip-v">V13</span>
+    <img src="icon-192.png" width="34" height="34" alt="" style="border-radius:9px;object-fit:cover;flex:none">
+    <h1>Teton Atlas</h1><span class="chip-v">V14</span>
   </header>
   <div id="syncBanner" class="banner" hidden></div>
   <div class="search">
@@ -298,6 +302,7 @@ details.set[open]{padding-bottom:6px}
   <button data-menu="help"><span>How to use</span></button>
 </div>
 
+<div id="viewCtl" hidden><button data-v="north" title="Snap to north">N</button><button data-v="up" title="Tilt up (look more toward the horizon)">▲</button><button data-v="down" title="Tilt down (look more from above)">▼</button></div>
 <div id="layers" class="pop" hidden></div>
 <div id="markers" class="pop" hidden></div>
 
@@ -319,7 +324,7 @@ details.set[open]{padding-bottom:6px}
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V13';
+const APP_VERSION = 'V14';
 // Rough outline of the Teton Range (Teton Pass to Conant Pass, Jackson Hole side and Teton Valley side). Editable from the Layers panel.
 const RANGE_DEFAULT = [[-111.02, 43.48], [-110.88, 43.45], [-110.70, 43.58], [-110.62, 43.85], [-110.59, 44.05], [-110.68, 44.13], [-110.80, 44.12], [-110.93, 43.95], [-111.05, 43.78], [-111.10, 43.60], [-111.02, 43.48]];
 const BBOX = { s: 43.40, w: -111.25, n: 44.15, e: -110.50 }; // whole Teton Range, WY + ID sides
@@ -362,8 +367,8 @@ const BASES = {
   outdoor: { label: 'Outdoor', vector: true, attr: '© OpenFreeMap © OpenMapTiles © OpenStreetMap', sw: 'linear-gradient(135deg,#f2efe6 0%,#cfe3bf 55%,#a8d3f0 100%)' },
   topo: { label: 'Topo', tiles: ['https://a.tile.opentopomap.org/{z}/{x}/{y}.png', 'https://b.tile.opentopomap.org/{z}/{x}/{y}.png', 'https://c.tile.opentopomap.org/{z}/{x}/{y}.png'], max: 17, attr: '© OpenTopoMap (CC-BY-SA), © OpenStreetMap', sw: 'linear-gradient(135deg,#e8e4c9,#b9c79a)' },
   usgs: { label: 'USGS Topo', tiles: ['https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}'], max: 16, attr: 'USGS The National Map', sw: 'linear-gradient(135deg,#f3efe2,#c9d8b6)' },
-  sat: { label: 'Satellite', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], max: 19, attr: 'Imagery © Esri', sw: 'linear-gradient(135deg,#2f4f3a,#6b7f5a)' },
-  hybrid: { label: 'Sat + Topo', tiles: ['https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}'], max: 16, attr: 'USGS The National Map', sw: 'linear-gradient(135deg,#3d5a40,#a8b48a)' },
+  sat: { label: 'Satellite', hi: true, tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], max: 19, attr: 'Imagery © Esri', sw: 'linear-gradient(135deg,#2f4f3a,#6b7f5a)' },
+  hybrid: { label: 'Sat + Topo', hi: true, tiles: ['https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}'], max: 16, attr: 'USGS The National Map', sw: 'linear-gradient(135deg,#3d5a40,#a8b48a)' },
   esritopo: { label: 'Esri Topo', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'], max: 19, attr: 'Map © Esri', sw: 'linear-gradient(135deg,#f1ede4,#d4dcc0)' }
 };
 const VERSIONS = [
@@ -406,7 +411,7 @@ const VERSIONS = [
     'Hike status on the map: done hikes in your colors, planned hikes in yellow dashes, hikes waiting for approval in orange dots.',
     'Planned trips can be put in your own order: drag them, or use the Up and Down buttons (works on iPhone).',
     'Explore → Filters (off by default): last visited, minimum elevation, and places with photos.',
-    'Layers → "Color peaks & lakes by last visit" (off by default): green within a year, yellow 1–3 years, orange older, grey never been.',
+    'Layers → "Color peaks & lakes by last visit": green within a year, yellow 1–3 years, orange older, grey never been.',
     'Photos: choose a size in Settings (800, 1200 or 1600 px) and shrink the photos you already have to save space.',
     'Offline terrain is also used for contour lines, so contours work offline once terrain is saved.',
     'Menu → Map view as PDF opens the print dialog with the map image; choose "Save as PDF".'] },
@@ -449,7 +454,14 @@ const VERSIONS = [
     'Deleted items (menu): restore anything you removed or deleted, including whole clean-ups, pins, hikes, routes, areas and peak lists.',
     'Teton Range outline you can edit, plus toggles for the Grand Teton NP border and the range outline (Layers → Borders). Stats count only what is inside the range outline (switchable), plus your own summit and lake pins.',
     'Markers shelf (new button beside Layers): filter by kind, original or mine, status, peak height and name; choose Clean or Classic marker looks and size.',
-    'Nicer markers. Pins can be a pin, circle or square, in three sizes, any color, with the name shown on the map. Original markers and your pins are labeled as such.'] }
+    'Nicer markers. Pins can be a pin, circle or square, in three sizes, any color, with the name shown on the map. Original markers and your pins are labeled as such.'] },
+  { name: 'Teton Atlas V14', date: '2026-11-16', notes: [
+    'The Teton photo is now the logo in the top left.',
+    'Satellite and Sat + Topo stay as sharp as possible when zoomed out (tiles one zoom level deeper are used).',
+    'Layers shelf: every map style has a sample picture (Outdoor has a drawn sample).',
+    'Grand Teton NP border now comes from the official National Park Service boundary (checked for sanity, OpenStreetMap as backup). No more wrong box. The GTNP border and the Teton Range outline are both on by default.',
+    'Coloring by last visit no longer marks places you have never visited.',
+    '3D view: N button snaps to north, ▲ ▼ buttons tilt the view up and down, and Layers → 3D has a Tilt slider. 3D exaggeration now starts at 1×.'] }
 ];
 
 // ================= State =================
@@ -1302,9 +1314,10 @@ function extractEmbedded(html) {
 }
 
 // ================= Map =================
-function layerOn(k) { const L = data.settings.layers || {}; return L[k] !== undefined ? L[k] : k === 'hillshade' ? true : !['heat', 'boundary', 'recency', 'range'].includes(k); }
+function layerOn(k) { const L = data.settings.layers || {}; return L[k] !== undefined ? L[k] : k === 'hillshade' ? true : !['heat', 'recency'].includes(k); }
 // Recency buckets for "last visited": y1 = within a year, y3 = 1 to 3 years, old = over 3 years, none = never been
-const RC_COLORS = ['match', ['get', 'rc'], 'y1', '#2bb24c', 'y3', '#fbc02d', 'old', '#f57c00', '#90a4ae'];
+const RC_COLORS = ['match', ['get', 'rc'], 'y1', '#2bb24c', 'y3', '#fbc02d', 'old', '#f57c00', 'rgba(0,0,0,0)'];   // never visited: no highlight
+const RC_LAKE = ['match', ['get', 'rc'], 'y1', '#2bb24c', 'y3', '#fbc02d', 'old', '#f57c00', '#4fa3e0'];            // never visited: normal lake color
 const LAKE_FILL_EXPR = ['match', ['get', 'st'], 'been', '#2a9d8f', 'seen', '#f4a261', '#4fa3e0'];
 function lastBeen(id) {
   let best = '';
@@ -1381,7 +1394,7 @@ function buildStyle() {
   const base = data.settings.base || 'outdoor';
   for (const [k, b] of Object.entries(BASES)) {
     if (b.vector) continue;
-    sources['base-' + k] = { type: 'raster', tiles: b.tiles, tileSize: 256, maxzoom: b.max, attribution: b.attr };
+    sources['base-' + k] = { type: 'raster', tiles: b.tiles, tileSize: b.hi ? 128 : 256, maxzoom: b.max, attribution: b.attr };   // 128: the map asks for tiles one zoom level deeper, so imagery stays as sharp as it gets even zoomed out
     layers.push({ id: 'base-' + k, type: 'raster', source: 'base-' + k, layout: { visibility: base === k ? 'visible' : 'none' } });
   }
   const demMax = hiRegions().length ? Math.max(...hiRegions().map(r => r.z)) : DEM_Z1;
@@ -1508,7 +1521,7 @@ function applyLayerVisibility() {
   // Recency colors (off by default): a colored halo under each peak, and lake fills colored by last visit
   const rec = layerOn('recency');
   if (map.getLayer('poi-rec')) map.setLayoutProperty('poi-rec', 'visibility', rec && layerOn('places') ? 'visible' : 'none');
-  if (map.getLayer('lake-fill')) map.setPaintProperty('lake-fill', 'fill-color', rec ? RC_COLORS : LAKE_FILL_EXPR);
+  if (map.getLayer('lake-fill')) map.setPaintProperty('lake-fill', 'fill-color', rec ? RC_LAKE : LAKE_FILL_EXPR);
   syncPins();
 }
 // Range boundary as GeoJSON: the park outline when loaded, else the BBOX rectangle (edit BBOX at the top to change it)
@@ -1521,19 +1534,55 @@ function inRangeF(f) {
 }
 function boundaryFC() {
   if (data.parkOutline && data.parkOutline.length) return fc([{ type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: data.parkOutline } }]);
-  return fc([{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [[BBOX.w, BBOX.s], [BBOX.e, BBOX.s], [BBOX.e, BBOX.n], [BBOX.w, BBOX.n], [BBOX.w, BBOX.s]] } }]);
+  return fc([]);   // not loaded yet: draw nothing rather than a wrong shape
 }
 // Grand Teton National Park outline from OpenStreetMap (stored in the file, so it loads offline afterwards)
-async function fetchParkOutline(silent) {
+// Official boundary from the National Park Service (ArcGIS service), checked for sanity (Grand Teton NP is about 1,250 km2), with OpenStreetMap as a backup
+const NPS_SVC = 'https://services1.arcgis.com/fBc8EJBxQRMcHlei/arcgis/rest/services/NPS_Land_Resources_Division_Boundary_and_Tract_Data_Service/FeatureServer';
+function parkAreaKm2(rings) { return rings.reduce((a, r) => a + ringAcres(r), 0) * 0.00404686; }
+function parkValid(rings) {
+  if (!rings || !rings.length) return false;
+  const km = parkAreaKm2(rings), b = bboxOf(rings.flat());
+  return km > 1000 && km < 1700 && b[0] > -111.1 && b[2] < -110.3 && b[1] > 43.4 && b[3] < 44.2;
+}
+function geojsonRings(gj) {
+  const out = [];
+  for (const f of gj.features || []) {
+    const g = f.geometry; if (!g) continue;
+    const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+    for (const poly of polys) if (poly[0] && poly[0].length > 3) out.push(poly[0].map(q => [r5(q[0]), r5(q[1])]));
+  }
+  return out;
+}
+async function parkFromNPS() {
+  const info = await (await fetch(NPS_SVC + '?f=json')).json();
+  const layers = (info.layers || []).slice().sort((a, b) => (/boundary/i.test(b.name) && !/tract/i.test(b.name)) - (/boundary/i.test(a.name) && !/tract/i.test(a.name)));
+  for (const L of layers) for (const where of ["UNIT_CODE='GRTE'", "UNIT_NAME='Grand Teton National Park'"]) {
+    try {
+      const q = new URLSearchParams({ where, outFields: 'UNIT_CODE', outSR: 4326, maxAllowableOffset: 0.0002, f: 'geojson' });
+      const res = await fetch(`${NPS_SVC}/${L.id}/query?${q}`); if (!res.ok) continue;
+      const rings = geojsonRings(await res.json());
+      if (parkValid(rings)) return rings;
+    } catch (e) { /* try the next layer */ }
+  }
+  throw new Error('the National Park Service service did not return the park boundary');
+}
+async function parkFromOSM() {
   const json = await overpass('[out:json][timeout:60];relation["boundary"="national_park"]["name"="Grand Teton National Park"];out geom;');
   const rel = (json.elements || []).find(e => e.type === 'relation');
   if (!rel) throw new Error('park outline not found in OpenStreetMap');
   const outers = (rel.members || []).filter(m => m.type === 'way' && m.role !== 'inner' && m.geometry).map(m => m.geometry.map(p => [r5(p.lon), r5(p.lat)]));
   const rings = stitchRings(outers);
-  if (!rings.length) throw new Error('park outline came back incomplete');
-  data.parkOutline = rings;
+  if (!parkValid(rings)) throw new Error('the OpenStreetMap park outline looked wrong');
+  return rings;
+}
+async function fetchParkOutline(silent) {
+  let rings, src = 'nps', err1;
+  try { rings = await parkFromNPS(); } catch (e) { err1 = e; }
+  if (!rings) { try { rings = await parkFromOSM(); src = 'osm'; } catch (e) { throw new Error(`${err1 ? err1.message : ''}; ${e.message}`); } }
+  data.parkOutline = rings; data.parkSrc = src;
   if (silent) saveLocal(); else touch({ noRender: true }); // a silent background load does not mark the file as changed
-  const src = map && map.getSource('boundary'); if (src) src.setData(boundaryFC());
+  const s = map && map.getSource('boundary'); if (s) s.setData(boundaryFC());
 }
 function setBase(k) {
   data.settings.base = k;
@@ -1713,9 +1762,10 @@ function inFilterPin(p) { return (filter.year === 'all' && filter.season === 'al
 // 3D terrain
 function set3D(on) {
   data.settings.terrain = on;
+  $('viewCtl').hidden = !on;
   $('btn3d').classList.toggle('on', on);
   if (on) {
-    map.setTerrain({ source: 'dem', exaggeration: +(data.settings.exag || 1.5) });
+    map.setTerrain({ source: 'dem', exaggeration: +(data.settings.exag || 1) });
     if (map.setSky) try { map.setSky({ 'sky-color': '#88b8e8', 'horizon-color': '#f0f4f8', 'fog-color': '#ffffff', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.8 }); } catch (e) { /* older engine */ }
     if (map.getPitch() < 45) map.easeTo({ pitch: 65, duration: 900 });
   } else {
@@ -2897,26 +2947,29 @@ function stopPreview() { if (previewing) { previewing = false; toast(null); } }
 
 // ================= Layers panel =================
 // A real sample of each base map: one tile over the Tetons (hidden if it cannot load, leaving the color swatch)
+const OUTDOOR_THUMB = `<svg viewBox="0 0 100 58" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;width:100%;height:100%"><rect width="100" height="58" fill="#e8e6df"/><path d="M0 40 Q20 24 40 34 T100 26 V58 H0Z" fill="#cfe3bf"/><path d="M0 50 Q30 38 55 46 T100 42 V58 H0Z" fill="#b5d5a0"/><path d="M62 8 L76 30 L48 30Z" fill="#c9c3b3"/><path d="M62 8 L67 16 L62 14 L58 17Z" fill="#fff"/><ellipse cx="26" cy="44" rx="14" ry="5" fill="#a8d3f0"/><path d="M4 56 Q30 30 52 36 T96 22" fill="none" stroke="#d9480f" stroke-width="1.4" stroke-dasharray="3 2"/><path d="M0 34 Q30 26 60 32 M0 46 Q30 40 70 44" fill="none" stroke="#a68b6a" stroke-width=".6" opacity=".7"/></svg>`;
 function baseThumb(b) {
-  if (!b.tiles) return '';
+  if (!b.tiles) return OUTDOOR_THUMB;
   const z = 11, u = b.tiles[0].replace('{z}', z).replace('{x}', lon2x(-110.80, z)).replace('{y}', lat2y(43.76, z));
-  return `<img src="${u}" alt="" loading="lazy" onerror="this.remove()">`;
+  return `<img src="${u}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`;
 }
 const layersOpen = {};
 function layersSec(key, title, body, open) { return `<details class="set" data-lsec="${key}" ${(layersOpen[key] ?? open) ? 'open' : ''}><summary>${title}</summary>${body}</details>`; }
 function renderLayers() {
-  const s = data.settings, toggles = [['trails', 'Trails'], ['places', 'Peaks, passes, waterfalls'], ['lakes', 'Lakes'], ['tracks', 'My hikes'], ['routes', 'My routes'], ['pins', 'Pins'], ['areas', 'Areas I drew'], ['labels', 'Labels'], ['contours', 'Contour lines (Outdoor map)'], ['hillshade', 'Hillshade'], ['heat', 'Heatmap'], ['recency', 'Color peaks & lakes by last visit (off by default)']];
+  const s = data.settings, toggles = [['trails', 'Trails'], ['places', 'Peaks, passes, waterfalls'], ['lakes', 'Lakes'], ['tracks', 'My hikes'], ['routes', 'My routes'], ['pins', 'Pins'], ['areas', 'Areas I drew'], ['labels', 'Labels'], ['contours', 'Contour lines (Outdoor map)'], ['hillshade', 'Hillshade'], ['heat', 'Heatmap'], ['recency', 'Color peaks & lakes by last visit']];
   $('layers').innerHTML = `<h3 class="sec" style="margin-top:0">Map type</h3>
     <div class="bases">${Object.entries(BASES).map(([k, b]) => `<button data-base="${k}" class="${(s.base || 'topo') === k ? 'on' : ''}"><i style="background:${b.sw}">${baseThumb(b)}</i>${b.label}</button>`).join('')}</div>
     ${layersSec('borders', 'Borders', `<label class="toggle"><input type="checkbox" data-layer="boundary" ${layerOn('boundary') ? 'checked' : ''}> Grand Teton National Park border <span class="muted small">(purple dashes)</span></label>
-      ${data.parkOutline && data.parkOutline.length ? '' : '<div class="small muted">The park outline is not loaded yet (a rough box shows instead). <button class="btn sm" data-act="parkOutline">Load it</button></div>'}
+      ${data.parkOutline && data.parkOutline.length ? '' : '<div class="small muted">The park outline is not loaded yet. <button class="btn sm" data-act="parkOutline">Load it</button></div>'}
       <label class="toggle"><input type="checkbox" data-layer="range" ${layerOn('range') ? 'checked' : ''}> Teton Range outline <span class="muted small">(orange dashes)</span></label>
       <div class="row"><button class="btn sm" data-act="editRange">Edit the range outline</button></div>
       <label class="toggle"><input type="checkbox" id="rangeOnlyCk" ${rangeOnly() ? 'checked' : ''}> Count only things inside the range outline in Stats</label>`, true)}
     ${layersSec('show', 'Show on map', toggles.map(([k, l]) => `<label class="toggle"><input type="checkbox" data-layer="${k}" ${layerOn(k) ? 'checked' : ''}> ${l}</label>`).join(''), true)}
     ${layersSec('heat', 'Heatmap & filters', `<select id="heatMode"><option value="both">Heatmap: hikes + places</option><option value="tracks">Heatmap: hikes only</option><option value="places">Heatmap: places only</option></select>${filterSelects()}`, false)}
     ${layersSec('3d', '3D', `<label class="toggle"><input type="checkbox" id="l3d" ${s.terrain ? 'checked' : ''}> 3D terrain</label>
-    <label class="f">Terrain exaggeration: <b id="exagV">${(+(s.exag || 1.5)).toFixed(1)}×</b></label><input type="range" id="exag" min="1" max="3" step="0.1" value="${s.exag || 1.5}" style="padding:0">
+    <label class="f">Terrain exaggeration: <b id="exagV">${(+(s.exag || 1)).toFixed(1)}×</b></label><input type="range" id="exag" min="1" max="3" step="0.1" value="${s.exag || 1}" style="padding:0">
+    <label class="f">Tilt: <b id="pitchV">${Math.round(map.getPitch())}°</b></label><input type="range" id="pitch" min="0" max="85" step="1" value="${Math.round(map.getPitch())}" style="padding:0">
+    <div class="row"><button class="btn sm" data-act="snapNorth">Snap to north</button></div>
     <label class="f">Rotate view: <b id="bearV">${Math.round(map.getBearing())}°</b></label><input type="range" id="bearing" min="-180" max="180" step="1" value="${Math.round(map.getBearing())}" style="padding:0">`, false)}
     ${layersSec('legend', 'Legend', `<div class="small" style="line-height:1.9">
       <span style="color:#d9480f">┅</span> trail · <span style="color:#82c91e">━</span> partly hiked · <span style="color:#2bb24c">━</span> hiked<br>
@@ -2924,7 +2977,7 @@ function renderLayers() {
       <span style="color:#fbc02d">┅</span> planned hike · <span style="color:#e65100">┈</span> waiting for approval<br>
       ▲ white = not yet · <span style="color:#d62828">▲</span> summited · <span style="color:#f77f00">▲</span> seen · ◆ pass · ● waterfall<br>
       <span style="color:#558b2f">▭</span> area you drew · <span style="color:#1e88e5">◯</span> peak list on map<br>
-      Recency (when on): <span style="color:#2bb24c">●</span> within a year · <span style="color:#fbc02d">●</span> 1–3 years · <span style="color:#f57c00">●</span> over 3 years · <span style="color:#90a4ae">●</span> never been</div>`, false)}`;
+      Recency (when on): <span style="color:#2bb24c">●</span> within a year · <span style="color:#fbc02d">●</span> 1–3 years · <span style="color:#f57c00">●</span> over 3 years (places you have never visited get no color)</div>`, false)}`;
   $('heatMode').value = s.heatMode || 'both';
 }
 
@@ -3055,6 +3108,7 @@ function onAction(act, el) {
     case 'restoreOne': { restoreHidden(id => id === el.dataset.id); toast('Restored.'); break; }
     case 'restoreTrash': restoreTrash(el.dataset.id); break;
     case 'purgeTrash': if (confirm('Delete this for good? Its photos go too.')) purgeTrash(el.dataset.id); break;
+    case 'snapNorth': map.easeTo({ bearing: 0, duration: 500 }); if ($('bearing')) { $('bearing').value = 0; $('bearV').textContent = '0°'; } break;
     case 'hiDl': download1m(el.dataset.key, +el.dataset.z); break;
     case 'hiDel': remove1m(+el.dataset.i); break;
     case 'offDl': downloadOffline(el.dataset.level, el.dataset.area); break;
@@ -3163,6 +3217,12 @@ document.querySelectorAll('#toolbar [data-mode]').forEach(b => b.addEventListene
 }));
 $('btn3d').addEventListener('click', () => { set3D(!data.settings.terrain); touch({ noRender: true }); if (!$('layers').hidden) renderLayers(); });
 $('menuBtn').addEventListener('click', e => { e.stopPropagation(); $('layers').hidden = true; $('menu').hidden = !$('menu').hidden; });
+$('viewCtl').addEventListener('click', e => {
+  const b = e.target.closest('[data-v]'); if (!b || !map) return;
+  if (b.dataset.v === 'north') map.easeTo({ bearing: 0, duration: 500 });
+  if (b.dataset.v === 'up') map.easeTo({ pitch: Math.min(85, map.getPitch() + 10), duration: 300 });     // toward the horizon
+  if (b.dataset.v === 'down') map.easeTo({ pitch: Math.max(0, map.getPitch() - 10), duration: 300 });    // toward straight down
+});
 $('layersBtn').addEventListener('click', e => { e.stopPropagation(); $('menu').hidden = true; $('markers').hidden = true; const L = $('layers'); L.hidden = !L.hidden; if (!L.hidden) renderLayers(); });
 document.addEventListener('click', e => { if (!e.target.isConnected) return;   // the click re-drew its own panel: not an outside click
   if (!e.target.closest('#menu,#menuBtn')) $('menu').hidden = true; if (!e.target.closest('#layers,#layersBtn')) $('layers').hidden = true; if (!e.target.closest('#markers,#markersBtn')) $('markers').hidden = true; });
@@ -3257,6 +3317,7 @@ $('layers').addEventListener('change', e => {
 });
 $('layers').addEventListener('input', e => {
   if (e.target.id === 'exag') { data.settings.exag = +e.target.value; $('exagV').textContent = (+e.target.value).toFixed(1) + '×'; if (data.settings.terrain) map.setTerrain({ source: 'dem', exaggeration: +e.target.value }); }
+  if (e.target.id === 'pitch') { $('pitchV').textContent = e.target.value + '°'; map.setPitch(+e.target.value); }
   if (e.target.id === 'bearing') { $('bearV').textContent = e.target.value + '°'; map.setBearing(+e.target.value); }
 });
 $('layers').addEventListener('toggle', e => { const k = e.target.dataset && e.target.dataset.lsec; if (k) layersOpen[k] = e.target.open; }, true);
@@ -3372,12 +3433,12 @@ async function syncWrite(dir, name, obj, sha) {
   return (await res.json()).content.sha;
 }
 function syncPayload() {
-  const { osm, photos, parkOutline, ...rest } = data;
+  const { osm, photos, parkOutline, parkSrc, ...rest } = data;
   const settings = Object.assign({}, rest.settings); delete settings.collapsed; delete settings.base; // per-device view choices
   return { app: 'teton-atlas', savedAt: data.editedAt, photoSig: photoSig(), data: Object.assign({}, rest, { settings }) };
 }
 function syncAdopt(remote, remotePhotos) {
-  const keep = { osm: data.osm, parkOutline: data.parkOutline };
+  const keep = { osm: data.osm, parkOutline: data.parkOutline, parkSrc: data.parkSrc };
   const localSettings = { collapsed: data.settings.collapsed, base: data.settings.base };
   const next = normalize(Object.assign({}, remote.data, keep, { photos: remotePhotos || data.photos }));
   next.settings = Object.assign({}, next.settings, localSettings);
@@ -3831,7 +3892,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
   indexFeatures();
   await pmLoad();
   if (window.maplibregl) initMap(); else toast('The map engine could not load. Connect to the internet and reload.', 0);
-  if (!data.parkOutline && FEATS.length && navigator.onLine) fetchParkOutline(true).catch(() => { /* Overpass unreachable: the rectangle stays until loaded */ });
+  if ((!data.parkOutline || data.parkSrc !== 'nps') && navigator.onLine) fetchParkOutline(true).catch(() => { /* unreachable: keeps what it has, retried next start */ });   // also replaces older outlines that were not from the official source
   if (data.settings.collapsed === undefined && window.matchMedia('(max-width:800px)').matches) data.settings.collapsed = true;
   if (data.settings.collapsed) setCollapsed(true);
   updateSaveState(); renderSide();
