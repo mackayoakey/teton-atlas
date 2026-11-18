@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Teton Atlas V15</title>
+<title>Teton Atlas V16</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -12,12 +12,80 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Teton Atlas">
+<script>try{var _th=localStorage.getItem('teton-theme')||'auto';document.documentElement.setAttribute('data-theme',_th==='auto'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):_th)}catch(e){}</script>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/maplibre-contour@0.1.1/dist/index.min.js"></script>
 <script src="https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js"></script>
 <style>
 :root{--ink:#1b1b1b;--muted:#6b6f6b;--line:#e7e7e3;--bg:#fff;--soft:#f4f4f1;--green:#1f5e2c;--lime:#aef07f;--pill:#151515;--red:#d62828;--orange:#f77f00;--blue:#1e88e5}
+html[data-theme=dark]{--ink:#ecece8;--muted:#a3a7a2;--line:#3a3e40;--bg:#1d2022;--soft:#2a2e30;--green:#7cc98a;--lime:#aef07f;--pill:#0d0e0f;color-scheme:dark}
+html[data-theme=dark] body{background:#111}
+html[data-theme=dark] input,html[data-theme=dark] select,html[data-theme=dark] textarea{background:var(--soft);color:var(--ink);border-color:var(--line)}
+html[data-theme=dark] .mapbtn,html[data-theme=dark] .chips button,html[data-theme=dark] .btn,html[data-theme=dark] .pop,html[data-theme=dark] #menu,html[data-theme=dark] .hcard,html[data-theme=dark] .hstrip{background:var(--bg);color:var(--ink)}
+html[data-theme=dark] .btn.primary,html[data-theme=dark] .chips button.on{background:var(--lime);color:#111;border-color:var(--lime)}
+html[data-theme=dark] .mapbtn svg{stroke:#ecece8}
+html[data-theme=dark] .mapbtn svg [fill=none]{stroke:#ecece8}
+html[data-theme=dark] #map .maplibregl-canvas{filter:brightness(.72) contrast(1.05) saturate(.9)}
+html[data-theme=dark] .maplibregl-popup-content{background:var(--bg);color:var(--ink)}
+html[data-theme=dark] .maplibregl-popup-anchor-bottom .maplibregl-popup-tip{border-top-color:var(--bg)}
+html[data-theme=dark] .maplibregl-popup-anchor-top .maplibregl-popup-tip{border-bottom-color:var(--bg)}
+html[data-theme=dark] [style*="background:#fff4e5"],html[data-theme=dark] [style*="background:#fff1e0"]{background:#3b3022!important}
+html[data-theme=dark] [style*="background:#e5f6e8"],html[data-theme=dark] [style*="background:#e5f4df"],html[data-theme=dark] [style*="background:#f6f8f4"]{background:#22352a!important}
+html[data-theme=dark] [style*="background:#fde8ec"]{background:#3b2428!important}
+html[data-theme=dark] [style*="background:#e3eef9"]{background:#22313f!important}
+html[data-theme=dark] [style*="background:#fff"],html[data-theme=dark] .chart svg path[fill="#f2f2ee"]{background-color:var(--bg)}
+html[data-theme=dark] .chart svg path[fill="#f2f2ee"]{fill:#2a2e30}
+html[data-theme=dark] .chart svg path[stroke="#1b1b1b"],html[data-theme=dark] .chart svg line[stroke="#1b1b1b"]{stroke:#ecece8}
+html[data-theme=dark] .chart svg line[stroke="#e3e3df"]{stroke:#3a3e40}
+@media print{html[data-theme=dark]{--ink:#1b1b1b;--muted:#6b6f6b;--line:#e7e7e3;--bg:#fff;--soft:#f4f4f1;--green:#1f5e2c}html[data-theme=dark] #map .maplibregl-canvas{filter:none}html[data-theme=dark] input,html[data-theme=dark] select,html[data-theme=dark] textarea{background:#fff;color:#1b1b1b}}
+#themeBtn{right:170px}
+#toolbar.ctx{background:var(--bg);color:var(--ink);box-shadow:0 4px 18px rgba(0,0,0,.25);border:1px solid var(--line);gap:2px;padding:6px 8px;max-width:calc(100vw - 440px);overflow-x:auto;scrollbar-width:none;align-items:center}
+#toolbar.ctx::-webkit-scrollbar{display:none}
+#toolbar.ctx button{width:auto;min-width:56px;height:54px;border-radius:12px;background:transparent;color:var(--ink);flex-direction:column;gap:1px;padding:4px 6px;flex:none}
+#toolbar.ctx button:hover{background:var(--soft)}
+#toolbar.ctx button i{font-style:normal;font-size:19px;line-height:1}
+#toolbar.ctx button em{font-style:normal;font-size:11px;font-weight:600;white-space:nowrap}
+#toolbar.ctx button.on{background:var(--ink);color:var(--bg)}
+#toolbar.ctx button.snapon{background:rgba(46,125,50,.16);color:#2e7d32}
+html[data-theme=dark] #toolbar.ctx button.snapon{color:#8fe39a}
+body:has(#toolbar.ctx) #sideBody{padding-bottom:96px}
+#toolbar.ctx button.pri{background:#1e6fe0;color:#fff}
+#toolbar.ctx button:disabled{opacity:.35;cursor:default}
+#toolbar.ctx .tbtag{font-size:11px;font-weight:700;color:#1e6fe0;padding:0 8px;white-space:nowrap}
+body.collapsed #toolbar.ctx{max-width:calc(100vw - 40px)}
+.hm.j{background:#1e6fe0;font-size:18px}
+.hstrip{position:relative;height:96px;background:var(--soft);border-radius:12px;margin:8px 0 2px;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer;overflow:visible}
+.hstrip svg{position:absolute;inset:0;width:100%;height:100%;border-radius:12px}
+.hs-h{position:absolute;top:-6px;bottom:-6px;width:34px;margin-left:-17px;display:flex;justify-content:center;cursor:ew-resize;touch-action:none}
+.hs-h::before{content:"";position:absolute;top:6px;bottom:6px;width:3px;background:#2e7d32;border-radius:2px}
+.hs-h.b::before{background:#c62828}
+.hs-h b{position:absolute;top:-2px;width:24px;height:24px;border-radius:50%;background:#2e7d32;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.hs-h.b b{background:#c62828}
+.hs-h.sel b{outline:3px solid #ffeb3b}
+.hs-axis{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin:4px 2px 10px}
+.hs-bar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px}
+.hsum{background:var(--soft);border-radius:12px;padding:8px 12px;margin:8px 0}
+.tabs2{display:flex;gap:6px;margin:4px 0 8px}
+.tabs2 button{flex:1;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;padding:10px 8px;font-weight:700}
+.tabs2 button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.pills{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0 10px}
+.pills.three{grid-template-columns:1fr 1fr 1fr}
+.pills button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;padding:9px 6px;font-weight:600;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.pills button i{font-style:normal;font-size:18px}
+.pills button.on{border-color:#1e6fe0;background:rgba(30,111,224,.12);box-shadow:inset 0 0 0 1px #1e6fe0}
+.hcard{border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin:6px 0;background:var(--bg)}
+.hcard.on{border-color:#ffb300;box-shadow:inset 0 0 0 1px #ffb300}
+.hc-top{display:flex;align-items:center;gap:10px}
+.hdot{width:26px;height:26px;border-radius:50%;background:#2e7d32;color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex:none}.hdot.b{background:#c62828}
+.hc-nudge{display:flex;gap:6px;margin:6px 0 2px;flex-wrap:wrap}.hc-nudge .btn{flex:1;min-width:58px}
+.hc-fine{display:flex;align-items:center;gap:8px}.hc-fine input{flex:1;padding:0}
+.htime{width:128px;flex:none}
+.btn.big{width:100%;padding:13px;font-size:15px}
+.btn:disabled{opacity:.45}
+.segc{display:flex}
+@media(max-width:800px){#toolbar.ctx{left:50%;max-width:calc(100vw - 16px)}}
+
 [hidden]{display:none!important}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#ddd}
@@ -248,12 +316,12 @@ details.set[open]{padding-bottom:6px}
 <body>
 <div id="topbar">
   <img src="icon-192.png" width="30" height="30" alt="" style="border-radius:8px;object-fit:cover;flex:none">
-  <b>Teton Atlas</b><span class="chip-v">V15</span>
+  <b>Teton Atlas</b><span class="chip-v">V16</span>
 </div>
 <aside id="side">
   <header>
     <img src="icon-192.png" width="34" height="34" alt="" style="border-radius:9px;object-fit:cover;flex:none">
-    <h1>Teton Atlas</h1><span class="chip-v">V15</span>
+    <h1>Teton Atlas</h1><span class="chip-v">V16</span>
   </header>
   <div id="syncBanner" class="banner" hidden></div>
   <div class="search">
@@ -274,6 +342,7 @@ details.set[open]{padding-bottom:6px}
 
 <button id="layersBtn" class="mapbtn" title="Map layers"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1b1b1b" stroke-width="2"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg></button>
 <button id="markersBtn" class="mapbtn" title="Filter markers"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1b1b1b" stroke-width="2" stroke-linecap="round"><path d="M12 21s-7-6.5-7-12a7 7 0 0114 0c0 5.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg></button>
+<button id="themeBtn" class="mapbtn" title="Light / dark mode"><span id="themeIcon" style="font-size:20px;line-height:1">🌙</span></button>
 <button id="menuBtn" class="mapbtn" title="Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1b1b1b" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
 
 <div id="menu" class="pop" hidden>
@@ -325,8 +394,32 @@ details.set[open]{padding-bottom:6px}
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V15';
+const APP_VERSION = 'V16';
 // Rough outline of the Teton Range (Teton Pass to Conant Pass, Jackson Hole side and Teton Valley side). Editable from the Layers panel.
+// Borders you can restyle (Layers -> Borders). Add an entry here to make another outline styleable.
+const BORDERS = [
+  { id: 'park', label: 'Grand Teton National Park', short: 'GTNP', layer: 'boundary', def: { color: '#7b1fa2', width: 2, opacity: 1, dash: 'dash', fill: 0 } },
+  { id: 'range', label: 'Teton Range outline', short: 'Teton Range', layer: 'range', def: { color: '#e65100', width: 2.4, opacity: 1, dash: 'dash', fill: 0 } }
+];
+const DASHES = { solid: null, dash: [4, 2], dots: [0.4, 2], dashdot: [4, 2, 0.6, 2], long: [8, 3] };
+const DASH_LABEL = { solid: 'Solid', dash: 'Dashed', dots: 'Dotted', dashdot: 'Dash-dot', long: 'Long dash' };
+const bDef = id => BORDERS.find(b => b.id === id);
+function bStyle(id) { return Object.assign({}, bDef(id).def, ((data.settings || {}).borders || {})[id]); }
+function applyBorderStyle(id) {
+  if (!mapReady && !(typeof map !== 'undefined' && map && map.getLayer)) return;
+  const b = bDef(id), st = bStyle(id), L = b.layer + '-line', F = b.layer + '-fill';
+  if (map.getLayer(L)) {
+    map.setPaintProperty(L, 'line-color', st.color); map.setPaintProperty(L, 'line-width', +st.width);
+    map.setPaintProperty(L, 'line-opacity', +st.opacity); map.setPaintProperty(L, 'line-dasharray', DASHES[st.dash] || null);
+  }
+  if (map.getLayer(F)) { map.setPaintProperty(F, 'fill-color', st.color); map.setPaintProperty(F, 'fill-opacity', +st.fill); }
+}
+function refreshBorders() {
+  if (!map || !map.getSource || !map.getSource('boundary')) return;
+  map.getSource('boundary').setData(boundaryFC()); map.getSource('range').setData(rangeFC());
+  if (map.getSource('boundary-poly')) { map.getSource('boundary-poly').setData(boundaryPolyFC()); map.getSource('range-poly').setData(rangePolyFC()); }
+  for (const b of BORDERS) applyBorderStyle(b.id);
+}
 const RANGE_DEFAULT = [[-111.02, 43.48], [-110.88, 43.45], [-110.70, 43.58], [-110.62, 43.85], [-110.59, 44.05], [-110.68, 44.13], [-110.80, 44.12], [-110.93, 43.95], [-111.05, 43.78], [-111.10, 43.60], [-111.02, 43.48]];
 const BBOX = { s: 43.40, w: -111.25, n: 44.15, e: -110.50 }; // whole Teton Range, WY + ID sides
 const OVERPASS_URLS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
@@ -470,7 +563,17 @@ const VERSIONS = [
     'Layers shelf: every map style has a sample picture (Outdoor has a drawn sample).',
     'Grand Teton NP border now comes from the official National Park Service boundary (checked for sanity, OpenStreetMap as backup). No more wrong box. The GTNP border and the Teton Range outline are both on by default.',
     'Coloring by last visit no longer marks places you have never visited.',
-    '3D view: N button snaps to north, ▲ ▼ buttons tilt the view up and down, and Layers → 3D has a Tilt slider. 3D exaggeration now starts at 1×.'] }
+    '3D view: N button snaps to north, ▲ ▼ buttons tilt the view up and down, and Layers → 3D has a Tilt slider. 3D exaggeration now starts at 1×.'] },
+  { name: 'Teton Atlas V16', date: '2026-11-17', notes: [
+    'Trim or add, rebuilt: a timeline strip (by distance or by time) with draggable A and B handles; pick Trim the start, Trim the end, Cut out a middle part or Keep only a part and the button says exactly what will be cut. Each handle has its time, nudge buttons (1 min, 10 s or 100 ft, 0.1 mi), a fine slider, and a box to type a time.',
+    'Times now travel with the hike: GPX imports keep a time for every point, so trimming moves the start and end time, and you can set the start and end time yourself (older imports use an estimate between their start and end).',
+    'Add to the start, the end or the middle by drawing on the map or by joining another GPX file (a watch that was restarted). Gaps are never credited.',
+    'Approved route: drop points along the route you really took, in blue. It counts instead of the GPS line, which stays in gray and can be brought back.',
+    'The bottom bar now changes with what you are doing: hike tools when a hike is open (approved route, snap on/off, trim, approve, undo), and route tools when drawing (undo, redo, snap, reverse, loop, out and back, split day, save).',
+    'Route builder: Segments by day with colored cards (distance, gain, loss, time, start and end mile), Split into N days by effort, merge days, day-colored line on the map, and elevation loss in the stats.',
+    'Borders: Layers → Borders lets you pick GTNP or the Teton Range outline and change color, thickness, opacity, line style and fill.',
+    'Light and dark mode: sun / moon button on the map, or Settings → Appearance (Light, Dark, Match my device).'
+  ] },
 ];
 
 // ================= State =================
@@ -1000,8 +1103,10 @@ function parseGPX(text, filename) {
       if (isNaN(lat) || isNaN(lon)) continue;
       const e = p.getElementsByTagName('ele')[0], tm = p.getElementsByTagName('time')[0];
       const ele = e ? parseFloat(e.textContent) : NaN;
-      if (tm) { const ms = Date.parse(tm.textContent); if (!isNaN(ms)) { if (t0 === null) t0 = ms; t1 = ms; } }
-      pts.push([+lon.toFixed(6), +lat.toFixed(6), isNaN(ele) ? null : +ele.toFixed(1)]);
+      let tsec = null;
+      if (tm) { const ms = Date.parse(tm.textContent); if (!isNaN(ms)) { if (t0 === null) t0 = ms; t1 = ms; tsec = Math.round(ms / 1000); } }
+      const pt = [+lon.toFixed(6), +lat.toFixed(6), isNaN(ele) ? null : +ele.toFixed(1)]; if (tsec !== null) pt.push(tsec);   // 4th value: clock time in seconds
+      pts.push(pt);
     }
     return { pts, t0, t1 };
   };
@@ -1491,8 +1596,11 @@ function addOverlays() {
   // Range boundary: the Grand Teton NP outline once loaded, otherwise the BBOX rectangle
   map.addSource('boundary', { type: 'geojson', data: boundaryFC() });
   map.addSource('range', { type: 'geojson', data: rangeFC() });
-  map.addLayer({ id: 'range-line', type: 'line', source: 'range', layout: { visibility: layerOn('range') ? 'visible' : 'none' }, paint: { 'line-color': '#e65100', 'line-width': 2.4, 'line-dasharray': [5, 3] } });
-  map.addLayer({ id: 'boundary-line', type: 'line', source: 'boundary', layout: { visibility: layerOn('boundary') ? 'visible' : 'none' }, paint: { 'line-color': '#7b1fa2', 'line-width': 2, 'line-dasharray': [4, 2] } });
+  map.addSource('boundary-poly', { type: 'geojson', data: boundaryPolyFC() });
+  map.addSource('range-poly', { type: 'geojson', data: rangePolyFC() });
+  for (const b of BORDERS) map.addLayer({ id: b.layer + '-fill', type: 'fill', source: b.layer + '-poly', layout: { visibility: layerOn(b.layer) ? 'visible' : 'none' }, paint: { 'fill-color': bStyle(b.id).color, 'fill-opacity': +bStyle(b.id).fill } });
+  map.addLayer({ id: 'range-line', type: 'line', source: 'range', layout: { visibility: layerOn('range') ? 'visible' : 'none' }, paint: { 'line-color': bStyle('range').color, 'line-width': +bStyle('range').width, 'line-opacity': +bStyle('range').opacity, 'line-dasharray': DASHES[bStyle('range').dash] || undefined } });
+  map.addLayer({ id: 'boundary-line', type: 'line', source: 'boundary', layout: { visibility: layerOn('boundary') ? 'visible' : 'none' }, paint: { 'line-color': bStyle('park').color, 'line-width': +bStyle('park').width, 'line-opacity': +bStyle('park').opacity, 'line-dasharray': DASHES[bStyle('park').dash] || undefined } });
   for (const id of ['trails', 'trail-text', 'lakes', 'lake-pts', 'pois', 'poi-text', 'tracks', 'routes', 'heat', 'edit', 'sel', 'hover', 'areas', 'area-text', 'areaedit', 'listpts']) map.addSource(id, { type: 'geojson', data: fc([]) });
   const halo = { 'text-color': '#1b1b1b', 'text-halo-color': '#ffffff', 'text-halo-width': 1.6 };
   map.addLayer({ id: 'lake-fill', type: 'fill', source: 'lakes', paint: { 'fill-color': LAKE_FILL_EXPR, 'fill-opacity': ['match', ['get', 'st'], 'none', 0.25, 0.45] } });
@@ -1519,6 +1627,8 @@ function addOverlays() {
   map.addLayer({ id: 'track-manual', type: 'line', source: 'tracks', filter: ['all', ['==', ['get', 'src'], 'manual'], isDone], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#8e24aa', 'line-width': ['case', ['get', 'sel'], 6, 3.5], 'line-dasharray': [2, 1] } });
   map.addLayer({ id: 'track-planned', type: 'line', source: 'tracks', filter: ['all', ['==', ['get', 'ts'], 'planned'], ['!=', ['get', 'src'], 'ignored']], layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: { 'line-color': '#fbc02d', 'line-width': ['case', ['get', 'sel'], 6, 3.5], 'line-dasharray': [4, 2] } });
   map.addLayer({ id: 'track-pending', type: 'line', source: 'tracks', filter: ['all', ['==', ['get', 'ts'], 'pending'], ['!=', ['get', 'src'], 'ignored']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#e65100', 'line-width': ['case', ['get', 'sel'], 6, 3.5], 'line-dasharray': [0.5, 1.5] } });
+  map.addLayer({ id: 'track-approved-case', type: 'line', source: 'tracks', filter: ['==', ['get', 'src'], 'approved'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': ['case', ['get', 'sel'], 8, 6], 'line-opacity': 0.9 } });
+  map.addLayer({ id: 'track-approved', type: 'line', source: 'tracks', filter: ['==', ['get', 'src'], 'approved'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#1e6fe0', 'line-width': ['case', ['get', 'sel'], 5, 3.5] } });
   map.addLayer({ id: 'sel-fill', type: 'fill', source: 'sel', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': '#aef07f', 'fill-opacity': 0.35 } });
   map.addLayer({ id: 'sel-case', type: 'line', source: 'sel', filter: ['!=', ['geometry-type'], 'Point'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#151515', 'line-width': 9, 'line-opacity': 0.8 } });
   map.addLayer({ id: 'sel-line', type: 'line', source: 'sel', filter: ['!=', ['geometry-type'], 'Point'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#aef07f', 'line-width': 5 } });
@@ -1541,7 +1651,7 @@ function addOverlays() {
   applyLayerVisibility(); applyMarkerStyle();
 }
 const LAYER_GROUPS = {
-  trails: ['trail-line', 'trail-done', 'trail-hit'], places: ['poi', 'poi-label'], lakes: ['lake-fill', 'lake-line'], tracks: ['track-garmin', 'track-manual', 'track-ignored', 'track-planned', 'track-pending', 'track-hit'],
+  trails: ['trail-line', 'trail-done', 'trail-hit'], places: ['poi', 'poi-label'], lakes: ['lake-fill', 'lake-line'], tracks: ['track-garmin', 'track-manual', 'track-approved-case', 'track-approved', 'track-ignored', 'track-planned', 'track-pending', 'track-hit'],
   routes: ['route-line'], labels: ['trail-label', 'lake-label', 'poi-label', 'area-label'], heat: ['heat-layer'], areas: ['area-fill', 'area-line', 'area-label']
 };
 function applyLayerVisibility() {
@@ -1553,6 +1663,7 @@ function applyLayerVisibility() {
   if (map.getLayer('poi-label')) map.setLayoutProperty('poi-label', 'visibility', layerOn('places') && layerOn('labels') ? 'visible' : 'none');
   if (map.getLayer('boundary-line')) map.setLayoutProperty('boundary-line', 'visibility', layerOn('boundary') ? 'visible' : 'none');
   if (map.getLayer('range-line')) map.setLayoutProperty('range-line', 'visibility', layerOn('range') ? 'visible' : 'none');
+  for (const b of BORDERS) if (map.getLayer(b.layer + '-fill')) map.setLayoutProperty(b.layer + '-fill', 'visibility', layerOn(b.layer) ? 'visible' : 'none');
   // Recency colors (off by default): a colored halo under each peak, and lake fills colored by last visit
   const rec = layerOn('recency');
   if (map.getLayer('poi-rec')) map.setLayoutProperty('poi-rec', 'visibility', rec && layerOn('places') ? 'visible' : 'none');
@@ -1562,6 +1673,11 @@ function applyLayerVisibility() {
 // Range boundary as GeoJSON: the park outline when loaded, else the BBOX rectangle (edit BBOX at the top to change it)
 function rangeRing() { return data.range && data.range.length > 3 ? data.range : RANGE_DEFAULT; }
 function rangeFC() { return fc([{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: closeRing(rangeRing()) } }]); }
+function rangePolyFC() { return fc([{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [closeRing(rangeRing())] } }]); }
+function boundaryPolyFC() {
+  if (!(data.parkOutline && data.parkOutline.length)) return fc([]);
+  return fc([{ type: 'Feature', properties: {}, geometry: { type: 'MultiPolygon', coordinates: data.parkOutline.map(r => [closeRing(r)]) } }]);
+}
 function rangeOnly() { return data.settings.rangeOnly !== false; }
 function inRangeF(f) {
   const r = closeRing(rangeRing()), c = f.kind === 'trail' ? f.coords[Math.floor(f.coords.length / 2)] : f.kind === 'lake' ? f.center : f.coord;
@@ -1617,7 +1733,7 @@ async function fetchParkOutline(silent) {
   if (!rings) { try { rings = await parkFromOSM(); src = 'osm'; } catch (e) { throw new Error(`${err1 ? err1.message : ''}; ${e.message}`); } }
   data.parkOutline = rings; data.parkSrc = src;
   if (silent) saveLocal(); else touch({ noRender: true }); // a silent background load does not mark the file as changed
-  const s = map && map.getSource('boundary'); if (s) s.setData(boundaryFC());
+  refreshBorders();
 }
 function setBase(k) {
   data.settings.base = k;
@@ -1667,7 +1783,10 @@ function updateSources() {
     }
     for (const p of data.pins) if (p.status === 'been' && inFilter(p.date)) heatF.push({ type: 'Feature', properties: { w: 3 }, geometry: { type: 'Point', coordinates: [p.lon, p.lat] } });
   }
-  const routeF = data.routes.map(r => ({ type: 'Feature', properties: { rid: r.id, color: r.color || COLORS[0], sel: sel.type === 'route' && sel.id === r.id }, geometry: { type: 'LineString', coordinates: routeLine(r).map(p => [p[0], p[1]]) } })).filter(f => f.geometry.coordinates.length > 1);
+  const routeF = data.routes.flatMap(r => {
+    const days = routeDays(r), mk = (pts, color) => ({ type: 'Feature', properties: { rid: r.id, color, sel: sel.type === 'route' && sel.id === r.id }, geometry: { type: 'LineString', coordinates: pts.map(p => [p[0], p[1]]) } });
+    return days.length > 1 ? days.map((d, i) => mk(d, DAY_COLORS[i % DAY_COLORS.length])) : [mk(routeLine(r), r.color || COLORS[0])];
+  }).filter(f => f.geometry.coordinates.length > 1);
   map.getSource('trails').setData(fc(trailF));
   map.getSource('lakes').setData(fc(lakeF));
   map.getSource('lake-pts').setData(fc(lakeP));
@@ -1677,8 +1796,7 @@ function updateSources() {
   map.getSource('tracks').setData(fc(trackF));
   map.getSource('routes').setData(fc(routeF));
   map.getSource('heat').setData(fc(heatF));
-  map.getSource('boundary').setData(boundaryFC());
-  map.getSource('range').setData(rangeFC());
+  refreshBorders();
   map.getSource('areas').setData(fc(areaF));
   map.getSource('area-text').setData(fc(areaT));
   map.getSource('listpts').setData(fc(listPointFeatures()));
@@ -1798,7 +1916,7 @@ function inFilterPin(p) { return (filter.year === 'all' && filter.season === 'al
 function set3D(on) {
   data.settings.terrain = on;
   $('viewCtl').hidden = !on;
-  $('btn3d').classList.toggle('on', on);
+  { const b3 = $('btn3d'); if (b3) b3.classList.toggle('on', on); }
   if (on) {
     map.setTerrain({ source: 'dem', exaggeration: +(data.settings.exag || 1) });
     if (map.setSky) try { map.setSky({ 'sky-color': '#88b8e8', 'horizon-color': '#f0f4f8', 'fog-color': '#ffffff', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.8 }); } catch (e) { /* older engine */ }
@@ -1916,7 +2034,7 @@ function startEditor(kind, opts) {
     color: r ? r.color : COLORS[data.routes.length % COLORS.length], notes: r ? r.notes || '' : '',
     date: today(), snap: data.settings.snap !== false,
     wps: r ? r.wps.map(w => Object.assign({}, w, { c: w.c.slice() })) : [],
-    legs: r ? r.legs.map(l => ({ off: l.off, pts: l.pts.map(p => p.slice()) })) : [], markers: [], prof: null
+    legs: r ? r.legs.map(l => ({ off: l.off, pts: l.pts.map(p => p.slice()) })) : [], markers: [], prof: null, redo: []
   };
   if (opts.start) { addPoint(opts.start, true); editor.wps[0].c = [opts.start[0], opts.start[1]]; editor.wps[0].snap = false; }
   editor.mode = opts.mode || null; editor.anchorPt = opts.anchorPt || null; editor.endPt = opts.endPt || null; editor.aIdx = opts.aIdx; editor.bIdx = opts.bIdx; editor.snapshot = opts.snapshot || null; editor.closed = false;
@@ -1957,15 +2075,15 @@ function computeLeg(i) {
 function addPoint(c, quiet) {
   if (editor.closed) { toast('This section already ends at B. Undo the last point to keep drawing.', 3000); return; }
   const wp = { c: snapPoint([+c[0].toFixed(6), +c[1].toFixed(6)]), brk: false, snap: editor.snap };
-  editor.wps.push(wp);
+  editor.redo = []; editor.wps.push(wp);
   if (editor.wps.length > 1) computeLeg(editor.wps.length - 2);
   if (!quiet) { redrawEditor(); renderSide(); }
 }
-function undoPoint() { if (!editor || !editor.wps.length) return; if (editor.kind === 'extend' && editor.wps.length <= 1) return; editor.closed = false; editor.wps.pop(); editor.legs.length = Math.max(0, editor.wps.length - 1); redrawEditor(); renderSide(); }
+function undoPoint() { if (!editor || !editor.wps.length) return; if (editor.kind === 'extend' && editor.anchorPt && editor.wps.length <= 1) return; editor.closed = false; editor.redo.push(editor.wps.pop()); editor.legs.length = Math.max(0, editor.wps.length - 1); redrawEditor(); renderSide(); }
 function removePoint(i) {
-  if (editor.kind === 'extend' && i === 0) { toast('That start point is where the recorded line ends, so it stays.', 3000); return; }
+  if (editor.kind === 'extend' && editor.anchorPt && i === 0) { toast('That start point is where the recorded line ends, so it stays.', 3000); return; }
   if (editor.closed && i === editor.wps.length - 1) editor.closed = false;
-  const old = editor.legs; editor.wps.splice(i, 1);
+  editor.redo = []; const old = editor.legs; editor.wps.splice(i, 1);
   const L = [];
   for (let k = 0; k < editor.wps.length - 1; k++) L[k] = k < i - 1 ? old[k] : k >= i ? old[k + 1] : null;
   editor.legs = L;
@@ -1973,16 +2091,83 @@ function removePoint(i) {
   redrawEditor(); renderSide();
 }
 function moveWaypoint(i, c) {
-  if (editor.kind === 'extend' && (i === 0 || (editor.closed && i === editor.wps.length - 1))) { redrawEditor(); toast('That point is fixed. It joins the drawn part to the recorded line.', 3000); return; }
-  editor.wps[i].c = snapPoint(c);
+  if (editor.kind === 'extend' && ((editor.anchorPt && i === 0) || (editor.closed && i === editor.wps.length - 1))) { redrawEditor(); toast('That point is fixed. It joins the drawn part to the recorded line.', 3000); return; }
+  editor.redo = []; editor.wps[i].c = snapPoint(c);
   if (i > 0) computeLeg(i - 1);
   if (i < editor.wps.length - 1) computeLeg(i);
   redrawEditor(); renderSide();
 }
+function edDays() { return editor.wps.filter((w, i) => w.brk && i > 0 && i < editor.wps.length - 1).length + 1; }
+function edReverse() {
+  if (!editor || editor.wps.length < 2) return toast('Add at least two points first.', 2500);
+  const n = editor.wps.length; editor.wps.reverse(); editor.legs = []; editor.redo = [];
+  for (let i = 0; i < n - 1; i++) computeLeg(i);
+  redrawEditor(); renderSide(); toast('Route reversed.', 2500);
+}
+function edLoop() {
+  if (!editor || editor.wps.length < 2) return toast('Add at least two points first.', 2500);
+  const w0 = editor.wps[0], wl = editor.wps[editor.wps.length - 1];
+  if (dist(w0.c[1], w0.c[0], wl.c[1], wl.c[0]) < 8) return toast('The route already ends where it started.', 2500);
+  editor.redo = []; editor.wps.push({ c: w0.c.slice(), brk: false, snap: editor.snap }); computeLeg(editor.wps.length - 2);
+  redrawEditor(); renderSide(); toast('Closed the loop back to the start.', 2500);
+}
+function edOutBack() {
+  if (!editor || editor.wps.length < 2) return toast('Add at least two points first.', 2500);
+  const n = editor.wps.length; editor.redo = [];
+  for (let k = n - 2; k >= 0; k--) {
+    editor.wps.push({ c: editor.wps[k].c.slice(), brk: false, snap: editor.wps[k + 1].snap });
+    const L = editor.legs[k]; editor.legs.push(L ? { off: L.off, pts: L.pts.slice().reverse().map(q => q.slice()) } : null);
+  }
+  redrawEditor(); renderSide(); toast('Added the way back: the same line in reverse.', 2500);
+}
+function redoPoint() {
+  if (!editor || !editor.redo.length) return toast('Nothing to redo.', 2000);
+  const wp = editor.redo.pop(); editor.wps.push(wp); if (editor.wps.length > 1) computeLeg(editor.wps.length - 2);
+  redrawEditor(); renderSide();
+}
+// Put a day break at a distance (metres) along the route: at a nearby waypoint if there is one, otherwise a new waypoint on the line
+function edBreakAt(d) {
+  let acc = 0;
+  for (let i = 0; i < editor.legs.length; i++) {
+    const L = editor.legs[i]; if (!L) continue;
+    const len = lineLen(L.pts), last = i === editor.legs.length - 1;
+    if (d <= acc + len || last) {
+      const f = len ? (d - acc) / len : 0;
+      if (f < 0.12 && i > 0) { editor.wps[i].brk = true; return; }
+      if (f > 0.88 && i + 1 < editor.wps.length - 1) { editor.wps[i + 1].brk = true; return; }
+      const target = Math.max(0, Math.min(len, d - acc)); let a2 = 0, k = 1;
+      for (; k < L.pts.length - 1; k++) { const sg = dist(L.pts[k - 1][1], L.pts[k - 1][0], L.pts[k][1], L.pts[k][0]); if (a2 + sg >= target) break; a2 += sg; }
+      const A = L.pts[k - 1], B = L.pts[k], sg = dist(A[1], A[0], B[1], B[0]) || 1, u = Math.max(0, Math.min(1, (target - a2) / sg));
+      const c = [+(A[0] + (B[0] - A[0]) * u).toFixed(6), +(A[1] + (B[1] - A[1]) * u).toFixed(6)];
+      editor.legs.splice(i, 1, { off: L.off, pts: L.pts.slice(0, k).concat([c]) }, { off: L.off, pts: [c].concat(L.pts.slice(k)) });
+      editor.wps.splice(i + 1, 0, { c, brk: true, snap: editor.snap });
+      return;
+    }
+    acc += len;
+  }
+}
+function edSplitN(n) {
+  if (!editor || editor.kind !== 'route') return;
+  if (editor.wps.length < 2) return toast('Draw the route first, then split it into days.', 3000);
+  n = Math.max(1, Math.min(14, n)); editor.redo = [];
+  for (const w of editor.wps) w.brk = false;
+  if (n > 1) {
+    const total = lineLen(editorLine()), prof = editor.prof;
+    const eff = d => d + (prof && prof.length > 1 ? 5.28 * climb(prof, 0, d).gain : 0), E = eff(total), cuts = [];
+    for (let k = 1; k < n; k++) {
+      let lo = 0, hi = total; for (let it = 0; it < 22; it++) { const m = (lo + hi) / 2; if (eff(m) < E * k / n) lo = m; else hi = m; }
+      cuts.push((lo + hi) / 2);
+    }
+    for (const d of cuts.reverse()) edBreakAt(d);
+  }
+  redrawEditor(); renderSide();
+}
+
 function editorLine() { return editor.legs.length ? joinLegs(editor.legs) : editor.wps.map(w => w.c); }
 function redrawEditor() {
   if (!editor || !mapReady) return;
-  map.getSource('edit').setData(fc(editor.legs.filter(Boolean).map(l => ({ type: 'Feature', properties: { color: editor.kind === 'route' ? editor.color : '#8e24aa', off: l.off }, geometry: { type: 'LineString', coordinates: l.pts } }))));
+  { let dd = 0; const dayOf = editor.legs.map((l, i) => { if (i > 0 && editor.wps[i] && editor.wps[i].brk) dd++; return dd; });
+    map.getSource('edit').setData(fc(editor.legs.map((l, i) => l && ({ type: 'Feature', properties: { color: editor.kind === 'route' ? (dd > 0 ? DAY_COLORS[dayOf[i] % DAY_COLORS.length] : editor.color) : '#1e6fe0', off: l.off }, geometry: { type: 'LineString', coordinates: l.pts } })).filter(Boolean))); }
   for (const m of editor.markers) m.remove();
   editor.markers = editor.wps.map((w, i) => {
     const el = document.createElement('div');
@@ -2019,8 +2204,18 @@ function editorStatsHTML() {
   const fake = { wps: editor.wps, legs: editor.legs.filter(Boolean) };
   const breaks = editor.kind === 'route' ? routeBreaks(fake) : [];
   const c = prof ? climb(prof) : { gain: 0 };
-  return `<div class="stats">${statHTML(fmtMi(len), 'mi', 'Length')}${statHTML(prof ? fmtFt(c.gain) : '…', 'ft', 'Elev. gain')}${statHTML(estTime(len, c.gain), 'hr', 'Est. time')}${statHTML(breaks.length + 1, '', editor.kind === 'route' ? 'Days' : 'Points')}</div>
-    ${line.length > 1 ? (prof ? chartHTML(prof, breaks) : '<div class="empty small">Loading elevation…</div>') : ''}`;
+  return `<div class="stats">${statHTML(fmtMi(len), 'mi', 'Length')}${statHTML(prof ? fmtFt(c.gain) : '…', 'ft', 'Elev. gain')}${statHTML(prof ? fmtFt(c.loss) : '…', 'ft', 'Elev. loss')}${statHTML(estTime(len, c.gain), 'hr', 'Est. time')}</div>
+    ${line.length > 1 ? (prof ? chartHTML(prof, breaks) : '<div class="empty small">Loading elevation…</div>') : ''}
+    ${editor.kind === 'route' && editor.wps.length > 1 ? edSegmentsHTML(len, prof, breaks) : ''}`;
+}
+// AllTrails-style Segments: one colored card per day, with a stepper that splits the route into N days
+function edSegmentsHTML(len, prof, breaks) {
+  const edges = [0, ...breaks, len], days = breaks.length + 1;
+  const segs = prof ? segmentStats(prof, len, breaks) : edges.slice(1).map((e, i) => ({ len: e - edges[i], gain: 0, loss: 0, time: '…' }));
+  return `<h2 class="sec" style="display:flex;align-items:center;gap:8px">Segments <span class="small muted" style="flex:1">${days} day${days > 1 ? 's' : ''}</span></h2>
+    <div class="row" style="align-items:center;margin-top:0"><span class="small" style="flex:1">Split into</span><button class="btn sm" data-act="edDaysN" data-d="-1" ${days <= 1 ? 'disabled' : ''}>−</button><b style="min-width:22px;text-align:center">${days}</b><button class="btn sm" data-act="edDaysN" data-d="1" ${days >= 14 ? 'disabled' : ''}>+</button><span class="small">days</span></div>
+    <div class="small muted" style="margin:2px 0 8px">Splits by effort (distance plus climbing), at a trail point near the best spot. Or tap a point on the map and choose End day here, or use Split day below.</div>
+    ${segs.map((sg, i) => segHTML('Day ' + (i + 1), DAY_COLORS[i % DAY_COLORS.length], sg) + `<div class="small muted" style="margin:-4px 0 8px 17px;display:flex;align-items:center;gap:8px"><span style="flex:1">Start ${(edges[i] / M_PER_MI).toFixed(1)} mi · End ${(edges[i + 1] / M_PER_MI).toFixed(1)} mi</span>${i < segs.length - 1 ? `<button class="btn sm" data-act="edMerge" data-i="${i}">Merge with next day</button>` : ''}</div>`).join('')}`;
 }
 // What will the line being drawn count toward? Same matching as a saved hike, but nothing is written.
 function creditHTML() {
@@ -2050,8 +2245,14 @@ function alignDrawn(pts, anchorEle, endEle) {
 function insertDrawn(t, pts, e) {
   return applyOps(t, (F, act) => {
     if (!act.length) return 'This hike has no active path to attach to.';
-    const mk = (q, i, gapFirst) => ({ p: [q[0], q[1], q[2] == null ? null : q[2]], src: 'manual', ig: false, gap: i === 0 && gapFirst });
-    if (e.mode === 'before') {
+    const mk = (q, i, gapFirst) => ({ p: [q[0], q[1], q[2] == null ? null : q[2]], src: e.mode === 'approve' ? 'approved' : 'manual', ig: false, gap: i === 0 && gapFirst });
+    if (e.mode === 'approve') {
+      const items = pts.map((q, i) => mk(q, i, F.length > 0)); if (items.length < 2) return 'Draw at least two points.';
+      const t0 = F[act[0]].p[3], t1 = F[act[act.length - 1]].p[3];
+      for (const k of act) F[k].ig = true;
+      if (t0 != null && t1 != null && t1 > t0) { const tot = lineLen(pts) || 1; let acc = 0; items.forEach((it, i) => { if (i) acc += dist(pts[i - 1][1], pts[i - 1][0], pts[i][1], pts[i][0]); putT(it.p, t0 + (t1 - t0) * acc / tot); }); }
+      F.push(...items);
+    } else if (e.mode === 'before') {
       const f0 = act[0], items = pts.slice().reverse().slice(0, -1).map((q, i) => mk(q, i, f0 > 0));
       F.splice(f0, 0, ...items); F[f0 + items.length].gap = false;
     } else if (e.mode === 'gap') {
@@ -2158,22 +2359,108 @@ const hedStack = tid => hedUndoStacks[tid] = hedUndoStacks[tid] || [];
 function hedPush(t) { const s = hedStack(t.id); s.push(JSON.stringify({ seg: t.segments, ed: !!t.edited })); if (s.length > 12) s.shift(); }
 // Run an edit on the flat point list; nothing changes unless it leaves a valid hike
 function applyOps(t, fn) {
+  ensureTimes(t);
   const F = flatTrack(t), act = []; F.forEach((f, i) => { if (!f.ig) act.push(i); });
   const err = fn(F, act); if (err) { toast(err, 4500); return false; }
+  fillTimesF(F);
   const segs = rebuildSegments(F);
   if (segs.filter(s => s.src !== 'ignored').reduce((n, s) => n + s.pts.length, 0) < 2) { toast('A hike needs at least two points left, so nothing was changed.', 4500); return false; }
-  ensureOrig(t); hedPush(t); t.segments = segs; t.edited = true;
+  ensureOrig(t); hedPush(t); t.segments = segs; t.edited = true; syncHikeTimes(t);
   return true;
 }
-let hed = null;
-function hedLoad(t) {
-  const pts = [], cum = []; let d = 0;
-  for (const f of flatTrack(t)) if (!f.ig) { if (pts.length) { const q = pts[pts.length - 1]; d += dist(q[1], q[0], f.p[1], f.p[0]); } pts.push(f.p); cum.push(d); }
-  hed.pts = pts; hed.cum = cum;
-  hed.a = Math.max(0, Math.min(hed.a, pts.length - 1)); hed.b = Math.max(hed.a, Math.min(hed.b, pts.length - 1));
+// ---------- Times along a hike ----------
+// Each point can carry a 4th value: its clock time in seconds. Trimming then moves the hike's start and end time with it.
+const hasPtTimes = t => t.segments.some(s => s.pts.some(p => p[3] != null));
+function cumOf(F) { const c = [0]; for (let i = 1; i < F.length; i++) c[i] = c[i - 1] + dist(F[i - 1].p[1], F[i - 1].p[0], F[i].p[1], F[i].p[0]); return c; }
+const putT = (p, v) => { if (p.length < 3) p[2] = null; p[3] = Math.round(v); };
+// Older imports kept only a start and an end time: spread them along the line so the editor can show a time at every point (an estimate)
+function ensureTimes(t) {
+  if (hasPtTimes(t)) return true;
+  if (!(t.start && t.end && t.end > t.start)) return false;
+  const F = flatTrack(t); if (F.length < 2) return false;
+  const c = cumOf(F), tot = c[F.length - 1] || 1;
+  F.forEach((f, i) => putT(f.p, (t.start + (t.end - t.start) * c[i] / tot) / 1000));
+  t.ptEst = true; return true;
 }
-// Straight stretches may have only two points (recorded tracks are simplified), which would make cutting too coarse.
-// Adding points along the same straight line changes nothing about the shape, but lets A and B land anywhere.
+// Points without a time (drawn parts) get one by distance between their timed neighbours, or at the hike's pace beyond the ends
+function fillTimesF(F) {
+  const n = F.length; if (!n || !F.some(f => f.p[3] != null)) return;
+  const c = cumOf(F), known = []; F.forEach((f, i) => { if (f.p[3] != null) known.push(i); });
+  let v = 0.9;
+  if (known.length > 1) { const a = known[0], b = known[known.length - 1], dt = F[b].p[3] - F[a].p[3]; if (dt > 0 && c[b] - c[a] > 50) v = (c[b] - c[a]) / dt; }
+  v = Math.max(0.3, Math.min(2.5, v));
+  const prev = new Array(n), next = new Array(n); let k = -1;
+  for (let i = 0; i < n; i++) { if (F[i].p[3] != null) k = i; prev[i] = k; }
+  k = -1; for (let i = n - 1; i >= 0; i--) { if (F[i].p[3] != null) k = i; next[i] = k; }
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    if (F[i].p[3] != null) continue;
+    const a = prev[i], b = next[i];
+    out[i] = a >= 0 && b >= 0 ? F[a].p[3] + (F[b].p[3] - F[a].p[3]) * ((c[b] - c[a]) > 0 ? (c[i] - c[a]) / (c[b] - c[a]) : 0.5)
+      : a >= 0 ? F[a].p[3] + (c[i] - c[a]) / v : F[b].p[3] - (c[b] - c[i]) / v;
+  }
+  out.forEach((val, i) => { if (val != null) putT(F[i].p, val); });
+}
+// The hike's start and end time follow its first and last active point
+function syncHikeTimes(t) {
+  const act = []; for (const f of flatTrack(t)) if (!f.ig && f.p[3] != null) act.push(f.p[3]);
+  if (act.length < 2) return;
+  t.start = act[0] * 1000; t.end = act[act.length - 1] * 1000; t.timesSet = true;
+}
+// Set the hike's start and end time; every point's time is stretched or shifted to match
+function setHikeTimes(t, s0, e0) {
+  if (hasPtTimes(t)) {
+    const F = flatTrack(t), act = F.filter(f => !f.ig && f.p[3] != null);
+    if (act.length > 1) {
+      const a = act[0].p[3], b = act[act.length - 1].p[3], A = s0 / 1000, B = e0 / 1000, k = b > a ? (B - A) / (b - a) : 1;
+      for (const f of F) if (f.p[3] != null) f.p[3] = Math.round(A + (f.p[3] - a) * k);
+    }
+  }
+  t.start = s0; t.end = e0; t.timesSet = true;
+}
+const clk = (sec, secs) => sec == null ? '—' : new Date(sec * 1000).toLocaleTimeString([], Object.assign({ hour: 'numeric', minute: '2-digit' }, secs ? { second: '2-digit' } : {}));
+const clockSec = sec => { const d = new Date(sec * 1000), z = n => String(n).padStart(2, '0'); return `${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`; };
+function secFromClock(str, refSec) {
+  const m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(str || ''); if (!m) return null;
+  const d = new Date(refSec * 1000); d.setHours(+m[1], +m[2], +(m[3] || 0), 0); return Math.round(d.getTime() / 1000);
+}
+
+// ---------- Trim / add editor ----------
+let hed = null;
+const HS_W = 1000, HS_H = 96;
+function nearestIdx(arr, v) {
+  let lo = 0, hi = arr.length - 1;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] < v) lo = m + 1; else hi = m; }
+  if (lo > 0 && Math.abs(arr[lo - 1] - v) <= Math.abs(arr[lo] - v)) lo--;
+  return lo;
+}
+function hedLoad(t) {
+  const pts = [], cum = [], tm = []; let d = 0, tl = null;
+  for (const f of flatTrack(t)) if (!f.ig) {
+    if (pts.length) { const q = pts[pts.length - 1]; d += dist(q[1], q[0], f.p[1], f.p[0]); }
+    pts.push(f.p); cum.push(d);
+    let tv = f.p[3] != null ? f.p[3] : null; if (tv != null) { if (tl != null && tv < tl) tv = tl; tl = tv; } tm.push(tv);
+  }
+  const N = pts.length;
+  hed.pts = pts; hed.cum = cum; hed.tm = tm;
+  hed.hasT = N > 1 && tm.every(v => v != null) && tm[N - 1] > tm[0];
+  if (!hed.hasT) hed.axis = 'dist';
+  hed.a = Math.max(0, Math.min(hed.a, N - 1)); hed.b = Math.max(hed.a, Math.min(hed.b, N - 1));
+  hedBuildAxis();
+}
+function hedBuildAxis() {
+  const N = hed.pts.length, useT = hed.axis === 'time' && hed.hasT, D = hed.cum[N - 1] || 1;
+  const t0 = hed.tm[0], span = (hed.tm[N - 1] - t0) || 1;
+  hed.X = new Float64Array(N);
+  for (let i = 0; i < N; i++) hed.X[i] = useT ? (hed.tm[i] - t0) / span : hed.cum[i] / D;
+  let last = null; const ev = hed.pts.map(p => { if (p[2] != null) last = p[2]; return last; });
+  const first = ev.find(v => v != null); for (let i = 0; i < N; i++) if (ev[i] == null) ev[i] = first != null ? first : 0;
+  hed.ev = ev; hed.lo = Math.min(...ev.slice(0, 20000)); hed.hi = Math.max(...ev.slice(0, 20000));
+  const step = Math.max(1, Math.floor(N / 500)); hed.samp = [];
+  for (let i = 0; i < N; i += step) hed.samp.push(i);
+  if (hed.samp[hed.samp.length - 1] !== N - 1) hed.samp.push(N - 1);
+}
+// Straight stretches may have only two points, which would make cutting too coarse: add points along the same line (shape and times unchanged)
 function densifyTrack(t, step) {
   step = step || 30;
   const total = t.segments.reduce((n, s) => n + s.pts.length, 0); if (total > 40000) return;
@@ -2184,7 +2471,11 @@ function densifyTrack(t, step) {
       const a = s.pts[i - 1], b = s.pts[i], d = dist(a[1], a[0], b[1], b[0]);
       if (d > step * 1.5) {
         const n = Math.ceil(d / step);
-        for (let k = 1; k < n; k++) { const u = k / n; out.push([+(a[0] + (b[0] - a[0]) * u).toFixed(6), +(a[1] + (b[1] - a[1]) * u).toFixed(6), a[2] != null && b[2] != null ? +(a[2] + (b[2] - a[2]) * u).toFixed(1) : null]); }
+        for (let k = 1; k < n; k++) {
+          const u = k / n, q = [+(a[0] + (b[0] - a[0]) * u).toFixed(6), +(a[1] + (b[1] - a[1]) * u).toFixed(6), a[2] != null && b[2] != null ? +(a[2] + (b[2] - a[2]) * u).toFixed(1) : null];
+          if (a[3] != null && b[3] != null) q.push(Math.round(a[3] + (b[3] - a[3]) * u));
+          out.push(q);
+        }
       }
       out.push(b);
     }
@@ -2193,20 +2484,44 @@ function densifyTrack(t, step) {
 }
 function startHed(t) {
   stopHed(true);
-  densifyTrack(t);
-  hed = { tid: t.id, a: 0, b: 0, act: 'a', markers: [] };
+  densifyTrack(t); ensureTimes(t);
+  hed = { tid: t.id, a: 0, b: 0, tab: 'cut', mode: 'start', add: 'after', act: 'a', axis: 'dist', markers: [], drag: null };
   hedLoad(t); hed.b = Math.max(0, hed.pts.length - 1);
   hedDraw(true);
 }
 function stopHed() {
   if (!hed) return;
   for (const m of hed.markers) if (m) m.remove();
+  if (hed.jm) hed.jm.remove();
   hed = null;
   if (mapReady && !editor) map.getSource('edit').setData(fc([]));
 }
+function hedHandleVisible(w) {
+  if (!hed) return false;
+  if (hed.tab === 'add') return hed.add === 'gap';
+  if (hed.mode === 'start') return w === 'a';
+  if (hed.mode === 'end') return w === 'b';
+  return true;
+}
+// What is about to be cut (red) and what is about to be filled in (blue), as index ranges of the active points
+function hedRanges() {
+  const N = hed.pts.length, a = hed.a, b = hed.b, rem = [];
+  if (hed.tab === 'add') return { rem, fill: hed.add === 'gap' && b > a ? [[a, b]] : [] };
+  if (hed.mode === 'start') { if (a > 0) rem.push([0, a - 1]); }
+  else if (hed.mode === 'end') { if (b < N - 1) rem.push([b + 1, N - 1]); }
+  else if (hed.mode === 'mid') { if (b - a >= 2) rem.push([a + 1, b - 1]); }
+  else if (hed.mode === 'keep') { if (a > 0) rem.push([0, a - 1]); if (b < N - 1) rem.push([b + 1, N - 1]); }
+  return { rem, fill: [] };
+}
+function keptRanges(rem, N) {
+  const kept = []; let cur = 0;
+  for (const [x, y] of rem) { if (x > cur) kept.push([cur, x]); cur = y; }
+  if (cur < N - 1 || !kept.length) kept.push([cur, N - 1]);
+  return kept;
+}
 function hedDraw(fit) {
   if (!hed || !mapReady) return;
-  const mk = (i, w, cls) => {
+  const N = hed.pts.length, mk = (i, w, cls) => {
     const p = hed.pts[i]; if (!p) return;
     if (!hed.markers[w]) {
       const el = document.createElement('div'); el.className = 'hm ' + cls; el.textContent = cls.toUpperCase();
@@ -2215,11 +2530,22 @@ function hedDraw(fit) {
       m.on('dragend', () => { const ll = m.getLngLat(); hedSet(cls, hedNearest(ll.lng, ll.lat)); });
       hed.markers[w] = m;
     } else hed.markers[w].setLngLat([p[0], p[1]]);
+    hed.markers[w].getElement().style.display = hedHandleVisible(cls) ? '' : 'none';
   };
   mk(hed.a, 0, 'a'); mk(hed.b, 1, 'b');
-  const seg = hed.pts.slice(hed.a, hed.b + 1).map(q => [q[0], q[1]]);
-  map.getSource('edit').setData(fc(seg.length > 1 ? [{ type: 'Feature', properties: { color: '#ff6f00', off: false }, geometry: { type: 'LineString', coordinates: seg } }] : []));
-  if (fit && hed.pts.length > 1) fitTo(hed.pts.map(q => [q[0], q[1]]), 15);
+  // a blue "+" marks where a new section will attach
+  const joinI = hed.tab === 'add' && hed.add === 'before' ? 0 : hed.tab === 'add' && hed.add === 'after' ? N - 1 : -1;
+  if (joinI >= 0) {
+    const p = hed.pts[joinI];
+    if (!hed.jm) { const el = document.createElement('div'); el.className = 'hm j'; el.textContent = '+'; hed.jm = new maplibregl.Marker({ element: el }).setLngLat([p[0], p[1]]).addTo(map); }
+    else hed.jm.setLngLat([p[0], p[1]]);
+  } else if (hed.jm) { hed.jm.remove(); hed.jm = null; }
+  const { rem, fill } = hedRanges(), feats = [], seg = (x, y) => hed.pts.slice(Math.max(0, x), Math.min(N, y + 1)).map(q => [q[0], q[1]]);
+  for (const [x, y] of keptRanges(rem, N)) { const c = seg(x, y); if (c.length > 1) feats.push({ type: 'Feature', properties: { color: '#ff6f00', off: false }, geometry: { type: 'LineString', coordinates: c } }); }
+  for (const [x, y] of rem) { const c = seg(x - 1, y + 1); if (c.length > 1) feats.push({ type: 'Feature', properties: { color: '#d62828', off: true }, geometry: { type: 'LineString', coordinates: c } }); }
+  for (const [x, y] of fill) { const c = seg(x, y); if (c.length > 1) feats.push({ type: 'Feature', properties: { color: '#1e6fe0', off: true }, geometry: { type: 'LineString', coordinates: c } }); }
+  map.getSource('edit').setData(fc(feats));
+  if (fit && N > 1) fitTo(hed.pts.map(q => [q[0], q[1]]), 15);
 }
 function hedNearest(lng, lat) {
   const k = Math.cos(lat * Math.PI / 180); let best = 0, bd = Infinity;
@@ -2234,25 +2560,133 @@ function hedSet(w, i) {
 }
 function hedMapClick(ll) {
   if (!hed.pts.length) return;
+  const w = hedHandleVisible(hed.act) ? hed.act : ['a', 'b'].find(hedHandleVisible); if (!w) return;
   const i = hedNearest(ll[0], ll[1]), q = hed.pts[i], a = map.project(ll), b = map.project([q[0], q[1]]);
   if (Math.hypot(a.x - b.x, a.y - b.y) > 40) { toast('Click right on the hike line, or drag the A and B markers.', 3000); return; }
-  hedSet(hed.act, i);
+  hedSet(w, i);
+}
+function hedModeInit(m) {
+  const N = hed.pts.length, was = hed.mode;
+  hed.mode = m;
+  if (m === 'start') { hed.a = 0; hed.b = N - 1; hed.act = 'a'; }
+  else if (m === 'end') { hed.a = 0; hed.b = N - 1; hed.act = 'b'; }
+  else if (!((was === 'mid' || was === 'keep') && hed.b > hed.a && !(hed.a === 0 && hed.b === N - 1))) {
+    if (m === 'mid') { hed.a = Math.round(N * 0.3); hed.b = Math.max(hed.a + 2, Math.round(N * 0.65)); } else { hed.a = Math.round(N * 0.1); hed.b = Math.round(N * 0.9); }
+    hed.b = Math.min(N - 1, hed.b); hed.act = 'a';
+  }
+}
+// ----- the timeline strip -----
+function hsX(i) { return hed.X[i] * HS_W; }
+function hsY(i) { const span = (hed.hi - hed.lo) || 1; return HS_H - 6 - (hed.ev[i] - hed.lo) / span * (HS_H - 22); }
+function hsPath(i0, i1) {
+  let d = '', first = true;
+  const push = i => { d += (first ? 'M' : 'L') + hsX(i).toFixed(1) + ' ' + hsY(i).toFixed(1); first = false; };
+  push(i0); for (const i of hed.samp) if (i > i0 && i < i1) push(i); if (i1 > i0) push(i1);
+  return d;
+}
+function hedStripPaint() {
+  const svg = $('hsSvg'); if (!svg || !hed) return;
+  const N = hed.pts.length, { rem, fill } = hedRanges();
+  const rect = (x, y, col) => `<rect x="${hsX(x).toFixed(1)}" y="0" width="${Math.max(2, hsX(y) - hsX(x)).toFixed(1)}" height="${HS_H}" fill="${col}"/>`;
+  let g = `<path d="${hsPath(0, N - 1)} L${HS_W} ${HS_H} L0 ${HS_H}Z" fill="rgba(128,128,128,.14)"/>`;
+  for (const [x, y] of rem) g += rect(x, y, 'rgba(214,40,40,.18)');
+  for (const [x, y] of fill) g += rect(x, y, 'rgba(30,111,224,.18)');
+  for (const [x, y] of rem) g += `<path d="${hsPath(Math.max(0, x - 1), Math.min(N - 1, y + 1))}" fill="none" stroke="#d62828" stroke-width="2.2" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"/>`;
+  for (const [x, y] of keptRanges(rem, N)) g += `<path d="${hsPath(x, y)}" fill="none" stroke="#ff6f00" stroke-width="2.6" vector-effect="non-scaling-stroke"/>`;
+  svg.innerHTML = g;
+  for (const w of ['a', 'b']) {
+    const h = $('hs' + w.toUpperCase()); if (!h) continue;
+    h.style.display = hedHandleVisible(w) ? '' : 'none';
+    h.style.left = (hed.X[w === 'a' ? hed.a : hed.b] * 100) + '%';
+    h.classList.toggle('sel', hed.act === w);
+  }
+  const ax = $('hsAxis');
+  if (ax) {
+    const useT = hed.axis === 'time' && hed.hasT, D = hed.cum[N - 1] || 0;
+    ax.innerHTML = [0, 0.25, 0.5, 0.75, 1].map(f => `<span>${useT ? clk(hed.tm[0] + (hed.tm[N - 1] - hed.tm[0]) * f) : (D * f / M_PER_MI).toFixed(1) + ' mi'}</span>`).join('');
+  }
+}
+function hsIdxAt(frac) { return nearestIdx(hed.X, frac); }
+function hsFrac(e) { const r = $('hstrip').getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); }
+document.addEventListener('pointerdown', e => {
+  const st = hed && e.target.closest && e.target.closest('#hstrip'); if (!st) return;
+  const vis = ['a', 'b'].filter(hedHandleVisible); if (!vis.length) return;
+  e.preventDefault();
+  const frac = hsFrac(e), h = e.target.closest('.hs-h');
+  let w = h ? h.dataset.w : vis.length === 1 ? vis[0] : (Math.abs(hed.X[hed.a] - frac) <= Math.abs(hed.X[hed.b] - frac) ? 'a' : 'b');
+  hed.drag = w; try { st.setPointerCapture(e.pointerId); } catch (_) { /* fine */ }
+  if (!h) hedSet(w, hsIdxAt(frac)); else { hed.act = w; hedRefreshPage(); }
+});
+document.addEventListener('pointermove', e => { if (hed && hed.drag) hedSet(hed.drag, hsIdxAt(hsFrac(e))); });
+const hsEnd = () => { if (hed && hed.drag) { hed.drag = null; hedRefreshPage(); } };
+document.addEventListener('pointerup', hsEnd); document.addEventListener('pointercancel', hsEnd);
+
+function hedPlanHTML() {
+  const N = hed.pts.length, a = hed.a, b = hed.b, cum = hed.cum, tm = hed.tm, tot = cum[N - 1] || 0;
+  const dur = (i0, i1) => hed.hasT ? ` · ${fmtDur((tm[i1] - tm[i0]) * 1000)}` : '';
+  if (hed.tab === 'add') {
+    const k = hed.add, box = (txt, extra) => `<div class="small" style="margin:8px 0">${txt}</div>${extra || ''}`;
+    const how = `<div class="row"><button class="btn primary" data-act="hedAddDraw">✏️ Draw it on the map</button><button class="btn" data-act="hedAddFile">📄 Join a GPX file</button></div>`;
+    if (k === 'before') return box('A new section goes <b>before</b> the current start (the blue + on the map). Draw it, or join a GPX file recorded earlier.', how);
+    if (k === 'after') return box('A new section goes <b>after</b> the current end (the blue + on the map). Draw it, or join a GPX file recorded later.', how);
+    if (b <= a) return box('Move <b>A</b> and <b>B</b> onto the recorded points on either side of the missing part (B must be after A).');
+    return box(`The new section <b>replaces</b> the ${fmtMi(cum[b] - cum[a])} mi between A and B. What was there is kept aside in gray. If A and B are right next to each other, nothing is replaced: the new part just fills the gap.`, how);
+  }
+  let ok = false, label = '', note = '';
+  if (hed.mode === 'start') {
+    if (a > 0) { ok = true; label = `Cut off the first ${fmtMi(cum[a])} mi${dur(0, a)}`; note = `The hike will start at ${hed.hasT ? clk(tm[a]) : fmtMi(cum[a]) + ' mi in'}.`; }
+    else note = 'Drag the green <b>A</b> marker forward. Everything before it (red) will be set aside.';
+  } else if (hed.mode === 'end') {
+    if (b < N - 1) { ok = true; label = `Cut off the last ${fmtMi(tot - cum[b])} mi${dur(b, N - 1)}`; note = `The hike will end at ${hed.hasT ? clk(tm[b]) : fmtMi(cum[b]) + ' mi'}.`; }
+    else note = 'Drag the red <b>B</b> marker back. Everything after it (red) will be set aside.';
+  } else if (hed.mode === 'mid') {
+    if (b - a >= 2) { ok = true; label = `Cut out ${fmtMi(cum[b] - cum[a])} mi${dur(a, b)}`; note = 'The part between A and B (red) is set aside. The rest stays, with a gap where it was.'; }
+    else note = 'Drag <b>A</b> and <b>B</b> apart. Everything between them (red) will be set aside.';
+  } else {
+    if (a > 0 || b < N - 1) { ok = true; label = `Keep only A to B (${fmtMi(cum[b] - cum[a])} mi)`; note = `Sets aside ${fmtMi(cum[a])} mi at the start and ${fmtMi(tot - cum[b])} mi at the end.`; }
+    else note = 'Drag <b>A</b> and <b>B</b> inward. Only the part between them stays; the rest (red) is set aside.';
+  }
+  return `<div class="small" style="margin:8px 0">${note}</div><button class="btn primary big" data-act="hedApply" ${ok ? '' : 'disabled'}>✂ ${label || 'Choose what to cut'}</button>
+    <div class="small muted" style="margin-top:4px">Nothing is deleted: cut parts stay in gray below and can be restored. Only line that is still recorded or drawn counts toward trails, peaks and lakes.</div>`;
+}
+function hedCardHTML(w) {
+  const W = w.toUpperCase(), nm = w === 'a' ? 'Marker A' : 'Marker B';
+  return `<div class="hcard ${hed.act === w ? 'on' : ''}" data-act="hedPick" data-w="${w}">
+    <div class="hc-top"><span class="hdot ${w}">${W}</span><div style="flex:1"><b id="hcT_${w}"></b><div class="small muted" id="hcD_${w}"></div></div>${hed.hasT ? `<input type="time" step="1" class="htime" data-w="${w}" title="Type a time to jump there">` : ''}</div>
+    <div class="hc-nudge">${(hed.hasT
+      ? [['−1 min', 't', -60], ['−10 s', 't', -10], ['+10 s', 't', 10], ['+1 min', 't', 60]]
+      : [['−0.1 mi', 'm', -160.9], ['−100 ft', 'm', -30.5], ['+100 ft', 'm', 30.5], ['+0.1 mi', 'm', 160.9]]
+    ).map(([l, k, v]) => `<button class="btn sm" data-act="hedNudge" data-w="${w}" data-k="${k}" data-v="${v}">${l}</button>`).join('')}</div>
+    <div class="hc-fine"><span class="small muted">fine</span><input type="range" class="hfine" data-w="${w}" min="0" max="1" value="0" step="1" aria-label="${nm} fine adjust"></div>
+  </div>`;
 }
 function hedRefreshPage() {
   if (!hed || !view.detail || view.detail.type !== 'hikeEdit') return;
-  const N = hed.pts.length, f = i => fmtMi(hed.cum[i] || 0) + ' mi from the start';
-  if ($('hedA')) $('hedA').value = hed.a; if ($('hedB')) $('hedB').value = hed.b;
-  if ($('hedAl')) $('hedAl').textContent = f(hed.a);
-  if ($('hedBl')) $('hedBl').textContent = f(hed.b);
-  if ($('hedSel')) $('hedSel').textContent = `Selected stretch (orange on the map): ${fmtMi((hed.cum[hed.b] || 0) - (hed.cum[hed.a] || 0))} mi of ${fmtMi(hed.cum[N - 1] || 0)} mi`;
-  document.querySelectorAll('[data-act=hedPick]').forEach(b => b.classList.toggle('on', b.dataset.w === hed.act));
+  const N = hed.pts.length, W = 40;
+  for (const w of ['a', 'b']) {
+    const i = w === 'a' ? hed.a : hed.b, T = $('hcT_' + w); if (!T) continue;
+    T.textContent = hed.hasT ? clk(hed.tm[i], true) : `${fmtMi(hed.cum[i])} mi in`;
+    const e = hed.pts[i][2];
+    $('hcD_' + w).textContent = `${fmtMi(hed.cum[i])} mi in${e != null ? ' · ' + fmtFt(e) + ' ft' : ''}${hed.hasT ? ' · ' + fmtDur((hed.tm[i] - hed.tm[0]) * 1000) + ' elapsed' : ''}`;
+    const ti = document.querySelector(`.htime[data-w=${w}]`); if (ti && document.activeElement !== ti) ti.value = clockSec(hed.tm[i]);
+    const fe = document.querySelector(`.hfine[data-w=${w}]`);
+    if (fe && hed.fineDrag !== w) { fe.min = Math.max(0, i - W); fe.max = Math.min(N - 1, i + W); fe.value = i; }
+    const card = document.querySelector(`.hcard [data-w=${w}]`); const c = card && card.closest('.hcard'); if (c) { c.classList.toggle('on', hed.act === w); c.style.display = hedHandleVisible(w) ? '' : 'none'; }
+  }
+  const plan = $('hedPlan'); if (plan) plan.innerHTML = hedPlanHTML();
+  hedStripPaint();
   hed.markers.forEach((m, k) => m && m.getElement().classList.toggle('sel', (k === 0 ? 'a' : 'b') === hed.act));
+}
+function hedSummary(t) {
+  const st = trackStatsSafe(t), act = []; for (const f of flatTrack(t)) if (!f.ig) act.push(f.p[3]);
+  const t0 = act[0], t1 = act[act.length - 1], timed = t0 != null && t1 != null && t1 > t0;
+  return `<b>${fmtMi(st.len)} mi</b> · ${fmtFt(st.gain)} ft up${timed ? ` · ${clk(t0)} → ${clk(t1)} (${fmtDur((t1 - t0) * 1000)})` : ''}${t.ptEst && timed ? ' <span class="muted">(times along the line are estimated from your start and end time)</span>' : ''}`;
 }
 function hedAfter(t, msg) {
   matchIfCounted(t); touch({ noRender: true });
-  if (hed) { hedLoad(t); }
+  if (hed) hedLoad(t);
   if (mapReady) updateSources();
-  renderSide(); hedDraw(); hedRefreshPage();
+  renderSide(); if (hed) { hedDraw(); hedRefreshPage(); }
   if (msg) toast(msg, 6000);
 }
 function hedOp(kind) {
@@ -2270,11 +2704,12 @@ function hedOp(kind) {
     return null;
   });
   if (!ok) return;
-  hedLoad(t);
+  hed.a = 0; hed.b = Infinity; hedLoad(t);
   const left = hed.cum[hed.pts.length - 1] || 0;
-  if (kind === 'mid') { hed.b = Math.min(hed.pts.length - 1, a + 1); } else { hed.a = 0; hed.b = hed.pts.length - 1; }
-  hedAfter(t, `Cut off ${fmtMi(Math.max(0, total - left))} mi. Places only on that part no longer count. It is kept aside in gray, and you can restore it below.`);
+  hedModeInit(hed.mode);
+  hedAfter(t, `Cut off ${fmtMi(Math.max(0, total - left))} mi${t.timesSet ? `. The hike now runs ${clk(t.start / 1000)} to ${clk(t.end / 1000)}` : ''}. Places only on that part no longer count. It is kept aside in gray; restore it below.`);
 }
+// Add a section: attach at the start, the end, or between A and B. Drawing opens the map editor; a GPX file is joined directly.
 function hedAdd(kind) {
   const t = hed && findTrack(hed.tid); if (!t || !hed.pts.length) return;
   let anchor, end = null;
@@ -2286,13 +2721,49 @@ function hedAdd(kind) {
   startEditor('extend', o);
   toast(kind === 'gap' ? 'Click along where you really walked from A, then press Finish at B.' : 'Click along the trail you actually walked. Only what you draw counts.', 6000);
 }
+// Draw the route you really took, in blue. It replaces the whole recorded line for counting; the GPS line stays aside in gray.
+function startApprove(t) {
+  if (!t || t.planned) return;
+  stopHed(true);
+  const line = trackLine(t);
+  startEditor('extend', { trackId: t.id, mode: 'approve' });
+  if (mapReady && line.length > 1) fitTo(line.map(q => [q[0], q[1]]), 15);
+  toast('Click along the trail you really took. Points follow trails' + (editor && editor.snap ? '' : ' (snapping is off)') + '. Press Save when done. Your GPS line stays aside in gray and can be brought back.', 8000);
+}
+async function hedJoinFile(file) {
+  const t = hed && findTrack(hed.tid); if (!t) return;
+  let list; try { list = parseGPX(await file.text(), file.name || 'x.gpx'); } catch (err) { return toast('That file is not valid GPX.', 4000); }
+  const pts = list.flatMap(h => h.segments.flatMap(s => s.pts));
+  if (pts.length < 2) return toast('No recorded track in that file.', 4000);
+  const kind = hed.add, near = (a, b) => dist(a[1], a[0], b[1], b[0]) < 60;
+  const ok = applyOps(t, (F, act) => {
+    if (!act.length) return 'This hike has no active path to attach to.';
+    const items = pts.map(q => ({ p: q.slice(), src: 'garmin', ig: false, gap: false }));
+    if (kind === 'before') {
+      const f0 = act[0]; items[0].gap = f0 > 0;
+      F.splice(f0, 0, ...items); const nx = F[f0 + items.length]; if (nx) nx.gap = !near(items[items.length - 1].p, nx.p);
+    } else if (kind === 'gap') {
+      const ia = act[hed.a], ib = act[hed.b]; if (ia == null || ib == null || ib <= ia) return 'Put B after A first.';
+      for (let k = ia + 1; k < ib; k++) F[k].ig = true;
+      items[0].gap = !near(F[ia].p, items[0].p); F.splice(ia + 1, 0, ...items);
+      const nx = F[ia + 1 + items.length]; if (nx) nx.gap = nx.ig ? true : !near(items[items.length - 1].p, nx.p);
+    } else {
+      const L = act[act.length - 1]; items[0].gap = !near(F[L].p, items[0].p);
+      F.splice(L + 1, 0, ...items); const nx = F[L + 1 + items.length]; if (nx) nx.gap = true;
+    }
+    return null;
+  });
+  if (!ok) return;
+  hed.a = 0; hed.b = Infinity;
+  hedAfter(t, `Joined ${fmtMi(lineLen(pts))} mi from ${file.name || 'the file'}${hed.hasT ? '' : ''}. A gap is left where the two recordings do not meet, so nothing is credited across it.`);
+}
 function removedParts(F) {
   const first = F.findIndex(f => !f.ig); let last = -1; F.forEach((f, i) => { if (!f.ig) last = i; });
   const out = []; let i = 0;
   while (i < F.length) {
     if (!F[i].ig) { i++; continue; }
     let j = i; while (j + 1 < F.length && F[j + 1].ig && !F[j + 1].gap) j++;
-    out.push({ from: i, to: j, n: j - i + 1, len: lineLen(F.slice(i, j + 1).map(f => f.p)), where: first < 0 || j < first ? 'start' : i > last ? 'end' : 'middle' });
+    out.push({ from: i, to: j, n: j - i + 1, len: lineLen(F.slice(i, j + 1).map(f => f.p)), t0: F[i].p[3], t1: F[j].p[3], where: first < 0 || j < first ? 'start' : i > last ? 'end' : 'middle' });
     i = j + 1;
   }
   return out;
@@ -2310,53 +2781,87 @@ function hedParts(act, el) {
     return null;
   });
   if (!ok) return;
-  hed.a = 0; hed.b = Infinity;
+  hed.a = 0; hed.b = Infinity; hedModeInit(hed.mode);
   hedAfter(t, act === 'hedDrop' ? 'Deleted for good.' : 'Restored. It counts again, since it was recorded or drawn.');
 }
-function hedUndo() {
-  const t = hed && findTrack(hed.tid); if (!t) return;
-  const s = hedStack(t.id), last = s.pop(); if (!last) return toast('Nothing to undo.', 2500);
-  const o = JSON.parse(last); t.segments = o.seg; t.edited = o.ed;
-  hed.a = 0; hed.b = Infinity;
+// Undo / back to original also work from the hike page (no editor open)
+function hikeUndo(t) {
+  if (!t) return; const s = hedStack(t.id), last = s.pop(); if (!last) return toast('Nothing to undo.', 2500);
+  const o = JSON.parse(last); t.segments = o.seg; t.edited = o.ed; syncHikeTimes(t);
+  if (hed && hed.tid === t.id) { hed.a = 0; hed.b = Infinity; hedLoad(t); hedModeInit(hed.mode); }
   hedAfter(t, 'Undone.');
 }
-function hedRevert() {
-  const t = hed && findTrack(hed.tid); if (!t || !t.orig) return;
-  if (!confirm('Go back to the hike as it was imported? This removes every trim and every part you drew.')) return;
-  hedPush(t); t.segments = t.orig; delete t.orig; t.edited = false;
-  hed.a = 0; hed.b = Infinity;
+function hikeRevert(t) {
+  if (!t || !t.orig) return;
+  if (!confirm('Go back to the hike as it was imported? This removes every trim and every part you drew, including the approved route.')) return;
+  hedPush(t); t.segments = t.orig; delete t.orig; t.edited = false; syncHikeTimes(t);
+  if (hed && hed.tid === t.id) { hed.a = 0; hed.b = Infinity; hedLoad(t); hedModeInit(hed.mode); }
   hedAfter(t, 'Back to the original.');
 }
+const hedUndo = () => hikeUndo(hed && findTrack(hed.tid));
+const hedRevert = () => hikeRevert(hed && findTrack(hed.tid));
 function pageHikeEdit(d) {
   const t = findTrack(d.id); if (!t) return backBtn() + '<div class="empty">Hike not found.</div>';
   if (!hed || hed.tid !== t.id) startHed(t);
-  const N = hed.pts.length, F = flatTrack(t), parts = removedParts(F), stack = hedStack(t.id);
+  const F = flatTrack(t), parts = removedParts(F), stack = hedStack(t.id);
   const where = { start: 'Cut off the start', end: 'Cut off the end', middle: 'Cut out of the middle' };
+  const mode = (k, ic, l) => `<button data-act="hedMode" data-m="${k}" class="${hed.mode === k ? 'on' : ''}"><i>${ic}</i>${l}</button>`;
+  const addk = (k, ic, l) => `<button data-act="hedAddPick" data-k="${k}" class="${hed.add === k ? 'on' : ''}"><i>${ic}</i>${l}</button>`;
+  const ts = t.start && t.end && t.end > t.start;
+  setTimeout(() => { if (hed) hedRefreshPage(); }, 0);
   return `${backBtn()}
     <div class="d-title">Trim or add to this hike</div><div class="d-sub">${esc(t.name)}</div>
     ${t.approved === false ? '<div class="small" style="background:#fff4e5;border-radius:12px;padding:10px 12px;margin:8px 0">Good time to fix it: this hike is still waiting for your approval, and nothing counts yet.</div>' : ''}
-    <div class="small muted">Move the green A and red B markers (sliders, dragging them, or clicking the hike line). The stretch between them turns orange. Only the line that is still recorded or drawn counts toward trails, peaks and lakes.</div>
-    <div class="chips"><button data-act="hedPick" data-w="a" class="${hed.act === 'a' ? 'on' : ''}">Moving A</button><button data-act="hedPick" data-w="b" class="${hed.act === 'b' ? 'on' : ''}">Moving B</button></div>
-    <label class="f">A (green): <span id="hedAl"></span></label><input type="range" id="hedA" min="0" max="${Math.max(0, N - 1)}" value="${hed.a}" style="width:100%">
-    <label class="f">B (red): <span id="hedBl"></span></label><input type="range" id="hedB" min="0" max="${Math.max(0, N - 1)}" value="${hed.b}" style="width:100%">
-    <div class="small" id="hedSel" style="margin:6px 0"></div>
-    <h2 class="sec">Cut away</h2>
-    <div class="row"><button class="btn" data-act="hedCutStart">Cut off the start (before A)</button><button class="btn" data-act="hedCutEnd">Cut off the end (after B)</button></div>
-    <div class="row"><button class="btn" data-act="hedRemMid">Cut out the part between A and B</button><button class="btn" data-act="hedKeep">Keep only A to B</button></div>
-    <h2 class="sec">Add to this hike</h2>
-    <div class="small muted">You draw the new part on the map, following the trail you really walked. A preview shows what it will count toward before you save.</div>
-    <div class="row"><button class="btn" data-act="hedAddBefore">Draw before the start</button><button class="btn" data-act="hedAddAfter">Draw after the end</button></div>
-    <div class="row"><button class="btn" data-act="hedAddGap">Draw from A to B (replaces what is between)</button></div>
+    <div class="hsum small" id="hedSum">${hedSummary(t)}</div>
+    <div class="hs-bar"><div class="small muted">Drag the <b style="color:#2e7d32">A</b> / <b style="color:#c62828">B</b> handles, or tap the profile.</div>
+      ${hed.hasT ? `<div class="chips" style="padding:0"><button data-act="hedAxis" data-x="dist" class="${hed.axis === 'dist' ? 'on' : ''}">Distance</button><button data-act="hedAxis" data-x="time" class="${hed.axis === 'time' ? 'on' : ''}">Time</button></div>` : ''}</div>
+    <div class="hstrip" id="hstrip"><svg id="hsSvg" viewBox="0 0 ${HS_W} ${HS_H}" preserveAspectRatio="none"></svg>
+      <div class="hs-h a" id="hsA" data-w="a"><b>A</b></div><div class="hs-h b" id="hsB" data-w="b"><b>B</b></div></div>
+    <div class="hs-axis" id="hsAxis"></div>
+    <div class="tabs2"><button data-act="hedTab" data-tab="cut" class="${hed.tab === 'cut' ? 'on' : ''}">✂ Cut away</button><button data-act="hedTab" data-tab="add" class="${hed.tab === 'add' ? 'on' : ''}">＋ Add to this hike</button></div>
+    ${hed.tab === 'cut' ? `<div class="pills">${mode('start', '⇤', 'Trim the start')}${mode('end', '⇥', 'Trim the end')}${mode('mid', '⇹', 'Cut out a middle part')}${mode('keep', '▭', 'Keep only a part')}</div>`
+      : `<div class="pills three">${addk('before', '⇤', 'Add to the start')}${addk('after', '⇥', 'Add to the end')}${addk('gap', '⇹', 'Add in the middle')}</div>`}
+    ${hedCardHTML('a')}${hedCardHTML('b')}
+    <div id="hedPlan"></div>
+    ${hed.tab === 'add' ? `<div class="small muted" style="margin-top:8px">Want to redraw the whole route instead? <button class="btn sm" data-act="hedApprove">🧭 Draw the approved route (blue)</button></div>` : ''}
+    <details class="set" style="margin-top:12px"><summary>Start and end time</summary>
+      <div class="small muted">Trimming moves these for you. Change them here if the watch clock was off: every point's time stretches or shifts to match.</div>
+      <div class="row"><div style="flex:1"><label class="f">Start</label><input type="time" id="hedT0" step="1" value="${ts ? clockSec(t.start / 1000) : ''}"></div><div style="flex:1"><label class="f">End</label><input type="time" id="hedT1" step="1" value="${ts ? clockSec(t.end / 1000) : ''}"></div></div>
+      <div class="row"><button class="btn" data-act="hedTimes">Apply times</button></div>
+    </details>
     <h2 class="sec">Cut-away parts <span class="small muted">${parts.length}</span></h2>
-    ${parts.map(x => `<div class="visit"><div class="tx"><b>${where[x.where]}</b> <span class="muted small">${fmtMi(x.len)} mi</span></div><button class="btn sm" data-act="hedRestore" data-from="${x.from}" data-to="${x.to}">Restore</button>${x.where !== 'middle' ? `<button class="btn sm danger" data-act="hedDrop" data-from="${x.from}" data-to="${x.to}">Delete</button>` : ''}</div>`).join('') || '<div class="empty small">Nothing cut away.</div>'}
+    ${parts.map(x => `<div class="visit"><div class="tx"><b>${where[x.where]}</b> <span class="muted small">${fmtMi(x.len)} mi${x.t0 != null && x.t1 != null ? ' · ' + clk(x.t0) + '–' + clk(x.t1) : ''}</span></div><button class="btn sm" data-act="hedRestore" data-from="${x.from}" data-to="${x.to}">Restore</button>${x.where !== 'middle' ? `<button class="btn sm danger" data-act="hedDrop" data-from="${x.from}" data-to="${x.to}">Delete</button>` : ''}</div>`).join('') || '<div class="empty small">Nothing cut away.</div>'}
     ${parts.length > 1 ? '<div class="row"><button class="btn sm" data-act="hedRestoreAll">Restore all</button></div>' : ''}
     <div class="row"><button class="btn" data-act="hedUndo" ${stack.length ? '' : 'disabled'}>↶ Undo last change</button><button class="btn" data-act="hedRevert" ${t.orig ? '' : 'disabled'}>Back to original</button></div>
-    <div class="row"><button class="btn primary" style="flex:1;padding:12px" data-act="hedDone">Done</button></div>`;
+    <div class="small muted">Tip: on a computer, ← → nudge the selected marker (Shift = 10 points) and Ctrl/Cmd+Z undoes.</div>
+    <div class="row"><button class="btn primary" style="flex:1;padding:12px" data-act="hedDone">Done</button></div>
+    <input type="file" id="hedJoinFile" accept=".gpx,application/gpx+xml,application/xml,text/xml,application/octet-stream" hidden>`;
 }
 document.addEventListener('input', e => {
   if (!hed) return;
-  if (e.target.id === 'hedA') hedSet('a', +e.target.value);
-  if (e.target.id === 'hedB') hedSet('b', +e.target.value);
+  const fe = e.target.closest && e.target.closest('.hfine');
+  if (fe) { hed.fineDrag = fe.dataset.w; hedSet(fe.dataset.w, +fe.value); }
+});
+document.addEventListener('change', e => {
+  if (!hed) return;
+  const fe = e.target.closest && e.target.closest('.hfine'); if (fe) { hed.fineDrag = null; hedRefreshPage(); return; }
+  const ti = e.target.closest && e.target.closest('.htime');
+  if (ti && hed.hasT) { const v = secFromClock(ti.value, hed.tm[0]); if (v != null) hedSet(ti.dataset.w, nearestIdx(hed.tm, Math.max(hed.tm[0], Math.min(hed.tm[hed.pts.length - 1], v)))); }
+  if (e.target.id === 'hedJoinFile' && e.target.files[0]) { const f = e.target.files[0]; e.target.value = ''; hedJoinFile(f); }
+});
+function hedNudge(w, kind, amt) {
+  const cur = w === 'a' ? hed.a : hed.b, arr = kind === 't' && hed.hasT ? hed.tm : hed.cum;
+  let i = nearestIdx(arr, arr[cur] + amt); if (i === cur) i = cur + (amt > 0 ? 1 : -1);
+  hedSet(w, i);
+}
+document.addEventListener('keydown', e => {
+  if (!hed || !view.detail || view.detail.type !== 'hikeEdit') return;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName)) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); hedUndo(); return; }
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  const w = hedHandleVisible(hed.act) ? hed.act : ['a', 'b'].find(hedHandleVisible); if (!w) return;
+  e.preventDefault(); const step = e.shiftKey ? 10 : 1, cur = w === 'a' ? hed.a : hed.b;
+  hedSet(w, cur + (e.key === 'ArrowRight' ? step : -step));
 });
 ['dragover', 'drop'].forEach(ev => window.addEventListener(ev, e => {
   if (!e.dataTransfer || !Array.from(e.dataTransfer.types || []).includes('Files')) return;
@@ -2701,7 +3206,8 @@ function goBack() {
   view.detail = viewStack.pop() || null; selectedPinId = view.detail && view.detail.type === 'pin' ? view.detail.id : null;
   renderSide(); updateSources();
 }
-function renderSide() {
+function renderSide() { renderSideInner(); renderToolbar(); }
+function renderSideInner() {
   const d = view.detail;
   if (d) {
     const fn = { feature: pageFeature, route: pageRoute, track: pageTrack, pin: pagePin, editor: pageEditor, history: pageHistory, settings: pageSettings, help: pageHelp, ideas: pageIdeas, offline: pageOffline, report: pageReport, area: pageArea, areaEditor: pageAreaEditor, list: pageList, trash: pageTrash, hikeEdit: pageHikeEdit }[d.type];
@@ -3125,6 +3631,8 @@ function pageTrack(d) {
     ${t.planned ? '' : `<h2 class="sec">Fix the path</h2>
     <div class="small muted" style="margin-bottom:6px">Left your watch on by accident, or did it stop early? Trim it, add to it, or fill in a missing middle. Only the line that was recorded or that you draw counts toward trails, peaks and lakes.</div>
     <div class="row"><button class="btn primary" data-act="editHike">✂️ Trim or add to this hike</button></div>
+    <div class="row"><button class="btn" data-act="drawApproved">🧭 Draw the approved route (blue)</button></div>
+    <div class="small muted">Drop points along the route you really took. They follow trails (you can turn that off). The blue line then counts instead of the GPS line, which stays in gray.</div>
     ${t.segments.some(s => s.src === 'garmin') ? '<div class="small muted">The scissors button below is a shortcut for a watch that stopped early: click where it stopped, and you draw the rest.</div>' : ''}`}
     <div class="actions">
       ${t.segments.some(s => s.src === 'garmin') ? actionBtn('split', 'Watch stopped early? Click where it stopped, then draw the rest', SVG.scissors) : ''}
@@ -3214,6 +3722,10 @@ function pageSettings() {
       <label class="f">Flat-ground pace (mph), used for time estimates</label><input type="number" id="sPace" min="0.5" max="5" step="0.1" value="${s.pace}">
       <label class="toggle"><input type="checkbox" id="sSnap" ${s.snap !== false ? 'checked' : ''}> Route builder follows trails by default</label>
     </details>
+    <details class="set" data-k="look" ${setOpen('look', true)}><summary>Appearance</summary>
+      <div class="chips" style="padding-top:2px">${[['light', '☀️ Light'], ['dark', '🌙 Dark'], ['auto', 'Match my device']].map(([k, l]) => `<button data-theme="${k}" class="${(s.theme || 'auto') === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <div class="small muted">Also on the map: the sun / moon button. This choice stays on this device. In dark mode the map is dimmed rather than recolored.</div>
+    </details>
     <details class="set" data-k="photos" ${setOpen('photos', false)}><summary>Photos</summary>
       <label class="f">Photo size (longest side)</label>
       <select id="sPhoto">${[800, 1200, 1600].map(px => `<option value="${px}" ${(s.photoMax || 1200) === px ? 'selected' : ''}>${px} px${px === 1200 ? ' (standard)' : px === 800 ? ' (smallest)' : ' (sharpest)'}</option>`).join('')}</select>
@@ -3257,6 +3769,117 @@ function pageHelp() {
   <li><b>More map room:</b> the arrow on the edge of the side panel hides it; click again to bring it back.</li>
   </ol>`;
 }
+
+// ================= Context toolbar (bottom bar) =================
+// Browsing shows the normal tools. Opening a hike shows hike tools (approved route, trim, snap...). Drawing shows route-building tools.
+let TB_BROWSE = null;
+function toggleSnap() {
+  const on = !(editor ? editor.snap : data.settings.snap !== false);
+  data.settings.snap = on; if (editor) editor.snap = on;
+  const ck = $('edSnap'); if (ck) ck.checked = on;
+  touch({ noRender: true }); renderToolbar();
+  toast(on ? 'Snap to trails: ON. New points follow the trail.' : 'Snap to trails: OFF. Points go exactly where you click. Press Snap again to turn it back on.', 4000);
+}
+function toolbarContext() {
+  if (editor) return editor.kind === 'route' ? 'route' : 'draw';
+  const d = view.detail;
+  if (d && (d.type === 'track' || d.type === 'hikeEdit')) { const t = findTrack(d.id); if (t && !t.planned) return 'hike'; }
+  return 'browse';
+}
+const tbb = (act, ic, label, o) => { o = o || {}; return `<button data-tb="${act}" class="${o.on ? 'on' : ''}${o.pri ? ' pri' : ''}${o.snap ? ' snapon' : ''}" ${o.dis ? 'disabled' : ''} title="${esc(o.title || label)}"><i>${ic}</i><em>${label}</em></button>`; };
+function renderToolbar() {
+  const tb = $('toolbar'); if (!tb) return;
+  if (TB_BROWSE === null) TB_BROWSE = tb.innerHTML;
+  const c = toolbarContext(), snapOn = data.settings.snap !== false;
+  tb.className = c === 'browse' ? '' : 'ctx'; tb.dataset.ctx = c;
+  if (c === 'browse') {
+    if (!tb.querySelector('[data-mode]')) tb.innerHTML = TB_BROWSE;
+    document.querySelectorAll('#toolbar [data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
+    const b3 = $('btn3d'); if (b3) b3.classList.toggle('on', !!data.settings.terrain);
+    return;
+  }
+  const snapB = tbb('snap', '⚡', snapOn ? 'Snap: on' : 'Snap: off', { snap: snapOn, title: snapOn ? 'Points follow trails. Click to turn off.' : 'Points go exactly where you click. Click to follow trails.' });
+  let h = '';
+  if (c === 'route') {
+    h = tbb('undo', '↶', 'Undo', { dis: !editor.wps.length }) + tbb('redo', '↷', 'Redo', { dis: !editor.redo.length }) + snapB
+      + tbb('reverse', '⇄', 'Reverse', { dis: editor.wps.length < 2 }) + tbb('loop', '⟳', 'Loop', { dis: editor.wps.length < 2, title: 'Close the loop: return to the start' }) + tbb('outback', '↔', 'Out & back', { dis: editor.wps.length < 2 })
+      + tbb('splitday', '✂', 'Split day', { dis: editor.wps.length < 2, title: 'End the day at the last point you placed' }) + tbb('clear', '🗑', 'Clear', { dis: !editor.wps.length })
+      + tbb('save', '✓', 'Save', { pri: true, dis: editor.wps.length < 2 }) + tbb('cancel', '✕', 'Cancel');
+  } else if (c === 'draw') {
+    const first = editor.anchorPt ? 1 : 0;
+    h = (editor.mode === 'approve' ? '<span class="tbtag">Approved route</span>' : '') + tbb('undo', '↶', 'Undo', { dis: editor.wps.length <= first }) + tbb('redo', '↷', 'Redo', { dis: !editor.redo.length }) + snapB
+      + tbb('clear', '🗑', 'Clear', { dis: editor.wps.length <= first })
+      + (editor.endPt ? tbb('finishb', '⚑', 'Finish at B', { dis: editor.closed }) : '')
+      + tbb('save', '✓', 'Save', { pri: true, dis: editor.wps.length < 2 }) + tbb('cancel', '✕', 'Cancel');
+  } else {
+    const t = findTrack(view.detail.id), st = hedStack(t.id), hasApproved = t.segments.some(x => x.src === 'approved'), pend = t.approved === false;
+    h = tbb('approvedraw', '🧭', hasApproved ? 'Redraw route' : 'Approved route', { pri: !hasApproved, title: 'Drop points along the route you really took (blue). Snaps to trails unless you turn that off.' }) + snapB
+      + tbb('trim', '✂', 'Trim / add', { on: view.detail.type === 'hikeEdit' })
+      + (t.segments.some(x => x.src === 'garmin') ? tbb('stopped', '⌚', 'Stopped early', { title: 'Click the line where the watch stopped, then draw the rest' }) : '')
+      + (pend ? tbb('approve', '✓', 'Approve', { pri: hasApproved }) : '')
+      + tbb('hundo', '↶', 'Undo edit', { dis: !st.length }) + (t.orig ? tbb('horig', '⟲', 'Original line') : '')
+      + tbb('zoom', '⌖', 'Zoom to hike') + tbb('close', '✕', 'Done');
+  }
+  tb.innerHTML = h;
+}
+function tbAction(a) {
+  const t = view.detail && (view.detail.type === 'track' || view.detail.type === 'hikeEdit') ? findTrack(view.detail.id) : null;
+  switch (a) {
+    case 'undo': if (editor) undoPoint(); break;
+    case 'redo': redoPoint(); break;
+    case 'snap': toggleSnap(); break;
+    case 'reverse': edReverse(); break;
+    case 'loop': edLoop(); break;
+    case 'outback': edOutBack(); break;
+    case 'splitday': if (editor && editor.wps.length > 1) { const w = editor.wps[editor.wps.length - 1]; if (editor.wps.length - 1 > 0 && w) { w.brk = !w.brk; redrawEditor(); renderSide(); toast(w.brk ? 'Day ends at your last point. Keep clicking to start the next day.' : 'Day break removed.', 3500); } } break;
+    case 'clear': if (editor) { editor.wps = editor.anchorPt ? editor.wps.slice(0, 1) : []; editor.legs = []; editor.closed = false; editor.redo = []; redrawEditor(); renderSide(); } break;
+    case 'finishb': if (editor && editor.endPt && !editor.closed) { editor.wps.push({ c: [editor.endPt[0], editor.endPt[1]], brk: false, snap: editor.snap }); computeLeg(editor.wps.length - 2); editor.closed = true; redrawEditor(); renderSide(); } break;
+    case 'save': if (editor) { if ($('edName')) editor.name = $('edName').value; saveEditor(); } break;
+    case 'cancel': { const back = editor && editor.kind === 'extend' ? { type: 'track', id: editor.trackId } : null; stopEditor(); view.detail = back; renderSide(); break; }
+    case 'approvedraw': if (t) startApprove(t); break;
+    case 'trim': if (t) openDetail({ type: 'hikeEdit', id: t.id }); break;
+    case 'stopped': setMode('split'); break;
+    case 'approve': if (t) { approveTrack(t); renderSide(); } break;
+    case 'hundo': if (t) hikeUndo(t); break;
+    case 'horig': if (t) hikeRevert(t); break;
+    case 'zoom': if (t) { const l = trackLine(t); if (l.length > 1) fitTo(l.map(q => [q[0], q[1]]), 15); } break;
+    case 'close': if (hed) stopHed(); view.detail = null; viewStack = []; renderSide(); updateSources(); break;
+  }
+}
+$('toolbar').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || b.disabled) return;
+  if (b.id === 'btn3d') { set3D(!data.settings.terrain); touch({ noRender: true }); if (!$('layers').hidden) renderLayers(); return; }
+  if (b.dataset.mode) {
+    const m = b.dataset.mode;
+    if (m === 'route') startEditor('route'); else if (m === 'track') startEditor('track');
+    else { if (editor) { stopEditor(true); view.detail = null; renderSide(); } setMode(m); }
+    return;
+  }
+  if (b.dataset.tb) tbAction(b.dataset.tb);
+});
+document.addEventListener('keydown', e => {
+  if (!editor || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName)) return;
+  if (e.key === 's' || e.key === 'S') { if (!(e.ctrlKey || e.metaKey)) { e.preventDefault(); toggleSnap(); } }
+  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redoPoint(); else undoPoint(); }
+});
+
+// ================= Light / dark mode =================
+function themeNow() { return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'; }
+function applyTheme() {
+  let pref = (data.settings && data.settings.theme) || null;
+  try { pref = pref || localStorage.getItem('teton-theme') || 'auto'; } catch (e) { pref = pref || 'auto'; }
+  const eff = pref === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : pref;
+  document.documentElement.setAttribute('data-theme', eff);
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', eff === 'dark' ? '#111111' : '#1f5e2c');
+  const ic = $('themeIcon'); if (ic) ic.textContent = eff === 'dark' ? '☀️' : '🌙';
+  const tb = $('themeBtn'); if (tb) tb.title = eff === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+}
+function setTheme(pref) {
+  data.settings.theme = pref;
+  try { localStorage.setItem('teton-theme', pref); } catch (e) { /* private mode */ }
+  applyTheme(); touch({ noRender: true });
+}
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (((data.settings || {}).theme || 'auto') === 'auto') applyTheme(); }); } catch (e) { /* old browser */ }
 
 // ================= Modes =================
 function setMode(m, keepEditor) {
@@ -3344,6 +3967,27 @@ function baseThumb(b) {
 }
 const layersOpen = {};
 function layersSec(key, title, body, open) { return `<details class="set" data-lsec="${key}" ${(layersOpen[key] ?? open) ? 'open' : ''}><summary>${title}</summary>${body}</details>`; }
+let bSel = 'park';
+const BORDER_SWATCHES = ['#7b1fa2', '#e65100', '#d62828', '#1e88e5', '#00897b', '#2e7d32', '#f9a825', '#111111', '#ffffff'];
+function borderStyleHTML() {
+  const b = bDef(bSel), st = bStyle(bSel);
+  return `<div class="bstyle"><div class="small" style="font-weight:700;margin:10px 0 4px">Style a border</div>
+    <div class="chips" style="padding-top:2px">${BORDERS.map(x => `<button data-bsel="${x.id}" class="${x.id === bSel ? 'on' : ''}">${x.short}</button>`).join('')}</div>
+    <div class="small muted" style="margin-bottom:4px">Styling: <b>${b.label}</b></div>
+    <label class="f">Color</label>
+    <div class="swatches">${BORDER_SWATCHES.map(c => `<button data-bcolor="${c}" class="${st.color.toLowerCase() === c ? 'on' : ''}" style="background:${c};${c === '#ffffff' ? 'border:1px solid #ccc' : ''}"></button>`).join('')}<input type="color" data-bs="color" value="${st.color}" title="Any color" style="width:34px;height:34px;padding:0;border:0;background:none"></div>
+    <label class="f">Thickness: <b id="bsWV">${(+st.width).toFixed(1)} px</b></label><input type="range" data-bs="width" min="0.5" max="10" step="0.5" value="${st.width}" style="padding:0">
+    <label class="f">Line opacity: <b id="bsOV">${Math.round(st.opacity * 100)}%</b></label><input type="range" data-bs="opacity" min="0.1" max="1" step="0.05" value="${st.opacity}" style="padding:0">
+    <label class="f">Line style</label>
+    <div class="chips" style="padding-top:2px">${Object.keys(DASHES).map(k => `<button data-bdash="${k}" class="${st.dash === k ? 'on' : ''}">${DASH_LABEL[k]}</button>`).join('')}</div>
+    <label class="f">Fill inside: <b id="bsFV">${Math.round(st.fill * 100)}%</b></label><input type="range" data-bs="fill" min="0" max="0.6" step="0.02" value="${st.fill}" style="padding:0">
+    <div class="row"><button class="btn sm" data-bzoom="1">Zoom to it</button><button class="btn sm" data-breset="1">Reset this border</button></div></div>`;
+}
+function setBorderStyle(patch, live) {
+  data.settings.borders = Object.assign({}, data.settings.borders, { [bSel]: Object.assign({}, (data.settings.borders || {})[bSel], patch) });
+  applyBorderStyle(bSel);
+  if (!live) touch({ noRender: true });
+}
 function renderLayers() {
   const s = data.settings, toggles = [['trails', 'Trails'], ['places', 'Peaks, passes, waterfalls'], ['lakes', 'Lakes'], ['tracks', 'My hikes'], ['routes', 'My routes'], ['pins', 'Pins'], ['areas', 'Areas I drew'], ['labels', 'Labels'], ['contours', 'Contour lines (Outdoor map)'], ['hillshade', 'Hillshade'], ['heat', 'Heatmap'], ['recency', 'Color peaks & lakes by last visit']];
   $('layers').innerHTML = `<h3 class="sec" style="margin-top:0">Map type</h3>
@@ -3352,6 +3996,7 @@ function renderLayers() {
       ${data.parkOutline && data.parkOutline.length ? '' : '<div class="small muted">The park outline is not loaded yet. <button class="btn sm" data-act="parkOutline">Load it</button></div>'}
       <label class="toggle"><input type="checkbox" data-layer="range" ${layerOn('range') ? 'checked' : ''}> Teton Range outline <span class="muted small">(orange dashes)</span></label>
       <div class="row"><button class="btn sm" data-act="editRange">Edit the range outline</button></div>
+      ${borderStyleHTML()}
       <label class="toggle"><input type="checkbox" id="rangeOnlyCk" ${rangeOnly() ? 'checked' : ''}> Count only things inside the range outline in Stats</label>`, true)}
     ${layersSec('show', 'Show on map', toggles.map(([k, l]) => `<label class="toggle"><input type="checkbox" data-layer="${k}" ${layerOn(k) ? 'checked' : ''}> ${l}</label>`).join(''), true)}
     ${layersSec('heat', 'Heatmap & filters', `<select id="heatMode"><option value="both">Heatmap: hikes + places</option><option value="tracks">Heatmap: hikes only</option><option value="places">Heatmap: places only</option></select>${filterSelects()}`, false)}
@@ -3416,14 +4061,25 @@ function onAction(act, el) {
     case 'bannerFix': { view.setOpen = Object.assign(view.setOpen || {}, { sync: true }); if (editor) stopEditor(); if (areaEd) stopAreaEditor(); openDetail({ type: 'settings' }); break; }
     case 'drawHike': startEditor('track'); break;
     case 'editHike': if (t && !t.planned) openDetail({ type: 'hikeEdit', id: t.id }); break;
-    case 'hedPick': if (hed) { hed.act = el.dataset.w; hedRefreshPage(); } break;
-    case 'hedCutStart': hedOp('start'); break;
-    case 'hedCutEnd': hedOp('end'); break;
-    case 'hedRemMid': hedOp('mid'); break;
-    case 'hedKeep': hedOp('keep'); break;
-    case 'hedAddBefore': hedAdd('before'); break;
-    case 'hedAddAfter': hedAdd('after'); break;
-    case 'hedAddGap': hedAdd('gap'); break;
+    case 'hedPick': if (hed) { if (hedHandleVisible(el.dataset.w)) { hed.act = el.dataset.w; hedRefreshPage(); } } break;
+    case 'hedMode': if (hed) { hedModeInit(el.dataset.m); renderSide(); hedDraw(); hedRefreshPage(); } break;
+    case 'hedTab': if (hed) { hed.tab = el.dataset.tab; if (hed.tab === 'add' && hed.add === 'gap' && hed.b <= hed.a) { hed.a = Math.round(hed.pts.length * 0.45); hed.b = Math.min(hed.pts.length - 1, hed.a + 1); } renderSide(); hedDraw(); hedRefreshPage(); } break;
+    case 'hedAddPick': if (hed) { hed.add = el.dataset.k; if (hed.add === 'gap') { if (hed.b <= hed.a) { hed.a = Math.round(hed.pts.length * 0.45); hed.b = Math.min(hed.pts.length - 1, hed.a + 1); } hed.act = 'a'; } renderSide(); hedDraw(); hedRefreshPage(); } break;
+    case 'hedApply': if (hed) hedOp(hed.mode); break;
+    case 'hedAddDraw': if (hed) hedAdd(hed.add); break;
+    case 'hedAddFile': if ($('hedJoinFile')) $('hedJoinFile').click(); break;
+    case 'hedApprove': if (hed) startApprove(findTrack(hed.tid)); break;
+    case 'hedNudge': if (hed) hedNudge(el.dataset.w, el.dataset.k, +el.dataset.v); break;
+    case 'hedAxis': if (hed) { hed.axis = el.dataset.x; hedBuildAxis(); renderSide(); hedDraw(); hedRefreshPage(); } break;
+    case 'hedTimes': {
+      const tt = hed && findTrack(hed.tid), a0 = $('hedT0') && $('hedT0').value, b0 = $('hedT1') && $('hedT1').value; if (!tt) break;
+      if (!a0 || !b0 || !tt.date) { toast('Fill in both a start and an end time.', 3500); break; }
+      const s0 = Date.parse(`${tt.date}T${a0.length === 5 ? a0 + ':00' : a0}`); let e0 = Date.parse(`${tt.date}T${b0.length === 5 ? b0 + ':00' : b0}`);
+      if (isNaN(s0) || isNaN(e0)) { toast('Those times were not understood.', 3500); break; }
+      if (e0 <= s0) e0 += 864e5;
+      ensureOrig(tt); hedPush(tt); ensureTimes(tt); setHikeTimes(tt, s0, e0); tt.edited = true; tt.ptEst = tt.ptEst && !hasPtTimes(tt);
+      hedAfter(tt, `Times set: ${clk(s0 / 1000)} to ${clk(e0 / 1000)}.`); break;
+    }
     case 'hedRestore': case 'hedDrop': case 'hedRestoreAll': hedParts(act, el); break;
     case 'hedUndo': hedUndo(); break;
     case 'hedRevert': hedRevert(); break;
@@ -3546,7 +4202,7 @@ function onAction(act, el) {
         if (!sEl.value && !eEl.value) { t.start = t.end = null; t.timesSet = false; }
         else if (sEl.value && eEl.value && t.date) {
           const s0 = Date.parse(`${t.date}T${sEl.value}:00`); let e0 = Date.parse(`${t.date}T${eEl.value}:00`);
-          if (!isNaN(s0) && !isNaN(e0)) { if (e0 <= s0) e0 += 864e5; t.start = s0; t.end = e0; t.timesSet = true; }
+          if (!isNaN(s0) && !isNaN(e0)) { if (e0 <= s0) e0 += 864e5; setHikeTimes(t, s0, e0); }
         } else toast('Fill in both the start and end time, or clear both.', 4000);
       }
       if (wasPlanned !== t.planned) matchIfCounted(t);
@@ -3558,7 +4214,11 @@ function onAction(act, el) {
     }
     case 'delPin': if (confirm('Delete this pin? You can restore it from Deleted items.')) { trashPut('pin', p); selectedPinId = null; touch({ noRender: true }); goBack(); } break;
     case 'edUndo': undoPoint(); break;
-    case 'edClear': editor.wps = editor.kind === 'extend' ? editor.wps.slice(0, 1) : []; editor.legs = []; editor.closed = false; redrawEditor(); renderSide(); break;
+    case 'edRedo': redoPoint(); break;
+    case 'edDaysN': if (editor) edSplitN(edDays() + (+el.dataset.d)); break;
+    case 'edMerge': { if (!editor) break; const idx = editor.wps.map((w, k) => (w.brk && k > 0 && k < editor.wps.length - 1) ? k : -1).filter(k => k >= 0), k = idx[+el.dataset.i]; if (k != null) { editor.wps[k].brk = false; redrawEditor(); renderSide(); } break; }
+    case 'drawApproved': if (t) startApprove(t); break;
+    case 'edClear': editor.wps = editor.kind === 'extend' && editor.anchorPt ? editor.wps.slice(0, 1) : []; editor.legs = []; editor.closed = false; redrawEditor(); renderSide(); break;
     case 'edDay': { const w = editor.wps[editor.wps.length - 1]; w.brk = !w.brk; redrawEditor(); renderSide(); break; }
     case 'edFinishB': {
       if (!editor || !editor.endPt || editor.closed || !editor.wps.length) break;
@@ -3612,7 +4272,7 @@ $('side').addEventListener('change', e => {
   if (id === 'exRecent') { view.explore.recent = e.target.value; renderSide(); }
   if (id === 'exEle') { view.explore.minEle = e.target.value; renderSide(); }
   if (id === 'exPhoto') { view.explore.photo = e.target.checked; renderSide(); }
-  if (id === 'edSnap') { editor.snap = e.target.checked; }
+  if (id === 'edSnap') { editor.snap = e.target.checked; data.settings.snap = editor.snap; touch({ noRender: true }); renderToolbar(); }
   if (id === 'edName' && editor) editor.name = e.target.value;
   if (id === 'arName' && areaEd) areaEd.name = e.target.value;
   if (id === 'arType' && areaEd) areaEd.type = e.target.value;
@@ -3630,13 +4290,8 @@ document.addEventListener('change', e => { if (e.target.id === 'exSt' || e.targe
 function setFilter(k, v) { filter[k] = v; updateSources(); renderSide(); if (!$('layers').hidden) renderLayers(); }
 $('q').addEventListener('input', () => { view.detail = view.detail && (view.detail.type === 'editor' || view.detail.type === 'areaEditor') ? view.detail : null; renderSide(); });
 document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => { $('q').value = ''; setTab(b.dataset.tab); }));
-document.querySelectorAll('#toolbar [data-mode]').forEach(b => b.addEventListener('click', () => {
-  const m = b.dataset.mode;
-  if (m === 'route') startEditor('route');
-  else if (m === 'track') startEditor('track');
-  else { if (editor) { stopEditor(true); view.detail = null; renderSide(); } setMode(m); }
-}));
-$('btn3d').addEventListener('click', () => { set3D(!data.settings.terrain); touch({ noRender: true }); if (!$('layers').hidden) renderLayers(); });
+$('themeBtn').addEventListener('click', () => setTheme(themeNow() === 'dark' ? 'light' : 'dark'));
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-theme]'); if (b && b.closest('#side')) { setTheme(b.dataset.theme); if (view.detail && view.detail.type === 'settings') renderSide(); } });
 $('menuBtn').addEventListener('click', e => { e.stopPropagation(); $('layers').hidden = true; $('menu').hidden = !$('menu').hidden; });
 $('viewCtl').addEventListener('click', e => {
   const b = e.target.closest('[data-v]'); if (!b || !map) return;
@@ -3742,7 +4397,27 @@ $('layers').addEventListener('input', e => {
   if (e.target.id === 'bearing') { $('bearV').textContent = e.target.value + '°'; map.setBearing(+e.target.value); }
 });
 $('layers').addEventListener('toggle', e => { const k = e.target.dataset && e.target.dataset.lsec; if (k) layersOpen[k] = e.target.open; }, true);
-$('layers').addEventListener('click', e => { const b = e.target.closest('[data-base]'); if (b) { setBase(b.dataset.base); renderLayers(); touch({ noRender: true }); } });
+$('layers').addEventListener('click', e => {
+  const b = e.target.closest('[data-base]'); if (b) { setBase(b.dataset.base); renderLayers(); touch({ noRender: true }); return; }
+  const sel = e.target.closest('[data-bsel]'); if (sel) { bSel = sel.dataset.bsel; renderLayers(); return; }
+  const col = e.target.closest('[data-bcolor]'); if (col) { setBorderStyle({ color: col.dataset.bcolor }); renderLayers(); return; }
+  const ds = e.target.closest('[data-bdash]'); if (ds) { setBorderStyle({ dash: ds.dataset.bdash }); renderLayers(); return; }
+  if (e.target.closest('[data-breset]')) { const o = Object.assign({}, data.settings.borders); delete o[bSel]; data.settings.borders = o; applyBorderStyle(bSel); touch({ noRender: true }); renderLayers(); return; }
+  if (e.target.closest('[data-bzoom]')) {
+    const ring = bSel === 'park' ? (data.parkOutline || []).flat() : rangeRing();
+    if (!ring.length) { toast('The park outline is not loaded yet. Press Load it.', 3500); return; }
+    fitTo(ring, 14);
+  }
+});
+$('layers').addEventListener('input', e => {
+  const k = e.target.dataset && e.target.dataset.bs; if (!k) return;
+  const v = k === 'color' ? e.target.value : +e.target.value;
+  setBorderStyle({ [k]: v }, true);
+  if (k === 'width') $('bsWV').textContent = v.toFixed(1) + ' px';
+  if (k === 'opacity') $('bsOV').textContent = Math.round(v * 100) + '%';
+  if (k === 'fill') $('bsFV').textContent = Math.round(v * 100) + '%';
+});
+$('layers').addEventListener('change', e => { if (e.target.dataset && e.target.dataset.bs) { touch({ noRender: true }); if (e.target.dataset.bs === 'color') renderLayers(); } });
 $('gpxFile').addEventListener('change', async e => { const files = [...e.target.files]; e.target.value = ''; if (files.length) await importGPXFiles(files); });
 $('oldFile').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
@@ -3855,12 +4530,12 @@ async function syncWrite(dir, name, obj, sha) {
 }
 function syncPayload() {
   const { osm, photos, parkOutline, parkSrc, ...rest } = data;
-  const settings = Object.assign({}, rest.settings); delete settings.collapsed; delete settings.base; // per-device view choices
+  const settings = Object.assign({}, rest.settings); delete settings.collapsed; delete settings.base; delete settings.theme; // per-device view choices
   return { app: 'teton-atlas', savedAt: data.editedAt, photoSig: photoSig(), data: Object.assign({}, rest, { settings }) };
 }
 function syncAdopt(remote, remotePhotos) {
   const keep = { osm: data.osm, parkOutline: data.parkOutline, parkSrc: data.parkSrc };
-  const localSettings = { collapsed: data.settings.collapsed, base: data.settings.base };
+  const localSettings = { collapsed: data.settings.collapsed, base: data.settings.base, theme: data.settings.theme };
   const next = normalize(Object.assign({}, remote.data, keep, { photos: remotePhotos || data.photos }));
   next.settings = Object.assign({}, next.settings, localSettings);
   next.editedAt = remote.savedAt || next.editedAt;
@@ -4313,6 +4988,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
   if (!(data.osm && data.osm.features && data.osm.features.length)) { const cached = await idbGet('osm'); if (cached && cached.features) data.osm = cached; }
   indexFeatures();
   await pmLoad();
+  applyTheme();
   if (window.maplibregl) initMap(); else toast('The map engine could not load. Connect to the internet and reload.', 0);
   if ((!data.parkOutline || data.parkSrc !== 'nps') && navigator.onLine) fetchParkOutline(true).catch(() => { /* unreachable: keeps what it has, retried next start */ });   // also replaces older outlines that were not from the official source
   if (data.settings.collapsed === undefined && window.matchMedia('(max-width:800px)').matches) data.settings.collapsed = true;
