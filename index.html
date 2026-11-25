@@ -778,7 +778,7 @@ a.srow[data-open]:hover{background:var(--hover)}
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V19.1';
+const APP_VERSION = 'V19.2';
 // Rough outline of the Teton Range (Teton Pass to Conant Pass, Jackson Hole side and Teton Valley side). Editable from the Layers panel.
 // Borders you can restyle (Layers -> Borders). Add an entry here to make another outline styleable.
 const BORDERS = [
@@ -1041,6 +1041,10 @@ const VERSIONS = [
     'The GTNP border is now editable: Layers → Borders → Grand Teton NP → Edit the Outline. Your edited border syncs; Use the Official Outline puts it back.'] },
   { name: 'Teton Atlas V19.1', date: '2026-11-25', notes: [
     'Info buttons always show a lower-case i (some were turned into a capital I by the title-case styling).'] },
+  { name: 'Teton Atlas V19.2', date: '2026-11-25', notes: [
+    'While you mark the trail you took (or draw a section onto a hike), a GPS line opacity slider makes your recorded line see-through so the trails under it show. Starts at 70%.',
+    'Parts you trim away are now hidden on the map. They only show (gray dotted) on that hike\'s Trim or Add page, where you can restore them.',
+    'Trimming after you have marked the trail now trims the GPS line (which measures distance and climbing), not the blue line. Restoring, deleting and adding parts work the same way.'] },
 ];
 
 // ================= State =================
@@ -1716,7 +1720,7 @@ function hikeOutside(t) {
   const c = outCache.get(t.id); if (c && c.key === key) return c.v;
   const ring = closeRing(rangeRing()), bb = bboxOf(ring);
   let inside = false;
-  for (const sg of t.segments) { if (inside) break; for (const q of resample(sg.pts, 200)) if (q[0] >= bb[0] && q[0] <= bb[2] && q[1] >= bb[1] && q[1] <= bb[3] && pointInRing(q[0], q[1], ring)) { inside = true; break; } }
+  for (const sg of t.segments) { if (inside) break; if (sg.src === 'ignored' && !sg.meas) continue; for (const q of resample(sg.pts, 200)) if (q[0] >= bb[0] && q[0] <= bb[2] && q[1] >= bb[1] && q[1] <= bb[3] && pointInRing(q[0], q[1], ring)) { inside = true; break; } }
   outCache.set(t.id, { key, v: !inside }); return !inside;
 }
 const tetonsOnly = () => !!data.settings.tetonsOnly;
@@ -2614,8 +2618,10 @@ function updateSources() {
     if (!inFilter(t.date) || !trackShown(t)) continue;
     // Hike status: planned and pending hikes show on the map, but only approved, taken hikes count in the heatmap
     const ts = t.planned ? 'planned' : t.approved === false ? 'pending' : 'done', isSel = (sel.type === 'track' || sel.type === 'hikeEdit' || sel.type === 'review') && sel.id === t.id;
+    // cut-away parts (set aside, not measuring) are hidden, except on this hike's Trim or Add page where you can restore them
+    const showCut = sel.type === 'hikeEdit' && sel.id === t.id;
     t.segments.forEach((s, si) => {
-      if (s.pts.length < 2) return;
+      if (s.pts.length < 2 || (s.src === 'ignored' && !s.meas && !showCut)) return;
       trackF.push({ type: 'Feature', properties: { tid: t.id, si, src: s.src, ts, sel: isSel }, geometry: { type: 'LineString', coordinates: s.pts.map(p => [p[0], p[1]]) } });
       if (ts === 'done' && s.src !== 'ignored' && hm !== 'places') for (const p of resample(s.pts, 40)) heatF.push({ type: 'Feature', properties: { w: 1 }, geometry: { type: 'Point', coordinates: [p[0], p[1]] } });
     });
@@ -2923,7 +2929,7 @@ function startEditor(kind, opts) {
   editor.plan = !!opts.plan; editor.mode = opts.mode || null; editor.anchorPt = opts.anchorPt || null; editor.endPt = opts.endPt || null; editor.aIdx = opts.aIdx; editor.bIdx = opts.bIdx; editor.snapshot = opts.snapshot || null; editor.closed = false;
   if (editor.endPt && mapReady) { const el = document.createElement('div'); el.className = 'hm b'; el.textContent = 'B'; el.title = 'Your drawn section must end here'; editor.endMarker = new maplibregl.Marker({ element: el }).setLngLat([editor.endPt[0], editor.endPt[1]]).addTo(map); }
   setMode(kind === 'route' ? 'route' : 'track', true);
-  redrawEditor();
+  redrawEditor(); applyGpsOp();
   view.detail = { type: 'editor' }; viewStack = []; renderSide();
 }
 function stopEditor(silent) {
@@ -2935,8 +2941,18 @@ function stopEditor(silent) {
   // Leaving without saving puts the hike back exactly as it was before the scissors cut
   if (e.snapshot && !e.saved) { const t = findTrack(e.trackId); if (t) { t.segments = JSON.parse(e.snapshot); hedStack(t.id).pop(); matchIfCounted(t); touch({ noRender: true }); if (mapReady) updateSources(); } }
   if (mapReady) map.getSource('edit').setData(fc([]));
+  applyGpsOp();
   if (!silent) { setMode('browse', true); }
   lockGestures(!!areaEd || mode !== 'browse');
+}
+// While you draw on a hike (mark the trail, or add a section), its GPS line can be made see-through so the trails under it show.
+// Saved in settings.gpsOp (0.15 to 1, default 0.7); only the hike being drawn on changes, and only while drawing.
+const gpsOp = () => { const v = +data.settings.gpsOp; return v >= 0.15 && v <= 1 ? v : 0.7; };
+const GPS_OP_LAYERS = [['track-case', 0.85], ['track-garmin', 1], ['track-manual', 1], ['track-planned', 1], ['track-pending', 1], ['track-ignored', 1]];
+function applyGpsOp() {
+  if (!mapReady) return;
+  const tid = editor && editor.kind === 'extend' && editor.trackId, op = gpsOp();
+  for (const [id, base] of GPS_OP_LAYERS) if (map.getLayer(id)) map.setPaintProperty(id, 'line-opacity', tid ? ['case', ['==', ['get', 'tid'], tid], +(base * op).toFixed(3), base] : base);
 }
 function snapPoint(c) {
   if (!editor.snap) return c;
@@ -3116,6 +3132,7 @@ function creditHTML() {
     else if (a) items.push(`📐 ${esc(a.name || 'Area')}`);
   }
   const tt = editor.trackId && findTrack(editor.trackId), wait = tt && (tt.approved === false || tt.planned) ? ' They count once the hike is approved.' : '';
+  if (tt && editor.mode !== 'approve' && isMeasured(tt)) return `<div class="small" style="background:var(--soft);border-radius:12px;padding:10px 12px;margin:8px 0"><b>This part joins your GPS line.</b> It adds to the hike's distance and climbing. Places come from the trail you marked in blue, so redraw that trail if this part reached somewhere new.</div>`;
   return `<div class="small" style="background:var(--soft);border-radius:12px;padding:10px 12px;margin:8px 0"><b>This drawn line will count toward ${items.length} place${items.length === 1 ? '' : 's'}</b>${items.length ? ': ' + items.slice(0, 10).join(' · ') + (items.length > 10 ? ' · …' : '') : '. No mapped trail, peak or lake is touched by it.'}<br><span class="muted">Only the line you draw or record counts, so draw the trail you actually walked.${wait}</span></div>`;
 }
 // Drawn elevations come from the map; line them up with the watch at the join (and at B when the section ends on recorded track)
@@ -3129,9 +3146,11 @@ function alignDrawn(pts, anchorEle, endEle) {
 }
 // Put a drawn part into a hike (after the end, before the start, or between A and B), as real recorded-by-hand points
 function insertDrawn(t, pts, e) {
+  // With the trail marked, a section drawn from Trim or Add joins the GPS line (it measures; the blue line still credits)
+  const meas = e.mode !== 'approve' && isMeasured(t);
   return applyOps(t, (F, act) => {
     if (!act.length) return 'This hike has no active path to attach to.';
-    const mk = (q, i, gapFirst) => ({ p: [q[0], q[1], q[2] == null ? null : q[2]], src: e.mode === 'approve' ? 'approved' : 'manual', ig: false, gap: i === 0 && gapFirst });
+    const mk = (q, i, gapFirst) => ({ p: [q[0], q[1], q[2] == null ? null : q[2]], src: e.mode === 'approve' ? 'approved' : 'manual', ig: meas, ms: meas, gap: i === 0 && gapFirst });
     if (e.mode === 'approve') {
       const items = pts.map((q, i) => mk(q, i, F.length > 0)); if (items.length < 2) return 'Draw at least two points.';
       const t0 = F[act[0]].p[3], t1 = F[act[act.length - 1]].p[3];
@@ -3147,17 +3166,18 @@ function insertDrawn(t, pts, e) {
     } else if (e.mode === 'gap') {
       const ia = act[e.aIdx], ib = act[e.bIdx];
       if (ia == null || ib == null || ib <= ia) return 'The A and B markers changed. Start again from the Trim or add page.';
-      for (let k = ia + 1; k < ib; k++) F[k].ig = true;
+      for (let k = ia + 1; k < ib; k++) if (!isCutF(F[k], meas)) hedCutF(F[k], meas);
       const items = pts.slice(1).map((q, i) => mk(q, i, false)); if (!items.length) return 'Draw at least one point between A and B.';
       F.splice(ia + 1, 0, ...items);
-      const nx = F[ia + 1 + items.length]; if (nx && nx.ig) nx.gap = true;
+      const nx = F[ia + 1 + items.length]; if (nx && isCutF(nx, meas)) nx.gap = true;
     } else {
       const L = act[act.length - 1], items = pts.slice(1).map((q, i) => mk(q, i, false));
       F.splice(L + 1, 0, ...items);
       const nx = F[L + 1 + items.length]; if (nx) nx.gap = true;
     }
+    if (meas) hedGapAfterCuts(F);
     return null;
-  });
+  }, meas ? hedSel(t) : undefined);
 }
 async function saveEditor() {
   const e = editor; if (!e) return;
@@ -3266,6 +3286,10 @@ function hasGap(t) {
 // (the snapped, approved line), that line decides which places are credited, but the hike is still measured on the
 // GPS line, which follows the small wiggles the snapped line misses.
 const isMeasured = t => t.segments.some(s => s.src === 'approved') && t.segments.some(s => s.meas && s.pts.length > 1);
+// Once the trail is marked (blue), Trim or Add works on the GPS line (the one that measures the hike), not on the blue line.
+// A GPS point is then "ig + ms"; cutting it clears ms (set aside, no longer measures), restoring sets ms again.
+const hedSel = t => isMeasured(t) ? (f => f.ig && f.ms) : (f => !f.ig);
+const isCutF = (f, meas) => f.ig && !(meas && f.ms);
 function statSegs(t) { return isMeasured(t) ? t.segments.filter(s => s.meas && s.pts.length > 1) : t.segments.filter(s => s.src !== 'ignored' && s.pts.length > 1); }
 function trackStats(t) {
   const o = { len: 0, gain: 0, loss: 0 };
@@ -3278,13 +3302,20 @@ const hedUndoStacks = {};
 const hedStack = tid => hedUndoStacks[tid] = hedUndoStacks[tid] || [];
 function hedPush(t) { const s = hedStack(t.id); s.push(JSON.stringify({ seg: t.segments, ed: !!t.edited })); if (s.length > 12) s.shift(); }
 // Run an edit on the flat point list; nothing changes unless it leaves a valid hike
-function applyOps(t, fn) {
+function applyOps(t, fn, sel) {
   ensureTimes(t);
-  const F = flatTrack(t), act = []; F.forEach((f, i) => { if (!f.ig) act.push(i); });
+  const meas = !!sel && isMeasured(t), F = flatTrack(t), act = []; F.forEach((f, i) => { if ((sel || (x => !x.ig))(f)) act.push(i); });
   const err = fn(F, act); if (err) { toast(err, 4500); return false; }
   fillTimesF(F);
+  if (meas) {
+    // the blue line's times follow the GPS line that is left (they were spread over the whole recording before)
+    const tm = F.filter(f => f.ig && f.ms && f.p[3] != null).map(f => f.p[3]), ap = F.filter(f => !f.ig && f.src === 'approved');
+    const t0 = Math.min(...tm), t1 = Math.max(...tm);
+    if (tm.length > 1 && t1 > t0 && ap.length > 1) { const L = ap.map(f => f.p), tot = lineLen(L) || 1; let acc = 0; ap.forEach((f, i) => { if (i) acc += dist(L[i - 1][1], L[i - 1][0], L[i][1], L[i][0]); putT(f.p, t0 + (t1 - t0) * acc / tot); }); }
+  }
   const segs = rebuildSegments(F);
   if (segs.filter(s => s.src !== 'ignored').reduce((n, s) => n + s.pts.length, 0) < 2) { toast('A hike needs at least two points left, so nothing was changed.', 4500); return false; }
+  if (meas && segs.filter(s => s.meas).reduce((n, s) => n + s.pts.length, 0) < 2) { toast('The GPS line needs at least two points left, so nothing was changed.', 4500); return false; }
   ensureOrig(t); hedPush(t); t.segments = segs; t.edited = true; syncHikeTimes(t);
   return true;
 }
@@ -3323,7 +3354,7 @@ function fillTimesF(F) {
 }
 // The hike's start and end time follow its first and last active point
 function syncHikeTimes(t) {
-  const act = []; for (const f of flatTrack(t)) if (!f.ig && f.p[3] != null) act.push(f.p[3]);
+  const act = [], sel = hedSel(t); for (const f of flatTrack(t)) if (sel(f) && f.p[3] != null) act.push(f.p[3]);
   if (act.length < 2) return;
   t.start = act[0] * 1000; t.end = act[act.length - 1] * 1000; t.timesSet = true;
 }
@@ -3355,8 +3386,9 @@ function nearestIdx(arr, v) {
   return lo;
 }
 function hedLoad(t) {
-  const pts = [], cum = [], tm = []; let d = 0, tl = null;
-  for (const f of flatTrack(t)) if (!f.ig) {
+  const pts = [], cum = [], tm = [], sel = hedSel(t); let d = 0, tl = null;
+  hed.meas = isMeasured(t);
+  for (const f of flatTrack(t)) if (sel(f)) {
     if (pts.length) { const q = pts[pts.length - 1]; d += dist(q[1], q[0], f.p[1], f.p[0]); }
     pts.push(f.p); cum.push(d);
     let tv = f.p[3] != null ? f.p[3] : null; if (tv != null) { if (tl != null && tv < tl) tv = tl; tl = tv; } tm.push(tv);
@@ -3598,7 +3630,7 @@ function hedRefreshPage() {
   hed.markers.forEach((m, k) => m && m.getElement().classList.toggle('sel', (k === 0 ? 'a' : 'b') === hed.act));
 }
 function hedSummary(t) {
-  const st = trackStatsSafe(t), act = []; for (const f of flatTrack(t)) if (!f.ig) act.push(f.p[3]);
+  const st = trackStatsSafe(t), act = [], sel = hedSel(t); for (const f of flatTrack(t)) if (sel(f)) act.push(f.p[3]);
   const t0 = act[0], t1 = act[act.length - 1], timed = t0 != null && t1 != null && t1 > t0;
   return `<b>${fmtMi(st.len)} mi</b> · ${fmtFt(st.gain)} ft up${timed ? ` · ${clk(t0)} → ${clk(t1)} (${fmtDur((t1 - t0) * 1000)})` : ''}${t.ptEst && timed ? ' <span class="muted">(times along the line are estimated from your start and end time)</span>' : ''}`;
 }
@@ -3609,6 +3641,9 @@ function hedAfter(t, msg) {
   renderSide(); if (hed) { hedDraw(); hedRefreshPage(); }
   if (msg) toast(msg, 6000);
 }
+const hedCutF = (f, meas) => { if (meas) f.ms = false; else f.ig = true; };
+// GPS points right after a cut part start a new piece, so the measured distance never steps into the cut part
+function hedGapAfterCuts(F) { for (let i = 1; i < F.length; i++) if (F[i].ig && F[i].ms && isCutF(F[i - 1], true)) F[i].gap = true; }
 function hedOp(kind) {
   const t = hed && findTrack(hed.tid); if (!t) return;
   const a = hed.a, b = hed.b, N = hed.pts.length, total = hed.cum[N - 1] || 0;
@@ -3616,13 +3651,13 @@ function hedOp(kind) {
   if (kind === 'end' && b === N - 1) return toast('Move the red B marker back first. Everything after B would be cut off.', 4000);
   if (kind === 'mid' && b - a < 2) return toast('Move A and B further apart first. Everything between them would be cut out.', 4000);
   if (kind === 'keep' && a === 0 && b === N - 1) return toast('A and B are at the ends already, so there is nothing to cut.', 4000);
+  const meas = isMeasured(t);
   const ok = applyOps(t, (F, act) => {
-    const ia = act[a], ib = act[b];
-    if (kind === 'start' || kind === 'keep') for (let k = 0; k < ia; k++) F[k].ig = true;
-    if (kind === 'end' || kind === 'keep') for (let k = ib + 1; k < F.length; k++) F[k].ig = true;
-    if (kind === 'mid') for (let k = ia + 1; k < ib; k++) F[k].ig = true;
+    // only the points being edited (the GPS line when the trail is marked) are cut; the blue line stays as you drew it
+    act.forEach((k, j) => { if (((kind === 'start' || kind === 'keep') && j < a) || ((kind === 'end' || kind === 'keep') && j > b) || (kind === 'mid' && j > a && j < b)) hedCutF(F[k], meas); });
+    if (meas) hedGapAfterCuts(F);
     return null;
-  });
+  }, hedSel(t));
   if (!ok) return;
   hed.a = 0; hed.b = Infinity; hedLoad(t);
   const left = hed.cum[hed.pts.length - 1] || 0;
@@ -3655,34 +3690,37 @@ async function hedJoinFile(file) {
   let list; try { list = parseGPX(await file.text(), file.name || 'x.gpx'); } catch (err) { return toast('That file is not valid GPX.', 4000); }
   const pts = list.flatMap(h => h.segments.flatMap(s => s.pts));
   if (pts.length < 2) return toast('No recorded track in that file.', 4000);
-  const kind = hed.add, near = (a, b) => dist(a[1], a[0], b[1], b[0]) < 60;
+  const kind = hed.add, near = (a, b) => dist(a[1], a[0], b[1], b[0]) < 60, meas = isMeasured(t);
   const ok = applyOps(t, (F, act) => {
     if (!act.length) return 'This hike has no active path to attach to.';
-    const items = pts.map(q => ({ p: q.slice(), src: 'garmin', ig: false, gap: false }));
+    // with the trail marked, a joined recording becomes part of the GPS line (it measures; the blue line still credits)
+    const items = pts.map(q => ({ p: q.slice(), src: 'garmin', ig: meas, ms: meas, gap: false }));
     if (kind === 'before') {
       const f0 = act[0]; items[0].gap = f0 > 0;
       F.splice(f0, 0, ...items); const nx = F[f0 + items.length]; if (nx) nx.gap = !near(items[items.length - 1].p, nx.p);
     } else if (kind === 'gap') {
       const ia = act[hed.a], ib = act[hed.b]; if (ia == null || ib == null || ib <= ia) return 'Put B after A first.';
-      for (let k = ia + 1; k < ib; k++) F[k].ig = true;
+      for (let k = ia + 1; k < ib; k++) if (hedSel(t)(F[k])) hedCutF(F[k], meas);
       items[0].gap = !near(F[ia].p, items[0].p); F.splice(ia + 1, 0, ...items);
-      const nx = F[ia + 1 + items.length]; if (nx) nx.gap = nx.ig ? true : !near(items[items.length - 1].p, nx.p);
+      const nx = F[ia + 1 + items.length]; if (nx) nx.gap = isCutF(nx, meas) ? true : !near(items[items.length - 1].p, nx.p);
     } else {
       const L = act[act.length - 1]; items[0].gap = !near(F[L].p, items[0].p);
       F.splice(L + 1, 0, ...items); const nx = F[L + 1 + items.length]; if (nx) nx.gap = true;
     }
+    if (meas) hedGapAfterCuts(F);
     return null;
-  });
+  }, hedSel(t));
   if (!ok) return;
   hed.a = 0; hed.b = Infinity;
   hedAfter(t, `Joined ${fmtMi(lineLen(pts))} mi from ${file.name || 'the file'}${hed.hasT ? '' : ''}. A gap is left where the two recordings do not meet, so nothing is credited across it.`);
 }
-function removedParts(F) {
-  const first = F.findIndex(f => !f.ig); let last = -1; F.forEach((f, i) => { if (!f.ig) last = i; });
+function removedParts(F, meas) {
+  // start / end / middle is judged against the line being edited (the GPS line when the trail is marked)
+  const keep = meas ? (f => f.ig && f.ms) : (f => !f.ig), first = F.findIndex(keep); let last = -1; F.forEach((f, i) => { if (keep(f)) last = i; });
   const out = []; let i = 0;
   while (i < F.length) {
-    if (!F[i].ig) { i++; continue; }
-    let j = i; while (j + 1 < F.length && F[j + 1].ig && !F[j + 1].gap) j++;
+    if (!isCutF(F[i], meas)) { i++; continue; }
+    let j = i; while (j + 1 < F.length && isCutF(F[j + 1], meas) && !F[j + 1].gap) j++;
     out.push({ from: i, to: j, n: j - i + 1, len: lineLen(F.slice(i, j + 1).map(f => f.p)), t0: F[i].p[3], t1: F[j].p[3], where: first < 0 || j < first ? 'start' : i > last ? 'end' : 'middle' });
     i = j + 1;
   }
@@ -3692,14 +3730,19 @@ async function hedParts(act, el) {
   const t = hed && findTrack(hed.tid); if (!t) return;
   const from = +el.dataset.from, to = +el.dataset.to;
   if (act === 'hedDrop' && !(await sure('Delete this cut-away part for good?', { body: 'It cannot be brought back.' }))) return;
+  const meas = isMeasured(t), cut = f => isCutF(f, meas);
+  // restoring with the trail marked puts the part back on the GPS line (it measures again; the blue line still credits)
+  const restore = (F, k) => { const f = F[k]; if (meas && f.src !== 'approved') f.ms = true; else f.ig = false; };
+  // a restored part joins its neighbours again (a cut leaves a break there), unless they are really apart
+  const ed = hedSel(t), rejoin = (F, k) => { const f = F[k], p = F[k - 1]; if (f && p && f.gap && ed(f) && ed(p) && dist(p.p[1], p.p[0], f.p[1], f.p[0]) < 60) f.gap = false; };
   const ok = applyOps(t, F => {
-    if (act === 'hedRestoreAll') { for (const f of F) f.ig = false; return null; }
-    if (!(from >= 0 && to < F.length && F.slice(from, to + 1).every(f => f.ig))) return 'The hike changed. Please try again.';
-    if (act === 'hedRestore') { for (let k = from; k <= to; k++) F[k].ig = false; return null; }
-    const firstAct = F.findIndex(f => !f.ig), lastAct = F.length - 1 - [...F].reverse().findIndex(f => !f.ig);
-    if (to < firstAct) F.splice(0, to + 1); else if (from > lastAct) F.splice(from); else return 'Only cut-away parts at the very start or end can be deleted. Restore this one, or leave it aside.';
+    if (act === 'hedRestoreAll') { F.forEach((f, k) => { if (cut(f)) restore(F, k); }); F.forEach((f, k) => rejoin(F, k)); return null; }
+    if (!(from >= 0 && to < F.length && F.slice(from, to + 1).every(cut))) return 'The hike changed. Please try again.';
+    if (act === 'hedRestore') { for (let k = from; k <= to; k++) restore(F, k); rejoin(F, from); rejoin(F, to + 1); return null; }
+    const firstAct = F.findIndex(ed), lastAct = F.length - 1 - [...F].reverse().findIndex(ed);
+    if (to < firstAct || from > lastAct) F.splice(from, to - from + 1); else return 'Only cut-away parts at the very start or end can be deleted. Restore this one, or leave it aside.';
     return null;
-  });
+  }, hedSel(t));
   if (!ok) return;
   hed.a = 0; hed.b = Infinity; hedModeInit(hed.mode);
   hedAfter(t, act === 'hedDrop' ? 'Deleted for good.' : 'Restored. It counts again, since it was recorded or drawn.');
@@ -3723,7 +3766,7 @@ const hedRevert = () => hikeRevert(hed && findTrack(hed.tid));
 function pageHikeEdit(d) {
   const t = findTrack(d.id); if (!t) return backBtn() + '<div class="empty">Hike not found.</div>';
   if (!hed || hed.tid !== t.id) startHed(t);
-  const F = flatTrack(t), parts = removedParts(F), stack = hedStack(t.id);
+  const F = flatTrack(t), parts = removedParts(F, isMeasured(t)), stack = hedStack(t.id);
   const where = { start: 'Cut off the start', end: 'Cut off the end', middle: 'Cut out of the middle' };
   const mode = (k, ic, l) => `<button data-act="hedMode" data-m="${k}" class="${hed.mode === k ? 'on' : ''}"><i>${ic}</i>${l}</button>`;
   const addk = (k, ic, l) => `<button data-act="hedAddPick" data-k="${k}" class="${hed.add === k ? 'on' : ''}"><i>${ic}</i>${l}</button>`;
@@ -3732,6 +3775,7 @@ function pageHikeEdit(d) {
   return `${backBtn()}
     <div class="d-title">Trim or add to this hike</div><div class="d-sub">${esc(t.name)}</div>
     ${t.approved === false ? '<div class="small" style="background:#fff4e5;border-radius:12px;padding:10px 12px;margin:8px 0">Good time to fix it: this hike is still waiting for your approval, and nothing counts yet.</div>' : ''}
+    ${isMeasured(t) ? '<div class="small" style="background:var(--soft);border-radius:12px;padding:10px 12px;margin:8px 0">Your trail is marked in blue, so this trims your <b>GPS line</b> (the one that measures distance and climbing). The blue line stays as you drew it; redraw it if it also needs to change.</div>' : ''}
     <div class="hsum small" id="hedSum">${hedSummary(t)}</div>
     <div class="hs-bar"><div class="small muted">Drag the <b style="color:#2e7d32">A</b> / <b style="color:#c62828">B</b> handles, or tap the profile.</div>
       ${hed.hasT ? `<div class="chips" style="padding:0"><button data-act="hedAxis" data-x="dist" class="${hed.axis === 'dist' ? 'on' : ''}">Distance</button><button data-act="hedAxis" data-x="time" class="${hed.axis === 'time' ? 'on' : ''}">Time</button></div>` : ''}</div>
@@ -3758,6 +3802,7 @@ function pageHikeEdit(d) {
     <input type="file" id="hedJoinFile" accept=".gpx,application/gpx+xml,application/xml,text/xml,application/octet-stream" hidden>`;
 }
 document.addEventListener('input', e => {
+  if (e.target && e.target.id === 'gpsOp') { data.settings.gpsOp = +e.target.value; const v = $('gpsOpV'); if (v) v.textContent = Math.round(gpsOp() * 100) + '%'; applyGpsOp(); return; }
   if (!hed) return;
   const fe = e.target.closest && e.target.closest('.hfine');
   if (fe) { hed.fineDrag = fe.dataset.w; hedSet(fe.dataset.w, +fe.value); }
@@ -4462,7 +4507,7 @@ function fitTo(coords, maxZoom) {
 }
 function coordsOf(d) {
   if (d.type === 'route') { const r = findRoute(d.id); return r ? routeLine(r) : null; }
-  if (d.type === 'track' || d.type === 'review' || d.type === 'hikeEdit') { const t = findTrack(d.id); return t ? t.segments.flatMap(s => s.pts) : null; }
+  if (d.type === 'track' || d.type === 'review' || d.type === 'hikeEdit') { const t = findTrack(d.id); if (!t) return null; const c = t.segments.filter(s => s.src !== 'ignored' || s.meas).flatMap(s => s.pts); return c.length ? c : t.segments.flatMap(s => s.pts); }
   if (d.type === 'pin') { const p = findPin(d.id); return p ? [[p.lon, p.lat]] : null; }
   if (d.type === 'area') { const a = findArea(d.id); return a && a.ring.length > 2 ? closeRing(a.ring) : null; }
   if (d.type === 'list') { const l = allLists().find(x => x.id === d.id); const c = l ? l.ids.map(id => FEAT[id]).filter(Boolean).map(f => f.coord) : []; return c.length ? c : null; }
@@ -5448,18 +5493,20 @@ function pagePin(d) {
 }
 function pageEditor() {
   const e = editor; if (!e) return '';
-  const title = e.kind === 'extend' ? ({ before: 'Draw the start of this hike', gap: 'Draw the missing section' }[e.mode] || 'Draw the rest of this hike') : { route: e.routeId ? 'Edit route' : 'Build a route', track: 'Draw a hike' }[e.kind];
+  const title = e.kind === 'extend' ? ({ before: 'Draw the start of this hike', gap: 'Draw the missing section', approve: 'Mark the trail you took' }[e.mode] || 'Draw the rest of this hike') : { route: e.routeId ? 'Edit route' : 'Build a route', track: 'Draw a hike' }[e.kind];
   const help = e.kind === 'extend' ? ({
     before: 'The first point is where the recorded line begins. Click outward from it, back along the way you really started.',
     gap: 'The first point is A. Click along where you really walked, then press Finish at B to join the recorded line again.',
     after: 'The first point is where the recorded line ends. Click along where you went after that.',
-    split: 'The first point is where the watch stopped. Click along where you actually went after that.'
+    split: 'The first point is where the watch stopped. Click along where you actually went after that.',
+    approve: 'Click along the trail you really took (blue). Places are credited from this line; your GPS line still measures the hike.'
   }[e.mode] || 'Click along where you went.') : 'Click the map to add points. Drag points to adjust. Click a point to remove it' + (e.kind === 'route' ? ' or end a day there.' : '.');
   return `${backBtn()}
     <div class="d-title">${title}</div><div class="d-sub">${help}</div>
     ${e.kind !== 'extend' ? `<label class="f">Name</label><input id="edName" value="${esc(e.name)}">` : ''}
     ${e.kind === 'track' ? `<label class="f">Date hiked</label><input type="date" id="edDate" value="${esc(e.date)}">` : ''}
     <label class="toggle"><input type="checkbox" id="edSnap" ${e.snap ? 'checked' : ''}> Follow trails${GRAPH && GRAPH.lon.length ? '' : ' (download map data to enable)'}</label>
+    ${e.kind === 'extend' && e.trackId ? `<label class="f" for="gpsOp">GPS line opacity: <b id="gpsOpV">${Math.round(gpsOp() * 100)}%</b></label><input type="range" id="gpsOp" min="0.15" max="1" step="0.05" value="${gpsOp()}" style="padding:0" aria-label="GPS line opacity"><div class="small muted" style="margin:-2px 0 6px">Lower it to see the mapped trails under your recorded line.</div>` : ''}
     ${e.kind === 'route' ? `<div class="swatches" style="margin:6px 0">${COLORS.map(cl => `<button data-ecolor="${cl}" class="${e.color === cl ? 'on' : ''}" style="background:${cl}"></button>`).join('')}</div>` : ''}
     ${e.endPt ? `<div class="row" style="align-items:center"><span class="small" style="flex:1">${e.closed ? 'The section ends at B.' : 'End the section at the red B marker.'}</span><button class="btn" data-act="edFinishB" ${e.closed ? 'disabled' : ''}>Finish at B</button></div>` : ''}
     <div id="edProfile">${editorStatsHTML()}</div>
@@ -6264,6 +6311,7 @@ $('side').addEventListener('change', e => {
   if (id === 'exRecent') { view.explore.recent = e.target.value; renderSide(); }
   if (id === 'exEle') { view.explore.minEle = e.target.value; renderSide(); }
   if (id === 'exPhoto') { view.explore.photo = e.target.checked; renderSide(); }
+  if (id === 'gpsOp') { data.settings.gpsOp = +e.target.value; touch({ noRender: true }); }
   if (id === 'edSnap') { editor.snap = e.target.checked; data.settings.snap = editor.snap; touch({ noRender: true }); renderToolbar(); }
   if (id === 'edName' && editor) editor.name = e.target.value;
   if (id === 'arName' && areaEd) areaEd.name = e.target.value;
