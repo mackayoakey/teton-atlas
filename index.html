@@ -778,7 +778,7 @@ a.srow[data-open]:hover{background:var(--hover)}
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V18';
+const APP_VERSION = 'V19';
 // Rough outline of the Teton Range (Teton Pass to Conant Pass, Jackson Hole side and Teton Valley side). Editable from the Layers panel.
 // Borders you can restyle (Layers -> Borders). Add an entry here to make another outline styleable.
 const BORDERS = [
@@ -1035,6 +1035,10 @@ const VERSIONS = [
     'Explore: favorites (☆), a Most Relevant default sort and more sorts, icon sort and filter buttons with a dot when changed and Clear, chip arrow and Edit, status chips on two lines.',
     'Unnamed wording everywhere (peaks found in the terrain say so); Stats Unnamed picker; Show Hidden Items layer; hidden trails no longer show through from the base map; logo and title go back to the map; browser tab says Teton Atlas with the Teton photo icon; map credits no longer cover the zoom buttons.'
   ] },
+  { name: 'Teton Atlas V19', date: '2026-11-25', notes: [
+    'Smart snap a section of any shape: in the shape editor press 🧲 Snap a Section, click where it starts and ends on the outline, then switch on Smart Snap and that part follows the roads and rivers (or trails and lake shores). Choose how far to look (100, 300 or 800 m) and ⇄ Other Side. Click the map to keep it and move on; click the outline to start the next section.',
+    'Works for your areas, the Teton Range outline and the Grand Teton NP border.',
+    'The GTNP border is now editable: Layers → Borders → Grand Teton NP → Edit the Outline. Your edited border syncs; Use the Official Outline puts it back.'] },
 ];
 
 // ================= State =================
@@ -1058,6 +1062,7 @@ function normalize(d) {
   for (const k of ['sooner', 'later']) if (!Array.isArray(d.ideas[k])) d.ideas[k] = [];
   for (const k of ['tracks', 'pins', 'routes', 'areas', 'peakLists', 'trash']) if (!Array.isArray(d[k])) d[k] = [];
   if (d.range && !Array.isArray(d.range)) d.range = null;
+  if (d.parkCustom && !Array.isArray(d.parkCustom)) d.parkCustom = null;
   for (const list of Object.values(d.visits)) for (const v of list) { if (!v.status) v.status = 'been'; if (!v.vid) v.vid = uid(); }
   for (const p of d.pins) {
     if (!(p.type in PIN_DEFAULTS) && !((d.settings && d.settings.pinTypes) || []).some(t => t.id === p.type)) p.type = ({ peak: 'summit', viewpoint: 'view' })[p.type] || 'other';
@@ -2186,6 +2191,7 @@ function mergeData(inc) {
   for (const [id, h] of Object.entries(inc.hidden || {})) if (!data.hidden[id]) { data.hidden[id] = h; n++; }
   { const have = new Set(data.trash.map(x => x.id)); for (const x of inc.trash || []) if (!have.has(x.id)) { data.trash.push(x); n++; } }
   if (!data.range && inc.range) data.range = inc.range;
+  if (!data.parkCustom && inc.parkCustom) data.parkCustom = inc.parkCustom;
   for (const [id, nm] of Object.entries(inc.names)) if (!data.names[id]) { data.names[id] = nm; n++; }
   for (const id of Object.keys(inc.wish)) data.wish[id] = true;
   for (const [id, list] of Object.entries(inc.photos || {})) { const cur = data.photos[id] = data.photos[id] || []; for (const p of list) if (!cur.includes(p)) { cur.push(p); n++; } }
@@ -2495,9 +2501,12 @@ function applyLayerVisibility() {
 function rangeRing() { return data.range && data.range.length > 3 ? data.range : RANGE_DEFAULT; }
 function rangeFC() { return fc([{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: closeRing(rangeRing()) } }]); }
 function rangePolyFC() { return fc([{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [closeRing(rangeRing())] } }]); }
+// The GTNP border: your edited copy (V19, synced) when there is one, else the official outline
+function parkRings() { return data.parkCustom && data.parkCustom.length ? data.parkCustom : (data.parkOutline || []); }
+function parkBiggest(rings) { let best = null; (rings || []).forEach((r, i) => { const ac = ringAcres(r); if (r.length > 3 && (!best || ac > best.ac)) best = { i, ring: r, ac }; }); return best; }
 function boundaryPolyFC() {
-  if (!(data.parkOutline && data.parkOutline.length)) return fc([]);
-  return fc([{ type: 'Feature', properties: {}, geometry: { type: 'MultiPolygon', coordinates: data.parkOutline.map(r => [closeRing(r)]) } }]);
+  if (!parkRings().length) return fc([]);
+  return fc([{ type: 'Feature', properties: {}, geometry: { type: 'MultiPolygon', coordinates: parkRings().map(r => [closeRing(r)]) } }]);
 }
 function rangeOnly() { return data.settings.rangeOnly !== false; }
 function inRangeF(f) {
@@ -2505,7 +2514,7 @@ function inRangeF(f) {
   return !!c && pointInRing(c[0], c[1], r);
 }
 function boundaryFC() {
-  if (data.parkOutline && data.parkOutline.length) return fc([{ type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: data.parkOutline } }]);
+  if (parkRings().length) return fc([{ type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: parkRings().map(closeRing) } }]);
   return fc([]);   // not loaded yet: draw nothing rather than a wrong shape
 }
 // Grand Teton National Park outline from OpenStreetMap (stored in the file, so it loads offline afterwards)
@@ -3797,6 +3806,7 @@ function startAreaEditor(area, purpose, opts) {
     tab: purpose === 'cut' || opts.tab === 'clean' ? 'clean' : 'save',
     cut: { kinds: { trail: true, lake: true, peak: true, pass: true, waterfall: true, viewpoint: true }, touch: false, outside: !!opts.outside }, hist: [], sec: null, lastSec: null };
   if (purpose === 'range') areaEd.pts = rangeRing().slice(0, -1).map(q => q.slice());
+  if (purpose === 'park') { const big = parkBiggest(parkRings()); if (!big) { areaEd = null; toast('The park outline is not loaded yet. Layers → Borders → Load It.', 4000); return; } areaEd.parkIdx = big.i; areaEd.pts = closeRing(big.ring).slice(0, -1).map(q => q.slice()); }
   if (opts.ring) areaEd.pts = opts.ring.map(q => q.slice());
   setMode('area', true);
   redrawArea();
@@ -3814,7 +3824,7 @@ function stopAreaEditor(silent) {
 }
 // Every change to the shape is remembered, so Undo (or Ctrl/Cmd+Z) steps back one change at a time
 function areaSnap() { if (!areaEd) return; areaEd.hist.push(JSON.stringify(areaEd.pts)); if (areaEd.hist.length > 200) areaEd.hist.shift(); }
-function areaUndo() { if (!areaEd) return; if (areaEd.sec && areaEd.sec.stage === 'draw' && areaEd.sec.pts.length) { areaEd.sec.pts.pop(); redrawArea(); renderSide(); return; } if (!areaEd.hist.length) { toast('Nothing to undo.', 2000); return; } areaEd.pts = JSON.parse(areaEd.hist.pop()); areaEd.lastSec = null; redrawArea(); renderSide(); }
+function areaUndo() { if (!areaEd) return; if (areaEd.sec && areaEd.sec.mode === 'snap') { secCancel(); return; } if (areaEd.sec && areaEd.sec.stage === 'draw' && areaEd.sec.pts.length) { areaEd.sec.pts.pop(); redrawArea(); renderSide(); return; } if (!areaEd.hist.length) { toast('Nothing to undo.', 2000); return; } areaEd.pts = JSON.parse(areaEd.hist.pop()); areaEd.lastSec = null; redrawArea(); renderSide(); }
 function addAreaPt(c) { areaSnap(); areaEd.pts.push([+c[0].toFixed(6), +c[1].toFixed(6)]); redrawArea(); renderSide(); }
 // Tapping or dragging one of the small in-between circles turns it into a real point (with new small circles on each side)
 function areaInsertAt(i, c) { areaSnap(); areaEd.pts.splice(i, 0, [+c[0].toFixed(6), +c[1].toFixed(6)]); redrawArea(); renderSide(); }
@@ -3839,6 +3849,11 @@ function secPick(c) {
   if (hit.t < 0.5 && near(hit.i)) ref = areaEd.pts[hit.i];
   else if (near((hit.i + 1) % n)) ref = areaEd.pts[(hit.i + 1) % n];
   else { ref = [+hit.q[0].toFixed(6), +hit.q[1].toFixed(6)]; areaEd.pts.splice(hit.i + 1, 0, ref); }
+  if (S.mode === 'snap') {
+    if (S.stage === 'a') { S.a = ref; S.stage = 'b'; toast('Now click the outline where the section to snap ends.', 4000); redrawArea(); renderSide(); }
+    else { if (ref === S.a) { toast('Pick a different spot for the end.', 2500); return; } S.b = ref; snapReady(S); }
+    return;
+  }
   if (S.stage === 'a') { S.a = ref; S.stage = 'b'; toast('Now click the outline where the new section should end.', 4000); }
   else { if (ref === S.a) { toast('Pick a different spot for the end.', 2500); return; } S.b = ref; S.stage = 'draw'; S.pts = []; toast('Click along the new line. Drag to move the map; Pause if you want to look around. Press Finish when you reach the end point.', 7000); }
   redrawArea(); renderSide();
@@ -3865,9 +3880,11 @@ function secFlip() {
   const rings = secRings(L.before, L.A, L.B, L.drawn); if (!rings) return;
   areaSnap(); L.flip = !L.flip; areaEd.pts = rings[L.flip ? 1 : 0]; redrawArea(); renderSide();
 }
+function secCancel() { const S = areaEd && areaEd.sec; if (!areaEd) return; areaEd.sec = null; if (S && areaEd.hist.length > S.h0) { areaEd.pts = JSON.parse(areaEd.hist[S.h0]); areaEd.hist.length = S.h0; } else if (S && S.base) areaEd.pts = S.base.map(q => q.slice()); redrawArea(); renderSide(); }
 function secPanelHTML() {
   const S = areaEd.sec;
-  if (!S) return `<div class="row"><button class="btn" data-act="secStart" ${areaEd.pts.length < 3 ? 'disabled' : ''} title="Pick two spots on the line and draw a new line between them">✏️ Redraw a Section</button>${areaEd.lastSec ? '<button class="btn" data-act="secFlip">⇄ Flip Side</button>' : ''}</div>`;
+  if (!S) return `<div class="row"><button class="btn" data-act="secStart" ${areaEd.pts.length < 3 ? 'disabled' : ''} title="Pick two spots on the line and draw a new line between them">✏️ Redraw a Section</button>${areaEd.lastSec ? '<button class="btn" data-act="secFlip">⇄ Flip Side</button>' : ''}<button class="btn" data-act="snapStart" ${areaEd.pts.length < 3 ? 'disabled' : ''} title="Pick two spots on the line, then switch on Smart Snap to make that part follow roads, rivers, trails or lake shores">🧲 Snap a Section</button></div>`;
+  if (S.mode === 'snap') return snapPanelHTML(S);
   const step = S.stage === 'a' ? 'Click the outline where the new section <b>starts</b>.' : S.stage === 'b' ? 'Now click where it <b>ends</b>.' : `Click along the new line (${S.pts.length} point${S.pts.length === 1 ? '' : 's'}). Drag to move the map.${S.paused ? ' <b>Paused</b>: clicks do nothing.' : ''}`;
   return `<div class="secbox"><div class="small">${step}</div><div class="row" style="margin:8px 0 0">
     ${S.stage === 'draw' ? `<button class="btn sm" data-act="secPause">${S.paused ? '▶ Resume Drawing' : '⏸ Pause'}</button><button class="btn sm" data-act="areaUndo" ${S.pts.length ? '' : 'disabled'}>↶ Undo Point</button><button class="btn sm primary" data-act="secDone" ${S.pts.length ? '' : 'disabled'}>✓ Finish Section</button>` : ''}
@@ -3880,6 +3897,7 @@ function redrawArea() {
   if (pts.length >= 2) feats.push({ type: 'Feature', properties: { k: 'line' }, geometry: { type: 'LineString', coordinates: pts.length >= 3 ? closeRing(pts) : pts } });
   const S = areaEd.sec;
   if (S && S.stage === 'draw' && S.a) feats.push({ type: 'Feature', properties: { k: 'sec' }, geometry: { type: 'LineString', coordinates: [S.a].concat(S.pts).map(q => [q[0], q[1]]) } });
+  if (S && S.mode === 'snap' && S.stage === 'ready') { const c = S.on && S.res ? S.res.path : snapArc(S); if (c.length > 1) feats.push({ type: 'Feature', properties: { k: 'sec' }, geometry: { type: 'LineString', coordinates: c.map(q => [q[0], q[1]]) } }); }
   map.getSource('areaedit').setData(fc(feats));
   if (areaEd.tab === 'clean' || areaEd.purpose === 'range') highlightCut(); else map.getSource('sel').setData(fc([]));
   for (const m of areaEd.markers) m.remove();
@@ -3892,7 +3910,7 @@ function redrawArea() {
     m.on('dragstart', () => areaSnap());
     m.on('drag', () => { const ll = m.getLngLat(); areaEd.pts[i] = [ll.lng, ll.lat]; live(); });
     m.on('dragend', () => { const ll = m.getLngLat(); areaEd.pts[i] = [+ll.lng.toFixed(6), +ll.lat.toFixed(6)]; redrawArea(); renderSide(); });
-    el.addEventListener('click', e => { e.stopPropagation(); if (areaEd.sec && areaEd.sec.stage !== 'draw') secPick([q[0], q[1]]); });
+    el.addEventListener('click', e => { e.stopPropagation(); const S2 = areaEd.sec; if (S2 && S2.mode === 'snap' && S2.stage === 'ready') snapDone([q[0], q[1]]); else if (S2 && S2.stage !== 'draw') secPick([q[0], q[1]]); });
     el.addEventListener('dblclick', e => { e.stopPropagation(); e.preventDefault(); if (areaEd.sec) return; if (areaEd.pts.length > 3 || areaEd.purpose !== 'range') { areaSnap(); areaEd.pts.splice(i, 1); redrawArea(); renderSide(); } });
     mk.push(m);
   });
@@ -3940,6 +3958,28 @@ function cleanPanelHTML() {
     <label class="toggle"><input type="checkbox" id="cutTouch" ${e.cut.touch ? 'checked' : ''}> Also things that only partly overlap the edge</label>
     <div class="notice info">${m.length ? `<b>${m.length}</b> item${m.length === 1 ? '' : 's'} ${e.cut.outside ? 'outside' : 'inside'} (highlighted)${miles ? ` · ${miles.toFixed(1)} mi of trail` : ''}.` : 'Nothing matches yet.'} Hidden items stop counting and go to Deleted Items, where one tap brings them back. Your own pins, hikes, routes and areas are never touched.</div>
     <button class="btn danger big" data-act="cutApply" ${m.length ? '' : 'disabled'}>Hide ${m.length} Item${m.length === 1 ? '' : 's'}</button>`;
+}
+function pageParkEditor() {
+  const e = areaEd, ac = ringAcres(e.pts), others = parkRings().length - 1;
+  return `${backBtn()}
+    <div class="d-title">Grand Teton NP Border</div>
+    <div class="d-sub">Drag a point to move it, tap or drag a small circle to make it a point, double-click a point to remove it, redraw a section, or snap a section to the roads and rivers.${others > 0 ? ` This edits the main outline; the park's ${others} other small piece${others === 1 ? '' : 's'} stay as they are.` : ''}</div>
+    <div class="stats three"><div class="stat"><b>${e.pts.length}</b><div>Points</div></div>${statHTML(Math.round(ac / 640).toLocaleString(), 'sq mi', 'Area')}${statHTML(e.pts.length > 2 ? fmtMi(ringPerim(e.pts)) : '—', 'mi', 'Perimeter')}</div>
+    ${secPanelHTML()}
+    ${data.parkOutline && data.parkOutline.length ? '<div class="row"><button class="btn" data-act="parkOfficial">Use the Official Outline</button></div>' : ''}
+    <div class="small muted">Your edited border syncs between devices. The official border is still kept and updated in the background.</div>
+    <button class="btn primary big" data-act="parkSave">Save Border</button>
+    ${editBarHTML('areaUndo', null, 'areaCancel', !areaEd.hist.length)}`;
+}
+function saveParkOutline() {
+  const e = areaEd; if (!e || e.purpose !== 'park') return;
+  if (e.pts.length < 3) { toast('Add at least three points.'); return; }
+  const ring = closeRing(e.pts.map(q => [q[0], q[1]])), off = data.parkOutline || [], offBig = parkBiggest(off);
+  const same = offBig && JSON.stringify(closeRing(offBig.ring)) === JSON.stringify(ring) && !data.parkCustom;
+  if (offBig && JSON.stringify(closeRing(offBig.ring)) === JSON.stringify(ring)) data.parkCustom = null;   // back to the official border
+  else { const rings = parkRings().map(r => r.map(q => q.slice())); rings[e.parkIdx != null && e.parkIdx < rings.length ? e.parkIdx : 0] = ring; data.parkCustom = rings; }
+  stopAreaEditor(); view.detail = null; viewStack = []; touch(); refreshBorders();
+  toast(same ? 'No changes to the border.' : data.parkCustom ? 'GTNP border saved.' : 'Back to the official GTNP border.');
 }
 function pageRangeEditor() {
   const e = areaEd, ac = ringAcres(e.pts);
@@ -3992,9 +4032,159 @@ async function rangeSnapToLines() {
   areaSnap(); areaEd.pts = out; redrawArea(); renderSide();
   toast(missing.length ? `Followed what was found. Not found: ${missing.join(', ')} (those edges keep the drawn line).` : 'The outline now follows the road and rivers exactly. Check it, then Save Outline.', 8000);
 }
+// ================= Smart snap a section of any outline to roads, rivers, trails or lake shores (V19) =================
+// Pick where the section starts and ends on the outline, switch Smart Snap on, and that part of the line follows the
+// nearest roads/rivers along it. Works in every shape editor: your areas, the Teton Range outline and the GTNP border.
+const SNAP_KINDS = { road: '🛣️ Roads', river: '🌊 Rivers & Streams', trail: '🥾 Trails', shore: '💧 Lake Shores' };
+const SNAP_TOLS = [100, 300, 800];
+const SNAP_CACHE = new Map();
+const ROAD_RE = '^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|track|road|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$';
+function snapDefaults() { const s = (data.settings.snapSec || {}); return { kinds: { road: true, river: true, trail: false, shore: false }, tol: SNAP_TOLS.includes(s.tol) ? s.tol : 300 }; }
+// Roads and rivers come from OpenStreetMap, only in a corridor around the section (so even a long edge is a small download)
+async function snapFetchOSM(arc, kinds, tol) {
+  let line = simplify(arc.map(q => [q[0], q[1]]), 0.0005), t = 0.0005;
+  while (line.length > 250) { t *= 2; line = simplify(arc.map(q => [q[0], q[1]]), t); }
+  const around = `(around:${Math.round(tol + 50)},${line.map(q => q[1].toFixed(5) + ',' + q[0].toFixed(5)).join(',')})`;
+  const parts = [];
+  if (kinds.road) parts.push(`way["highway"~"${ROAD_RE}"]${around};`);
+  if (kinds.river) parts.push(`way["waterway"~"^(river|stream|canal)$"]${around};`);
+  if (!parts.length) return [];
+  const q = `[out:json][timeout:90];(${parts.join('')});out geom;`;
+  if (SNAP_CACHE.has(q)) return SNAP_CACHE.get(q);
+  const j = await overpass(q);
+  const ways = (j.elements || []).filter(e => e.geometry && e.geometry.length > 1).map(e => {
+    const tg = e.tags || {};
+    return { kind: tg.waterway ? 'river' : 'road', name: tg.name || tg.ref || '', c: e.geometry.map(p => [r5(p.lon), r5(p.lat)]) };
+  });
+  SNAP_CACHE.set(q, ways); if (SNAP_CACHE.size > 30) SNAP_CACHE.delete(SNAP_CACHE.keys().next().value);
+  return ways;
+}
+// Trails and lake shores are already downloaded, so they work offline
+function snapLocalWays(arc, kinds, tol) {
+  const bb = bboxOf(arc), pad = tol / 80000 + 0.002, out = [];
+  for (const f of FEATS) {
+    if (kinds.trail && f.kind === 'trail' && f.coords.length > 1 && bboxHit(bboxOf(f.coords), bb, pad)) out.push({ kind: 'trail', name: f.name || '', c: f.coords.map(q => [q[0], q[1]]) });
+    if (kinds.shore && f.kind === 'lake') for (const r of f.polys || []) if (r.length > 3 && bboxHit(bboxOf(r), bb, pad)) out.push({ kind: 'shore', name: f.name ? f.name + ' shore' : '', c: closeRing(r).map(q => [q[0], q[1]]) });
+  }
+  return out;
+}
+// Shortest way along the lines from A to B that stays close to the section you picked.
+// Each step costs its length, more the further it strays from your line; nothing beyond `tol` metres is used.
+// Short hops (≤ 25 m) between lines that cross without sharing a point are allowed at a higher cost.
+function snapPath(arc, ways, tol) {
+  const A = arc[0], B = arc[arc.length - 1], lat0 = (A[1] + B[1]) / 2, kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 110540;
+  const ref = simplify(arc.map(q => [q[0], q[1]]), 0.00005).map(q => [q[0] * kx, q[1] * ky]);
+  const segs = []; for (let i = 1; i < ref.length; i++) { const a = ref[i - 1], b = ref[i]; segs.push([a[0], a[1], b[0], b[1], Math.min(a[0], b[0]) - tol, Math.min(a[1], b[1]) - tol, Math.max(a[0], b[0]) + tol, Math.max(a[1], b[1]) + tol]); }
+  if (!segs.length) segs.push([ref[0][0], ref[0][1], ref[0][0], ref[0][1], ref[0][0] - tol, ref[0][1] - tol, ref[0][0] + tol, ref[0][1] + tol]);
+  const devOf = (x, y) => { let best = Infinity; for (const s of segs) { if (x < s[4] || x > s[6] || y < s[5] || y > s[7]) continue; const dx = s[2] - s[0], dy = s[3] - s[1], L = dx * dx + dy * dy, t = L ? Math.max(0, Math.min(1, ((x - s[0]) * dx + (y - s[1]) * dy) / L)) : 0, ex = s[0] + dx * t - x, ey = s[1] + dy * t - y, d = Math.sqrt(ex * ex + ey * ey); if (d < best) best = d; } return best; };
+  const idx = new Map(), X = [], Y = [], LON = [], LAT = [], DEV = [], WAY = [], adj = [];
+  const node = (p, w) => { const k = p[0].toFixed(6) + ',' + p[1].toFixed(6); let i = idx.get(k); if (i === undefined) { const x = p[0] * kx, y = p[1] * ky, dv = devOf(x, y); i = X.length; idx.set(k, i); X.push(x); Y.push(y); LON.push(p[0]); LAT.push(p[1]); DEV.push(dv); WAY.push(w); adj.push([]); } return i; };
+  const cost = (u, v, mul, w) => { const d = Math.hypot(X[u] - X[v], Y[u] - Y[v]), m = (DEV[u] + DEV[v]) / 2 / tol; return [d * mul * (1 + 3 * m * m), w]; };
+  const link = (u, v, mul, w, add) => { const c = cost(u, v, mul)[0] + (add || 0); adj[u].push(v, c, w); adj[v].push(u, c, w); };   // add: a fixed cost for changing lines, so it keeps to one road or river
+  // your own line is a fallback way too (at a high cost), so gaps with no road or river keep the line you had
+  const AW = ways.length; ways = ways.concat([{ kind: 'arc', name: '', c: resample(arc.map(q => [q[0], q[1]]), 25) }]);
+  ways.forEach((w, wi) => { let prev = -1; for (const p of w.c) { const ok = devOf(p[0] * kx, p[1] * ky) <= tol; if (!ok) { prev = -1; continue; } const c = node(p, wi); if (prev >= 0 && prev !== c) link(prev, c, wi === AW ? 6 : 1, wi); prev = c; } });
+  const n = X.length; if (!n) return null;
+  // hops between lines that cross or nearly touch
+  const G = 25, grid = new Map(); for (let i = 0; i < n; i++) { const k = Math.floor(X[i] / G) + ',' + Math.floor(Y[i] / G); let c = grid.get(k); if (!c) grid.set(k, c = []); c.push(i); }
+  for (let i = 0; i < n; i++) { const gx = Math.floor(X[i] / G), gy = Math.floor(Y[i] / G); for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (const j of grid.get((gx + a) + ',' + (gy + b)) || []) { if (j <= i || WAY[j] === WAY[i] || WAY[i] === AW || WAY[j] === AW) continue; if (Math.hypot(X[i] - X[j], Y[i] - Y[j]) <= G) link(i, j, 4, -1, 150); } }
+  // from your line across to a road or river anywhere within reach (and back)
+  { const H = Math.max(G, tol), g2 = new Map(); for (let i = 0; i < n; i++) if (WAY[i] !== AW) { const k = Math.floor(X[i] / H) + ',' + Math.floor(Y[i] / H); let c = g2.get(k); if (!c) g2.set(k, c = []); c.push(i); }
+    for (let i = 0; i < n; i++) { if (WAY[i] !== AW) continue; const gx = Math.floor(X[i] / H), gy = Math.floor(Y[i] / H); let best = -1, bd = tol; for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (const j of g2.get((gx + a) + ',' + (gy + b)) || []) { const d = Math.hypot(X[i] - X[j], Y[i] - Y[j]); if (d <= bd) { bd = d; best = j; } } if (best >= 0) link(i, best, 4, -1, 150); } }
+  // start and end: your two picked points, joined to any line point within reach
+  const S = n, T = n + 1, ax = A[0] * kx, ay = A[1] * ky, bx = B[0] * kx, by = B[1] * ky, reach = Math.max(60, tol);
+  adj.push([], []);
+  for (let i = 0; i < n; i++) { const da = Math.hypot(X[i] - ax, Y[i] - ay), db = Math.hypot(X[i] - bx, Y[i] - by); if (da <= reach) adj[S].push(i, da * 2.5, -1); if (db <= reach) adj[i].push(T, db * 2.5, -1); }
+  const D = new Float64Array(n + 2).fill(Infinity), P = new Int32Array(n + 2).fill(-1), PW = new Int32Array(n + 2).fill(-1), heap = [[0, S]]; D[S] = 0;
+  const push = it => { heap.push(it); let i = heap.length - 1; while (i) { const q = (i - 1) >> 1; if (heap[q][0] <= heap[i][0]) break; [heap[q], heap[i]] = [heap[i], heap[q]]; i = q; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  while (heap.length) { const [d, u] = pop(); if (d > D[u]) continue; if (u === T) break; const e = adj[u]; for (let k = 0; k < e.length; k += 3) { const v = e[k], nd = d + e[k + 1]; if (nd < D[v]) { D[v] = nd; P[v] = u; PW[v] = e[k + 2]; push([nd, v]); } } }
+  if (!(D[T] < Infinity)) return null;
+  const nodes = [], used = []; let onLine = 0, total = 0;
+  for (let v = T; v >= 0 && v !== S; v = P[v]) { const u = P[v]; if (u >= 0 && u < n && v < n) { const d = Math.hypot(X[u] - X[v], Y[u] - Y[v]); total += d; if (PW[v] >= 0 && PW[v] !== AW) onLine += d; } if (v !== T) { nodes.push([LON[v], LAT[v]]); if (PW[v] >= 0 && PW[v] !== AW) used.push(PW[v]); } }
+  nodes.reverse(); used.reverse();
+  const names = []; for (const wi of used) { const nm = ways[wi].name; if (nm && names[names.length - 1] !== nm && !names.includes(nm)) names.push(nm); }
+  const path = [[A[0], A[1]]].concat(nodes, [[B[0], B[1]]]);
+  const cover = total ? onLine / total : 0;   // share of the new line that is on a road, river, trail or shore
+  if (cover < 0.02) return null;
+  return { path, names, cover };
+}
+// The two ways round the outline between the picked points: side 0 runs forward from A to B, side 1 from B back to A
+function snapArcs(pts, A, B) {
+  const n = pts.length, ia = pts.indexOf(A), ibi = pts.indexOf(B); if (ia < 0 || ibi < 0) return null;
+  const R = pts.slice(ia).concat(pts.slice(0, ia)), ib = (ibi - ia + n) % n;
+  return { R, ib, arcs: [R.slice(0, ib + 1), R.slice(ib).concat([R[0]])] };
+}
+function snapCompose(S) {
+  const X = snapArcs(S.base, S.a, S.b); if (!X) return S.base.map(q => q.slice());
+  const { R, ib } = X, mid = S.res ? simplify(S.res.path, 0.00005).slice(1, -1).map(q => [+q[0].toFixed(6), +q[1].toFixed(6)]) : null;
+  if (!mid) return S.base.map(q => q.slice());
+  return S.side === 0 ? [R[0]].concat(mid, R.slice(ib)) : R.slice(0, ib + 1).concat(mid);
+}
+function snapArc(S) { const X = snapArcs(S.base, S.a, S.b); return X ? X.arcs[S.side] : []; }
+async function snapRun() {
+  const S = areaEd && areaEd.sec; if (!S || S.mode !== 'snap' || S.stage !== 'ready') return;
+  if (!S.on) { S.res = null; areaEd.pts = S.base.map(q => q.slice()); redrawArea(); renderSide(); return; }
+  const arc = snapArc(S); if (arc.length < 2) return;
+  if (!Object.values(S.kinds).some(Boolean)) { toast('Pick at least one kind of line to follow.', 3000); S.on = false; renderSide(); return; }
+  if (/^Section picked/.test($('toast').textContent)) toast('');
+  const tok = S.tok = (S.tok || 0) + 1; S.busy = true; S.msg = ''; renderSide();
+  let ways = snapLocalWays(arc, S.kinds, S.tol), err = '';
+  if (S.kinds.road || S.kinds.river) { try { ways = ways.concat(await snapFetchOSM(arc, S.kinds, S.tol)); } catch (e) { err = navigator.onLine ? 'OpenStreetMap did not answer' : 'You are offline'; } }
+  if (!areaEd || areaEd.sec !== S || S.tok !== tok) return;   // changed while loading
+  S.busy = false;
+  const r = ways.length ? snapPath(arc, ways, S.tol) : null;
+  if (!r) { S.on = false; S.res = null; areaEd.pts = S.base.map(q => q.slice()); S.msg = `${err ? err + ', so roads and rivers could not be loaded. ' : ''}No connected ${Object.keys(S.kinds).filter(k => S.kinds[k]).map(k => SNAP_KINDS[k].replace(/^\S+\s/, '').toLowerCase()).join(' or ')} found within ${S.tol} m of this section. Try a wider distance or another kind of line.`; redrawArea(); renderSide(); return; }
+  S.res = r; areaEd.pts = snapCompose(S);
+  S.msg = `${r.names.length ? 'Follows ' + r.names.slice(0, 4).map(esc).join(', ') + (r.names.length > 4 ? ` and ${r.names.length - 4} more` : '') + '. ' : ''}${r.cover < 0.95 ? `About ${Math.round(r.cover * 100)}% follows the lines; where there is none nearby it keeps your line. ` : ''}${err ? err + '; only trails and lake shores were used. ' : ''}`;
+  redrawArea(); renderSide();
+}
+function snapStart() {
+  if (!areaEd || areaEd.pts.length < 3) return;
+  const d = snapDefaults();
+  areaEd.sec = { mode: 'snap', stage: 'a', pts: [], h0: areaEd.hist.length, kinds: d.kinds, tol: d.tol, side: 0, on: false };
+  areaEd.lastSec = null; redrawArea(); renderSide();
+  if (window.matchMedia('(max-width:800px)').matches && !document.body.classList.contains('collapsed')) setCollapsed(true);   // phone: show the map, the controls move to the bar over it
+  toast('Click the outline where the section to snap starts.', 4000);
+}
+// After both ends are picked: shorter side first, Smart Snap off until you switch it on
+function snapReady(S) {
+  S.stage = 'ready'; S.base = areaEd.pts.map(q => q); S.side = 0;
+  if (areaEd.hist.length > S.h0 + 1) areaEd.hist.length = S.h0 + 1;   // picking the two ends plus the snap is one Undo step
+  const X = snapArcs(S.base, S.a, S.b); if (X && lineLen(X.arcs[1]) < lineLen(X.arcs[0])) S.side = 1;
+  S.on = false; S.res = null; S.msg = ''; redrawArea(); renderSide();
+  toast('Section picked. Switch on Smart Snap to make it follow the roads and rivers.', 5000);
+}
+// Keep the result. Called by Done, and by clicking the map away from the section ("select away"): a click on the outline starts the next section.
+function snapDone(nextClick) {
+  const S = areaEd && areaEd.sec; if (!S || S.mode !== 'snap') return;
+  const changed = S.on && S.res;
+  areaEd.pts = (changed ? areaEd.pts : S.base).map(q => [q[0], q[1]]);
+  if (!changed && areaEd.hist.length > S.h0) { areaEd.pts = JSON.parse(areaEd.hist[S.h0]); areaEd.hist.length = S.h0; }   // nothing snapped: drop the added end points too
+  if (changed) data.settings.snapSec = { tol: S.tol };   // the distance is remembered for next time
+  areaEd.sec = null; redrawArea(); renderSide();
+  if (nextClick) {
+    const hit = nearestOnRing(nextClick); if (!hit) return;
+    const px = map.project(hit.q), pc = map.project(nextClick);
+    if (Math.hypot(px.x - pc.x, px.y - pc.y) <= 40) { snapStart(); secPick(nextClick); }
+    else if (changed) toast('Section snapped.', 2000);
+  } else if (changed) toast('Section snapped. Undo puts it back.', 3500);
+}
+function snapPanelHTML(S) {
+  if (S.stage !== 'ready') return `<div class="secbox"><div class="small">🧲 ${S.stage === 'a' ? 'Click the outline where the section to snap <b>starts</b>.' : 'Now click where it <b>ends</b>.'}</div><div class="row" style="margin:8px 0 0"><button class="btn sm" data-act="secCancel">Cancel</button></div></div>`;
+  const arc = snapArc(S);
+  return `<div class="secbox snapbox">
+    <div class="lrow" style="padding:0"><span class="lname" style="cursor:default"><b>🧲 Smart Snap</b> <span class="small">${fmtMi(lineLen(arc))} mi section</span></span>${swHTML('id="snapCk"', S.on)}</div>
+    <div class="chips" style="padding:6px 0 2px;flex-wrap:wrap">${Object.entries(SNAP_KINDS).map(([k, l]) => `<button data-act="snapKind" data-k="${k}" class="${S.kinds[k] ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <div class="seg2" title="How far from your line to look for a road or river">${SNAP_TOLS.map(t => `<button data-act="snapTol" data-v="${t}" class="${S.tol === t ? 'on' : ''}">Within ${t} m</button>`).join('')}</div>
+    <div class="small" style="min-height:1.2em">${S.busy ? 'Finding roads and rivers along the section…' : S.msg || (S.on ? '' : 'Switch on to make this section follow the lines.')}</div>
+    <div class="row" style="margin:8px 0 0"><button class="btn sm" data-act="snapSide" title="Snap the other part of the outline between the two points">⇄ Other Side</button><button class="btn sm" data-act="secCancel">Cancel</button><button class="btn sm primary" data-act="snapDone">✓ Done</button></div>
+    <div class="small muted" style="margin-top:6px">Click anywhere on the map to keep this and move on; click the outline to start the next section.</div></div>`;
+}
 function pageAreaEditor() {
   const e = areaEd; if (!e) return '';
   if (e.purpose === 'range') return pageRangeEditor();
+  if (e.purpose === 'park') return pageParkEditor();
   const ac = ringAcres(e.pts);
   return `${backBtn()}
     <div class="d-title">${e.purpose === 'cut' ? 'Clean Up the Map' : e.id ? 'Edit Area' : 'Draw an Area'}</div>
@@ -5392,6 +5582,7 @@ function toggleSnap() {
 }
 function toolbarContext() {
   if (editor) return editor.kind === 'route' ? 'route' : 'draw';
+  if (areaEd && areaEd.sec && areaEd.sec.mode === 'snap') return 'snapsec';
   const d = view.detail;
   if (d && (d.type === 'track' || d.type === 'hikeEdit' || d.type === 'review')) { const t = findTrack(d.id); if (t && !t.planned) return 'hike'; }
   return 'browse';
@@ -5421,6 +5612,13 @@ function renderToolbar() {
       + tbb('clear', '🗑', 'Clear', { dis: editor.wps.length <= first })
       + (editor.endPt ? tbb('finishb', '⚑', 'Finish at B', { dis: editor.closed }) : '')
       + tbb('save', '✓', 'Save', { pri: true, dis: editor.wps.length < 2 }) + tbb('cancel', '✕', 'Cancel');
+  } else if (c === 'snapsec') {
+    // Smart snap a section: the same controls as the panel, over the map (so they work with the panel tucked away on a phone)
+    const S = areaEd.sec;
+    if (S.stage !== 'ready') h = `<span class="tbtag">🧲 Tap the outline where the section ${S.stage === 'a' ? 'starts' : 'ends'}</span>` + tbb('snapcancel', '✕', 'Cancel');
+    else h = tbb('snaptoggle', '🧲', S.busy ? 'Snapping…' : S.on ? 'Snap: on' : 'Snap: off', { snap: S.on, title: 'Make this section follow the roads and rivers' })
+      + tbb('snapside', '⇄', 'Other side') + tbb('snaptol', '↔', S.tol + ' m', { title: 'How far from your line to look for a road or river' })
+      + tbb('snapcancel', '✕', 'Cancel') + tbb('snapdone', '✓', 'Done', { pri: true });
   } else {
     const t = findTrack(view.detail.id), st = hedStack(t.id), hasApproved = t.segments.some(x => x.src === 'approved'), pend = t.approved === false;
     h = tbb('approvedraw', '🧭', hasApproved ? 'Redraw trail' : 'Mark trail', { pri: !hasApproved, title: 'Drop points along the route you really took (blue). Snaps to trails unless you turn that off.' }) + snapB
@@ -5435,6 +5633,11 @@ function renderToolbar() {
 function tbAction(a) {
   const t = view.detail && (view.detail.type === 'track' || view.detail.type === 'hikeEdit' || view.detail.type === 'review') ? findTrack(view.detail.id) : null;
   switch (a) {
+    case 'snaptoggle': { const S = areaEd && areaEd.sec; if (S && !S.busy) { S.on = !S.on; snapRun(); } break; }
+    case 'snapside': { const S = areaEd && areaEd.sec; if (S && S.stage === 'ready') { S.side = 1 - S.side; S.res = null; areaEd.pts = S.base.map(q => q); if (S.on) snapRun(); else { redrawArea(); renderSide(); } } break; }
+    case 'snaptol': { const S = areaEd && areaEd.sec; if (S) { S.tol = SNAP_TOLS[(SNAP_TOLS.indexOf(S.tol) + 1) % SNAP_TOLS.length]; if (S.on) snapRun(); else renderSide(); } break; }
+    case 'snapcancel': secCancel(); break;
+    case 'snapdone': snapDone(); break;
     case 'undo': if (editor) undoPoint(); break;
     case 'redo': redoPoint(); break;
     case 'snap': toggleSnap(); break;
@@ -5661,6 +5864,7 @@ function renderLayers() {
     return `<div class="lrow ${open ? 'open' : ''}">${swHTML(`data-layer="${b.layer}"`, layerOn(b.layer))}<span class="lname" data-bsel="${b.id}" title="Tap to change how it looks"><i class="lsw" style="border-top-color:${st.color};border-top-style:${st.dash === 'solid' ? 'solid' : st.dash === 'dots' ? 'dotted' : 'dashed'}"></i>${b.short === 'GTNP' ? 'Grand Teton NP' : 'Teton Range'}</span><span class="lchev" data-bsel="${b.id}">›</span></div>
       ${open ? borderStyleHTML(b.id) + (extra || '') : ''}`;
   };
+  const parkExtra = data.parkOutline && data.parkOutline.length ? `<div class="bstyle" style="margin-top:-4px"><div class="row"><button class="btn sm" data-act="editPark">✏️ Edit the Outline</button></div><div class="small muted">${data.parkCustom ? 'Showing your edited border. Edit the Outline → Use the Official Outline puts it back.' : 'The official National Park Service border. Edit it to snap sections to roads and rivers.'}</div></div>` : '';
   const rangeExtra = `<div class="bstyle" style="margin-top:-4px">
       <div class="lrow"><span class="lname" style="cursor:default">Only Show What's Inside</span>${swHTML('id="rangeViewCk"', !!s.rangeView)}</div>
       <div class="lrow"><span class="lname" style="cursor:default">Stats Count Only Inside</span>${swHTML('id="rangeOnlyCk"', rangeOnly())}</div>
@@ -5671,7 +5875,7 @@ function renderLayers() {
     ${layersSec('show', 'Show on Map', `<div class="lgrid">${toggles.map(([k, l]) => `<label><input type="checkbox" data-layer="${k}" ${layerOn(k) ? 'checked' : ''}> ${l}</label>`).join('')}</div>
       <div class="small muted" style="margin:2px 0 6px">Unnamed: lakes and peaks with no name get a dashed marker. ${idn === null ? 'Unnamed peaks from the terrain have not been scanned yet.' : `${idn} unnamed peak${idn === 1 ? '' : 's'} identified from the terrain.`}</div>
       <div class="row"><button class="btn sm" data-act="scanPeaks">🔎 ${idn === null ? 'Find Unnamed Peaks' : 'Scan Again'}</button></div>`, false)}
-    ${layersSec('borders', 'Borders', BORDERS.map(b => bRow(b, b.id === 'range' ? rangeExtra : '')).join('') + (data.parkOutline && data.parkOutline.length ? '' : '<div class="small muted">The park outline is not loaded yet. <button class="btn sm" data-act="parkOutline">Load It</button></div>'), false)}
+    ${layersSec('borders', 'Borders', BORDERS.map(b => bRow(b, b.id === 'range' ? rangeExtra : parkExtra)).join('') + (data.parkOutline && data.parkOutline.length ? '' : '<div class="small muted">The park outline is not loaded yet. <button class="btn sm" data-act="parkOutline">Load It</button></div>'), false)}
     ${layersSec('heat', 'Heatmap & Filters', `<select id="heatMode"><option value="both">Heatmap: hikes + places</option><option value="tracks">Heatmap: hikes only</option><option value="places">Heatmap: places only</option></select>${filterSelects()}`, false)}
     ${layersSec('3d', '3D', `<label class="toggle"><input type="checkbox" id="l3d" ${s.terrain ? 'checked' : ''}> 3D Terrain</label>
     <label class="f">Terrain Exaggeration: <b id="exagV">${(+(s.exag || 1)).toFixed(1)}×</b></label><input type="range" id="exag" min="1" max="3" step="0.1" value="${s.exag || 1}" style="padding:0">
@@ -5730,7 +5934,15 @@ function onAction(act, el) {
     case 'secStart': areaEd.sec = { stage: 'a', pts: [], paused: false, h0: areaEd.hist.length }; areaEd.lastSec = null; redrawArea(); renderSide(); toast('Click the outline where the new section starts.', 4000); break;
     case 'secPause': if (areaEd.sec) { areaEd.sec.paused = !areaEd.sec.paused; renderSide(); } break;
     case 'secDone': secFinish(false); break;
-    case 'secCancel': { const S = areaEd.sec; areaEd.sec = null; if (S && areaEd.hist.length > S.h0) { areaEd.pts = JSON.parse(areaEd.hist[S.h0]); areaEd.hist.length = S.h0; } redrawArea(); renderSide(); break; }
+    case 'secCancel': secCancel(); break;
+    case 'snapStart': snapStart(); break;
+    case 'snapDone': snapDone(); break;
+    case 'snapKind': { const S = areaEd && areaEd.sec; if (S && S.kinds) { S.kinds[el.dataset.k] = !S.kinds[el.dataset.k]; if (S.on) snapRun(); else renderSide(); } break; }
+    case 'snapTol': { const S = areaEd && areaEd.sec; if (S) { S.tol = +el.dataset.v; if (S.on) snapRun(); else renderSide(); } break; }
+    case 'snapSide': { const S = areaEd && areaEd.sec; if (S && S.stage === 'ready') { S.side = 1 - S.side; S.res = null; areaEd.pts = S.base.map(q => q); if (S.on) snapRun(); else { redrawArea(); renderSide(); } } break; }
+    case 'editPark': if (editor) stopEditor(true); closeDash(); startAreaEditor(null, 'park'); $('layers').hidden = true; popButtons(); break;
+    case 'parkOfficial': { const big = parkBiggest(data.parkOutline || []); if (!big) break; areaSnap(); areaEd.pts = big.ring.slice(0, -1).map(q => q.slice()); redrawArea(); renderSide(); toast('The official outline is loaded. Save it to keep it.'); break; }
+    case 'parkSave': saveParkOutline(); break;
     case 'secFlip': secFlip(); break;
     case 'areaSave': saveArea(); break;
     case 'cutApply': applyCut(); break;
@@ -5741,7 +5953,7 @@ function onAction(act, el) {
     case 'rangeOutside': { if (editor) stopEditor(true); startAreaEditor(null, 'range', { outside: true }); break; }
     case 'rangeSave': { if (areaEd.pts.length < 3) { toast('Add at least three points.'); break; } data.range = closeRing(areaEd.pts.map(q => q.slice())); stopAreaEditor(); view.detail = null; viewStack = []; touch(); toast('Range outline saved.'); break; }
     case 'rangeDefault': areaSnap(); areaEd.pts = RANGE_DEFAULT.slice(0, -1).map(q => q.slice()); redrawArea(); renderSide(); toast('The V17 outline is loaded. Save it to keep it.'); break;
-    case 'rangePark': { areaSnap(); const big = data.parkOutline.slice().sort((a, b) => b.length - a.length)[0]; areaEd.pts = big.slice(0, -1).map(q => q.slice()); redrawArea(); renderSide(); break; }
+    case 'rangePark': { areaSnap(); const big = parkBiggest(parkRings()).ring; areaEd.pts = big.slice(0, -1).map(q => q.slice()); redrawArea(); renderSide(); break; }
     case 'editRange': if (editor) stopEditor(true); closeDash(); startAreaEditor(null, 'range'); $('layers').hidden = true; popButtons(); break;
     case 'areaCancel': confirmDiscard().then(ok => { if (!ok) return; const back = areaEd && areaEd.id ? { type: 'area', id: areaEd.id } : null; stopAreaEditor(); view.detail = back; renderSide(); updateSelection(); }); break;
     case 'areaDelPt': areaEd.pts.splice(+el.dataset.i, 1); redrawArea(); renderSide(); break;
@@ -6041,6 +6253,7 @@ $('side').addEventListener('change', e => {
   if (e.target.dataset.stc) { data.settings.stColors = Object.assign({}, data.settings.stColors, { [e.target.dataset.stc]: e.target.value }); touch({ noRender: true }); restyleIcons(); syncPins(); renderSide(); }
   if (e.target.dataset && e.target.dataset.cutkind && areaEd) { areaEd.cut.kinds[e.target.dataset.cutkind] = e.target.checked; highlightCut(); renderSide(); }
   if (id === 'arName' && areaEd) areaEd.name = e.target.value;
+  if (id === 'snapCk' && areaEd && areaEd.sec && areaEd.sec.mode === 'snap') { areaEd.sec.on = e.target.checked; snapRun(); return; }
   if (id === 'cutTouch' && areaEd) { areaEd.cut.touch = e.target.checked; highlightCut(); renderSide(); }
   if (id === 'sPhotoStore') { const ck = e.target; if (ck.checked) { if (!syncOn()) sure('Sync is not connected', { body: 'Photos in the store stay only in this browser until you connect it. Continue?', ok: 'Continue', danger: false }).then(ok => { if (ok) migratePhotosToStore(); else ck.checked = false; }); else migratePhotosToStore(); } else sure('Bring all photos back into the file?', { ok: 'Bring Back', danger: false }).then(ok => { if (ok) bringPhotosBack(); else ck.checked = true; }); }
   if (id === 'exSt') { view.explore.st = e.target.value; renderSide(); }
@@ -6543,7 +6756,7 @@ $('layers').addEventListener('click', e => {
   const ds = e.target.closest('[data-bdash]'); if (ds) { setBorderStyle({ dash: ds.dataset.bdash }); renderLayers(); return; }
   if (e.target.closest('[data-breset]')) { const o = Object.assign({}, data.settings.borders); delete o[bSel]; data.settings.borders = o; applyBorderStyle(bSel); touch({ noRender: true }); renderLayers(); return; }
   if (e.target.closest('[data-bzoom]')) {
-    const ring = bSel === 'park' ? (data.parkOutline || []).flat() : rangeRing();
+    const ring = bSel === 'park' ? parkRings().flat() : rangeRing();
     if (!ring.length) { toast('The park outline is not loaded yet. Press Load It.', 3500); return; }
     fitTo(ring, 14);
   }
@@ -7103,8 +7316,9 @@ function initMap() {
     }
     if (areaEd) {
       const S = areaEd.sec;
+      if (S && S.mode === 'snap' && S.stage === 'ready') { snapDone(ll); return; }
       if (S) { if (S.stage === 'draw') { if (!S.paused) { S.pts.push([+ll[0].toFixed(6), +ll[1].toFixed(6)]); redrawArea(); renderSide(); } } else secPick(ll); return; }
-      if (areaEd.purpose === 'range' && areaEd.pts.length >= 3) { toast('To change the outline, drag a point, tap a small circle, or use Redraw a Section.', 3500); return; }
+      if ((areaEd.purpose === 'range' || areaEd.purpose === 'park') && areaEd.pts.length >= 3) { toast('To change the outline, drag a point, tap a small circle, or use Redraw a Section.', 3500); return; }
       addAreaPt(ll);
       return;
     }
