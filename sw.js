@@ -1,9 +1,9 @@
 // Teton Atlas app shell cache. Map tiles and map data are NOT cached here.
 // Saved terrain (offline terrain, 1 m terrain) and map text live in their own caches and must survive app updates.
-const CACHE = 'teton-atlas-shell-v17';
+const CACHE = 'teton-atlas-shell-v18';
 const DEM_CACHE = 'teton-dem-offline';
 const KEEP = [DEM_CACHE, 'teton-dem1m', 'teton-glyphs'];   // saved on request by the app; must survive updates
-const SHELL = ['./', './index.html', './manifest.json', './icon.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png',
+const SHELL = ['./', './index.html', './manifest.json', './icon.svg', './favicon-32.png', './favicon-64.png', './icon-192.png', './icon-512.png', './apple-touch-icon.png',
   'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css',
   'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js',
   'https://unpkg.com/maplibre-contour@0.1.1/dist/index.min.js',
