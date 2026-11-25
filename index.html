@@ -716,6 +716,54 @@ a.srow[data-open]:hover{background:var(--hover)}
 .favst{color:#eab308}
 [data-home]{cursor:pointer}
 .tswitch{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:650;white-space:nowrap;margin-right:4px;cursor:pointer}
+/* ================= V20: phone layout. No title bar: the map runs to the top, the bottom bar sits low, the panel tab rides on top of the bar ================= */
+@media (max-width:800px){
+  :root{--bar:calc(var(--sat) + 60px);--tbh:66px;--tbb:calc(max(var(--sab) - 14px, 0px) + 10px);--abv:calc(var(--tbb) + var(--tbh) + 10px)}
+  /* Former title bar: now only a soft shade behind the clock (when the page can draw there) and the offline / waiting pill */
+  #topbar{background:linear-gradient(rgba(0,0,0,.34),rgba(0,0,0,0));height:calc(var(--sat) * 1.4);padding:0;pointer-events:none;z-index:4}
+  #topbar>img,#topbar>b{display:none}
+  #topbar .netpill{position:absolute;left:12px;top:calc(var(--sat) + 17px);margin:0;max-width:calc(100vw - 260px);pointer-events:auto;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+  html{background:#15181a}
+  #map{top:0}
+  #side{top:0;padding-top:var(--bar)}
+  .mapbtn{top:calc(var(--sat) + 8px);z-index:9}
+  #viewCtl{top:calc(var(--bar) + 8px)}
+  #dash{top:0}
+  .dash-in{padding-top:calc(var(--bar) + 4px)}
+  /* Bottom bar: just above the home indicator */
+  #toolbar{bottom:var(--tbb)}
+  /* The panel tab sits on top of the bar, same color, so the two read as one piece. Tap it or swipe up on the bar to open the panel. */
+  body.collapsed #collapseBtn{bottom:calc(var(--tbb) + var(--tbh) - 1px);width:60px;height:20px;border:0;border-radius:12px 12px 0 0;background:rgba(21,21,21,.94);color:#fff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:none;z-index:6}
+  body.collapsed #collapseBtn svg{width:13px;height:13px}
+  /* Panel open: the "lower the panel" button joins the round buttons, top left */
+  body:not(.collapsed) #collapseBtn{top:calc(var(--sat) + 8px);left:12px;transform:none;width:44px;height:44px;border:0;border-radius:50%;box-shadow:0 2px 10px rgba(0,0,0,.18);z-index:9}
+  body:not(.collapsed) #collapseBtn svg{width:18px;height:18px}
+  body.collapsed:has(#toolbar.ctx) #collapseBtn{bottom:calc(var(--tbb) + 67px);background:var(--bg);color:var(--ink);border:1px solid var(--line);border-bottom:0}
+  /* Map controls and scale line up just above the bar */
+  .maplibregl-ctrl-bottom-right{bottom:var(--abv)}
+  .maplibregl-ctrl-bottom-right>.maplibregl-ctrl{margin:0 12px 8px 0}
+  .maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib.maplibregl-compact{margin-bottom:0}
+  .maplibregl-ctrl-bottom-left{bottom:var(--abv)}
+  .maplibregl-ctrl-bottom-left>.maplibregl-ctrl-scale{margin:0 0 0 12px;border-radius:0 0 4px 4px;font-size:10.5px;font-weight:600;padding:0 5px;line-height:15px;background:rgba(255,255,255,.82)}
+  html[data-theme=dark] .maplibregl-ctrl-bottom-left>.maplibregl-ctrl-scale{background:rgba(29,32,34,.82)}
+  .modebar{bottom:calc(var(--tbb) + var(--tbh) + 30px)}
+  #sideBody{padding-bottom:calc(var(--tbb) + var(--tbh) + 16px)}
+}
+
+/* ================= V20: Change History ================= */
+.hx-dev{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 8px;background:var(--soft);color:var(--ink);white-space:nowrap;max-width:60%;overflow:hidden;text-overflow:ellipsis}
+.hx-dev i{width:8px;height:8px;border-radius:50%;flex:none}
+.hx{border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin:8px 0;background:var(--card)}
+.hx.rolled{opacity:.6}
+.hx-h{display:flex;align-items:center;gap:8px}
+.hx-h b{flex:1;min-width:0;font-size:14px}
+.hx-t{font-size:12px;color:var(--muted);white-space:nowrap}
+.hx ul{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--muted)}
+.hx ul li{margin:2px 0}
+.hx .row{margin-top:8px;gap:6px;flex-wrap:wrap}
+.hx-day{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 2px}
+.hx-filters{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.hx-filters select{flex:1;min-width:130px}
 </style>
 </head>
 <body>
@@ -778,7 +826,7 @@ a.srow[data-open]:hover{background:var(--hover)}
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V19.1';
+const APP_VERSION = 'V20';
 // Rough outline of the Teton Range (Teton Pass to Conant Pass, Jackson Hole side and Teton Valley side). Editable from the Layers panel.
 // Borders you can restyle (Layers -> Borders). Add an entry here to make another outline styleable.
 const BORDERS = [
@@ -1041,6 +1089,12 @@ const VERSIONS = [
     'The GTNP border is now editable: Layers → Borders → Grand Teton NP → Edit the Outline. Your edited border syncs; Use the Official Outline puts it back.'] },
   { name: 'Teton Atlas V19.1', date: '2026-11-25', notes: [
     'Info buttons always show a lower-case i (some were turned into a capital I by the title-case styling).'] },
+  { name: 'Teton Atlas V20', date: '2026-11-25', notes: [
+    'Phones: no title bar. The map runs to the top of the screen; the round buttons float over it, and the offline / waiting pill sits top left.',
+    'Phones: the bottom bar sits just above the home indicator. The panel tab rides on top of the bar (tap it, or swipe up on the bar). The scale and map buttons line up just above the bar.',
+    'Phones: with the panel open, a round ⌄ button at the top left lowers it again.',
+    'Change History (Menu → Change History): every change with the device it came from. Roll back one change, or everything one device did (optionally only the last day, week, month...). Rollbacks can be undone too.',
+    'Each device is asked for a name once (rename it any time in Change History). The history syncs as history.json next to atlas.json.'] },
 ];
 
 // ================= State =================
@@ -1505,6 +1559,7 @@ async function fetchArea(s, w, n, e, bands) {
   for (const f of fresh) merged.set(f.id, f);
   data.osm = { fetchedAt: Date.now(), features: [...merged.values()] };
   indexFeatures(); migrateV17();
+  hxFlush(); HX.tag = { label: 'Map data update (hikes re-checked against the new trails)' };
   for (const t of data.tracks) matchTrack(t);
   await idbPut('osm', data.osm);
   touch();
@@ -2145,6 +2200,285 @@ function touch(opts) {
   clearTimeout(touch.tm); touch.tm = setTimeout(saveLocal, 500);
   syncMarkPending();
   if (!opts || !opts.noRender) { updateSources(); renderSide(); }
+  hxSoon();
+}
+
+// ================= V20: Change History (who changed what, from which device; roll back a change or a device) =================
+// Each device gets a random id (kept in this browser) and a name you choose. After every edit the app compares your atlas
+// with how it looked before and writes one "change" with the device, the time and the before / after of each item.
+// Changes are kept in this browser (IndexedDB) and synced as <folder>/history.json, so every device sees the same list.
+const DEV_KEY = 'teton-device-v1', HX_NONE = '\u0000none', HX_MAX = 3000, HX_MERGE_MS = 120000;
+let DEVICE = null;
+try { DEVICE = JSON.parse(localStorage.getItem(DEV_KEY) || 'null'); } catch (e) { /* none */ }
+if (!DEVICE || !DEVICE.id) { DEVICE = { id: 'd' + uid(), name: '' }; try { localStorage.setItem(DEV_KEY, JSON.stringify(DEVICE)); } catch (e) { /* private mode */ } }
+const HX = { entries: [], devices: {}, base: null, pending: false, tag: null, loaded: false };
+const HX_ARR = { pins: 'pin', tracks: 'hike', routes: 'route', areas: 'area', peakLists: 'peak list', savedMaps: 'saved map', trash: 'deleted item' };
+const HX_MAP = { visits: 'visits', names: 'name', hidden: 'hidden map item', info: 'place notes', yds: 'peak routes', wish: 'wish list', fav: 'favorite' };
+const HX_ONE = { range: 'Teton Range outline', parkCustom: 'Grand Teton NP border', ideas: 'Ideas list', pinTypes: 'pin types' };
+const HX_FIELD = { name: 'name', note: 'note', notes: 'notes', lon: 'position', lat: 'position', ring: 'shape', segments: 'path', date: 'date', status: 'status', type: 'type', ids: 'peaks', review: 'review', approved: 'approval', camps: 'camps', nights: 'nights', trip: 'trip', color: 'color', icon: 'icon', pts: 'path', wps: 'path', legs: 'path' };
+function hxOneGet(k) { return k === 'pinTypes' ? (data.settings.pinTypes || null) : data[k] == null ? null : data[k]; }
+function hxOneSet(k, v) {
+  if (k === 'pinTypes') { if (v == null) delete data.settings.pinTypes; else data.settings.pinTypes = v; return; }
+  data[k] = v == null ? (k === 'ideas' ? { sooner: [], later: [] } : null) : v;
+}
+function hxSnap() {
+  const m = new Map();
+  for (const c of Object.keys(HX_ARR)) for (const x of data[c] || []) if (x && x.id) m.set(c + '|' + x.id, JSON.stringify(x));
+  for (const c of Object.keys(HX_MAP)) for (const [id, v] of Object.entries(data[c] || {})) if (v !== undefined && !(Array.isArray(v) && !v.length)) m.set(c + '|' + id, JSON.stringify(v));
+  for (const c of Object.keys(HX_ONE)) { const v = hxOneGet(c); if (v != null) m.set(c + '|_', JSON.stringify(v)); }
+  return m;
+}
+function hxRebase() { HX.base = hxSnap(); }
+function hxSoon() { clearTimeout(hxSoon.tm); hxSoon.tm = setTimeout(hxFlush, 1200); }
+function hxFieldDiff(b, a) {
+  const fb = {}, fa = {};
+  for (const f of new Set([...Object.keys(b), ...Object.keys(a)])) {
+    const sb = JSON.stringify(b[f]), sa = JSON.stringify(a[f]);
+    if (sb !== sa) { fb[f] = f in b ? b[f] : HX_NONE; fa[f] = f in a ? a[f] : HX_NONE; }
+  }
+  return Object.keys(fb).length ? { b: fb, a: fa } : null;
+}
+// Compare the atlas with the last snapshot; record the differences as one change by this device
+function hxFlush() {
+  clearTimeout(hxSoon.tm);
+  if (!HX.base) return null;
+  const cur = hxSnap(), diffs = [];
+  for (const key of new Set([...HX.base.keys(), ...cur.keys()])) {
+    const sb = HX.base.get(key), sa = cur.get(key); if (sb === sa) continue;
+    const [c, id] = [key.slice(0, key.indexOf('|')), key.slice(key.indexOf('|') + 1)];
+    const b = sb ? JSON.parse(sb) : null, a = sa ? JSON.parse(sa) : null;
+    if (HX_ARR[c]) {
+      if (!b) diffs.push({ c, id, k: 'add', n: hxItemName(c, a) });                       // an addition is undone by removing it, so the item itself is not copied
+      else if (!a) diffs.push({ c, id, k: 'del', b, n: hxItemName(c, b) });
+      else { const fd = hxFieldDiff(b, a); if (fd) diffs.push({ c, id, k: 'edit', b: fd.b, a: fd.a, n: hxItemName(c, a) }); }
+    } else diffs.push({ c, id, k: !b ? 'add' : !a ? 'del' : 'edit', b, a, n: hxKeyName(c, id, a || b) });
+  }
+  HX.base = cur;
+  if (!diffs.length) { HX.tag = null; return null; }
+  const now = Date.now(), tag = HX.tag; HX.tag = null;
+  const last = HX.entries[HX.entries.length - 1];
+  const keys = diffs.map(d => d.c + '|' + d.id);
+  // Keep typing or dragging on the same item as one change (same device, within 2 minutes)
+  if (!tag && last && last.dev === DEVICE.id && !last.rb && !last.up && now - (last.at2 || last.at) < HX_MERGE_MS && keys.every(k => last.d.some(d => d.c + '|' + d.id === k))) {
+    for (const d of diffs) {
+      const i = last.d.findIndex(x => x.c === d.c && x.id === d.id), m = hxMergeDiff(last.d[i], d, cur);
+      if (m) last.d[i] = m; else last.d.splice(i, 1);
+    }
+    last.at2 = now;
+    if (!last.d.length) HX.entries.pop();
+  } else HX.entries.push(Object.assign({ id: 'h' + uid(), at: now, dev: DEVICE.id }, tag || {}, { d: diffs }));
+  hxTouchDevice(); hxSave(); return HX.entries[HX.entries.length - 1];
+}
+function hxMergeDiff(o, n, cur) {
+  if (!HX_ARR[o.c]) { const k = o.b == null ? (n.a == null ? null : 'add') : n.a == null ? 'del' : 'edit'; if (!k || JSON.stringify(o.b) === JSON.stringify(n.a)) return null; return Object.assign({}, n, { k, b: o.b }); }
+  if (o.k === 'add') return n.k === 'del' ? null : Object.assign({}, o, { n: n.n });
+  if (o.k === 'edit' && n.k === 'edit') {
+    const b = Object.assign({}, n.b, o.b), a = Object.assign({}, o.a, n.a);
+    for (const f of Object.keys(b)) if (JSON.stringify(b[f]) === JSON.stringify(a[f])) { delete b[f]; delete a[f]; }
+    return Object.keys(b).length ? Object.assign({}, n, { b, a }) : null;
+  }
+  if (o.k === 'edit' && n.k === 'del') { const full = JSON.parse(JSON.stringify(n.b)); hxApplyFields(full, o.b); return Object.assign({}, n, { b: full }); }
+  if (o.k === 'del' && n.k === 'add') { const now = cur.get(n.c + '|' + n.id); const fd = now && hxFieldDiff(o.b, JSON.parse(now)); return fd ? { c: n.c, id: n.id, k: 'edit', b: fd.b, a: fd.a, n: n.n } : null; }
+  return n;
+}
+function hxApplyFields(obj, f) { for (const [k, v] of Object.entries(f)) { if (v === HX_NONE) delete obj[k]; else obj[k] = JSON.parse(JSON.stringify(v)); } }
+function hxItemName(c, x) {
+  if (c === 'trash') return (x && x.name) || 'item';
+  if (c === 'tracks' || c === 'routes' || c === 'pins' || c === 'areas' || c === 'peakLists' || c === 'savedMaps') return (x && (x.name || x.title)) || '';
+  return '';
+}
+function hxKeyName(c, id, v) {
+  if (c === 'hidden' && v && v.name) return v.name;
+  try { if (FEAT[id]) return nameOf(FEAT[id]) || (KIND_INFO[FEAT[id].kind] || { label: 'place' }).label.toLowerCase(); if (GROUPS[id]) return GROUPS[id].name; } catch (e) { /* map data not loaded */ }
+  if (c === 'names' && typeof v === 'string') return v;
+  const t = (data.tracks || []).find(x => x.id === id) || (data.pins || []).find(x => x.id === id); if (t) return t.name;
+  return c === '_' ? '' : 'a place';
+}
+function hxTouchDevice() {
+  const d = HX.devices[DEVICE.id] || (HX.devices[DEVICE.id] = { first: Date.now() });
+  if (DEVICE.name && d.name !== DEVICE.name) { d.name = DEVICE.name; d.renamed = Date.now(); }
+  d.last = Date.now(); d.ua = deviceGuess();
+}
+function hxSave() {
+  if (HX.entries.length > HX_MAX) HX.entries.splice(0, HX.entries.length - HX_MAX);
+  HX.pending = true;
+  idbPut('history', { entries: HX.entries, devices: HX.devices, pending: true });
+  if (syncOn()) syncSoon();                                   // history goes up on its own; it does not mark the atlas as changed
+  if (view.detail && view.detail.type === 'changes') renderSide();
+}
+async function hxLoad() {
+  const h = await idbGet('history');
+  if (h && Array.isArray(h.entries)) { HX.entries = h.entries; HX.devices = h.devices || {}; HX.pending = !!h.pending; }
+  HX.loaded = true;
+}
+// Combine with another device's copy of the history (from sync): every change is kept once, newest device names win
+function hxMergeRemote(r) {
+  let added = 0; const have = new Set(HX.entries.map(e => e.id));
+  for (const e of (r && r.entries) || []) if (!have.has(e.id)) { HX.entries.push(e); added++; }
+  HX.entries.sort((a, b) => a.at - b.at);
+  for (const [id, d] of Object.entries((r && r.devices) || {})) {
+    const mine = HX.devices[id];
+    if (!mine) HX.devices[id] = d;
+    else { if ((d.renamed || 0) > (mine.renamed || 0)) { mine.name = d.name; mine.renamed = d.renamed; } mine.last = Math.max(mine.last || 0, d.last || 0); mine.first = Math.min(mine.first || Infinity, d.first || Infinity); }
+  }
+  if (HX.devices[DEVICE.id] && HX.devices[DEVICE.id].name && HX.devices[DEVICE.id].name !== DEVICE.name && (HX.devices[DEVICE.id].renamed || 0) > (DEVICE.renamed || 0)) {
+    DEVICE.name = HX.devices[DEVICE.id].name; try { localStorage.setItem(DEV_KEY, JSON.stringify(DEVICE)); } catch (e) { /* optional */ }
+  }
+  const remoteIds = new Set(((r && r.entries) || []).map(e => e.id));
+  return { added, localOnly: HX.entries.some(e => !remoteIds.has(e.id)) || Object.keys(HX.devices).some(id => !(r && r.devices && r.devices[id]) || (HX.devices[id].renamed || 0) > ((r.devices[id] || {}).renamed || 0)) };
+}
+function hxPayload() {
+  let entries = HX.entries;
+  // Keep the synced file a sensible size: oldest changes drop off first
+  while (entries.length > 50 && JSON.stringify(entries).length > 6e6) entries = entries.slice(Math.ceil(entries.length * 0.1));
+  return { app: 'teton-atlas-history', v: 1, devices: HX.devices, entries };
+}
+function deviceGuess() {
+  const ua = navigator.userAgent || '', standalone = (window.navigator.standalone || matchMedia('(display-mode: standalone)').matches);
+  const kind = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? 'iPad' : /Android/.test(ua) ? 'Android phone' : /Macintosh/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows PC' : 'Computer';
+  return kind + (standalone ? ' (home screen app)' : /iPhone|iPad/.test(kind) ? ' (Safari)' : '');
+}
+const devName = id => (id === DEVICE.id && DEVICE.name) || (HX.devices[id] && HX.devices[id].name) || (HX.devices[id] && HX.devices[id].ua ? 'Unnamed ' + HX.devices[id].ua : 'Unnamed device');
+const devColor = id => `hsl(${parseInt(hashStr(id).slice(0, 5), 36) % 360} 62% 48%)`;
+async function askDeviceName(first) {
+  const nm = await dialog({ title: first ? 'Name This Device' : 'Rename This Device', input: true, ok: 'Save', cancel: first ? 'Later' : 'Cancel', value: DEVICE.name || deviceGuess(),
+    body: first ? 'Teton Atlas now keeps a Change History. Each change shows the device it came from, so you can roll back a change, or everything one device did. Pick a name you will recognise, like “Mackay’s iPhone”.' : 'Shown next to every change made on this device.' });
+  if (nm == null || !nm.trim()) { if (first) { DEVICE.asked = Date.now(); try { localStorage.setItem(DEV_KEY, JSON.stringify(DEVICE)); } catch (e) { /* optional */ } } return; }
+  DEVICE.name = nm.trim().slice(0, 40); DEVICE.renamed = Date.now(); DEVICE.asked = Date.now();
+  try { localStorage.setItem(DEV_KEY, JSON.stringify(DEVICE)); } catch (e) { /* optional */ }
+  hxTouchDevice(); hxSave(); toast(`This device is “${DEVICE.name}”.`);
+}
+// ---- Rolling back ----
+// A diff can be undone cleanly when the item still looks the way the change left it
+function hxIsCurrent(d) {
+  if (HX_ARR[d.c]) {
+    const x = (data[d.c] || []).find(y => y.id === d.id);
+    if (d.k === 'add') return !!x;
+    if (d.k === 'del') return !x;
+    if (!x) return false;
+    return Object.entries(d.a).every(([f, v]) => v === HX_NONE ? !(f in x) : JSON.stringify(x[f]) === JSON.stringify(v));
+  }
+  const now = HX_ONE[d.c] ? hxOneGet(d.c) : (data[d.c] || {})[d.id];
+  const norm = v => (v === undefined || (Array.isArray(v) && !v.length)) ? null : v;
+  return JSON.stringify(norm(now)) === JSON.stringify(norm(d.a));
+}
+function hxRevertDiff(d) {
+  if (HX_ARR[d.c]) {
+    const arr = data[d.c], i = arr.findIndex(y => y.id === d.id);
+    if (d.k === 'add') { if (i >= 0) arr.splice(i, 1); }
+    else if (d.k === 'del') { if (i < 0) arr.push(JSON.parse(JSON.stringify(d.b))); }
+    else if (i >= 0) hxApplyFields(arr[i], d.b);
+    else return false;
+    return true;
+  }
+  if (HX_ONE[d.c]) { hxOneSet(d.c, d.b == null ? null : JSON.parse(JSON.stringify(d.b))); return true; }
+  if (d.b == null) delete data[d.c][d.id]; else data[d.c][d.id] = JSON.parse(JSON.stringify(d.b));
+  return true;
+}
+const hxRolledBy = () => { const m = {}; for (const e of HX.entries) for (const id of e.rb || []) m[id] = e; return m; };
+// Undo one or more changes, newest first. Items changed again since are skipped unless force is set.
+function hxRollback(ids, opts) {
+  opts = opts || {};
+  hxFlush();                                                               // anything still being typed counts as its own change first
+  const list = HX.entries.filter(e => ids.includes(e.id)).sort((a, b) => b.at - a.at);
+  let done = 0, skipped = 0;
+  for (const e of list) for (const d of e.d.slice().reverse()) {
+    if (!opts.force && !hxIsCurrent(d)) { skipped++; continue; }
+    if (hxRevertDiff(d)) done++; else skipped++;
+  }
+  HX.tag = { rb: list.map(e => e.id), label: opts.label || (list.length === 1 ? 'Rolled back: ' + hxTitle(list[0]) : `Rolled back ${list.length} changes`) };
+  if (done) {
+    // Rebuild what depends on hikes (credited peaks, lakes, trails) when hikes came back or went away
+    if (list.some(e => e.d.some(d => d.c === 'tracks'))) { try { for (const t of data.tracks) if (!t.planned && t.approved !== false && list.some(e => e.d.some(d => d.c === 'tracks' && d.id === t.id))) matchTrack(t); } catch (er) { console.warn(er); } }
+    touch(); hxFlush();
+  } else HX.tag = null;
+  return { done, skipped };
+}
+// ---- Describing changes ----
+function hxDiffText(d) {
+  const q = s => s ? `“${s}”` : '';
+  if (HX_ARR[d.c]) {
+    const what = HX_ARR[d.c];
+    if (d.c === 'trash') return d.k === 'add' ? `Moved ${q(d.n)} to Deleted Items` : d.k === 'del' ? `Took ${q(d.n)} out of Deleted Items` : `Updated Deleted Items`;
+    if (d.k === 'add') return `Added ${what} ${q(d.n)}`;
+    if (d.k === 'del') return `Deleted ${what} ${q(d.n)}`;
+    const f = [...new Set(Object.keys(d.b).map(k => HX_FIELD[k] || k.replace(/([A-Z])/g, ' $1').toLowerCase()))];
+    return `Edited ${what} ${q(d.n)}: ${f.slice(0, 4).join(', ')}${f.length > 4 ? '…' : ''}`;
+  }
+  if (HX_ONE[d.c]) return `${d.k === 'del' ? 'Reset' : 'Changed'} the ${HX_ONE[d.c]}`;
+  const n = d.n || 'a place';
+  switch (d.c) {
+    case 'visits': { const cnt = v => (v || []).filter(x => x.status === 'been').length, b = cnt(d.b), a = cnt(d.a); return a > b ? `Logged ${a - b === 1 ? 'a visit' : (a - b) + ' visits'} to ${n}` : a < b ? `Removed ${b - a === 1 ? 'a visit' : (b - a) + ' visits'} from ${n}` : `Updated visits for ${n}`; }
+    case 'names': return d.a ? `Named ${d.b ? q(d.b) : 'a place'} → ${q(d.a)}` : `Removed your name ${q(d.b)}`;
+    case 'hidden': return d.a ? `Hid ${n} on the map` : `Showed ${n} on the map again`;
+    case 'info': return `Updated notes for ${n}`;
+    case 'yds': return `Updated peak routes for ${n}`;
+    case 'wish': return d.a ? `Added ${n} to the wish list` : `Took ${n} off the wish list`;
+    case 'fav': return d.a ? `Starred ${n}` : `Unstarred ${n}`;
+  }
+  return `Changed ${n}`;
+}
+function hxTitle(e) {
+  if (e.label) return e.label;
+  const main = e.d.filter(d => !HX_MAP[d.c] && d.c !== 'trash'), pool = main.length ? main : e.d.filter(d => d.c !== 'trash').length ? e.d.filter(d => d.c !== 'trash') : e.d;
+  const hidden = e.d.filter(d => d.c === 'hidden');
+  if (!main.length && hidden.length > 3) return `${hidden.every(d => d.a) ? 'Hid' : hidden.every(d => !d.a) ? 'Showed again' : 'Changed'} ${hidden.length} map items`;
+  return hxDiffText(pool[0]) + (pool.length > 1 ? ` and ${pool.length - 1} more` : '');
+}
+const HX_SINCE = [['all', 'Any time'], ['1', 'Last 24 hours'], ['7', 'Last 7 days'], ['30', 'Last 30 days'], ['90', 'Last 90 days']];
+function hxFiltered() {
+  const f = view.hx || {}, since = f.since && f.since !== 'all' ? Date.now() - (+f.since) * 864e5 : 0;
+  return HX.entries.filter(e => (!f.dev || e.dev === f.dev) && e.at >= since);
+}
+function pageChanges() {
+  const f = view.hx = Object.assign({ dev: '', since: 'all', n: 40 }, view.hx || {});
+  const rolled = hxRolledBy(), list = hxFiltered().slice().reverse(), shown = list.slice(0, f.n);
+  const devs = Object.keys(HX.devices).concat(HX.entries.map(e => e.dev)).filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => ((HX.devices[b] || {}).last || 0) - ((HX.devices[a] || {}).last || 0));
+  const chip = id => `<span class="hx-dev"><i style="background:${devColor(id)}"></i>${esc(devName(id))}${id === DEVICE.id ? ' (this one)' : ''}</span>`;
+  const day = at => new Date(at).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  const tm = at => new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  let lastDay = '';
+  const rows = shown.map(e => {
+    const dl = day(e.at), head = dl !== lastDay ? `<div class="hx-day">${dl}</div>` : ''; lastDay = dl;
+    const by = rolled[e.id], items = e.d.filter(d => d.c !== 'trash' || e.d.length === 1);
+    const lis = items.slice(0, 6).map(d => `<li>${esc(hxDiffText(d))}</li>`).join('') + (items.length > 6 ? `<li>…and ${items.length - 6} more</li>` : '');
+    return `${head}<div class="hx ${by ? 'rolled' : ''}"><div class="hx-h"><b>${esc(hxTitle(e))}</b><span class="hx-t">${tm(e.at)}</span></div>
+      <div class="row" style="margin-top:6px;align-items:center">${chip(e.dev)}${by ? `<span class="small muted">Rolled back ${esc(day(by.at))}, ${tm(by.at)}</span>` : ''}</div>
+      ${items.length > 1 || e.rb ? `<ul>${lis}</ul>` : ''}
+      <div class="row">${by ? '' : `<button class="btn sm" data-act="hxUndo" data-id="${e.id}">${e.rb ? 'Undo This Rollback' : 'Roll Back'}</button>`}</div></div>`;
+  }).join('');
+  const nDev = f.dev ? hxFiltered().filter(e => !rolled[e.id] && !e.rb).length : 0;
+  return `${backBtn()}<div class="d-title">Change History</div>
+    <div class="d-sub">Every change to your atlas, with the device it came from. Roll back one change, or everything a device did.</div>
+    <div class="visit" style="align-items:center"><div class="tx" style="flex:1"><b>This device</b><div class="small muted">${esc(DEVICE.name || 'Not named yet')} · ${esc(deviceGuess())}</div></div><button class="btn sm" data-act="hxRename">${DEVICE.name ? 'Rename' : 'Name It'}</button></div>
+    <div class="hx-filters"><select id="hxDev"><option value="">All devices</option>${devs.map(id => `<option value="${esc(id)}" ${f.dev === id ? 'selected' : ''}>${esc(devName(id))}${id === DEVICE.id ? ' (this one)' : ''}</option>`).join('')}</select>
+      <select id="hxSince">${HX_SINCE.map(([k, l]) => `<option value="${k}" ${f.since === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+    ${f.dev && nDev ? `<button class="btn wide danger" data-act="hxDevRollback">Roll Back ${nDev} Change${nDev === 1 ? '' : 's'} From ${esc(devName(f.dev))}${f.since !== 'all' ? ' (' + HX_SINCE.find(s => s[0] === f.since)[1].toLowerCase() + ')' : ''}</button>` : ''}
+    ${rows || `<div class="empty small muted" style="padding:18px 0">${HX.entries.length ? 'No changes match these filters.' : 'No changes yet. From now on, edits on any device that has this version show up here.'}</div>`}
+    ${list.length > shown.length ? `<button class="btn wide" data-act="hxMore">Show More (${list.length - shown.length} older)</button>` : ''}
+    <div class="small muted" style="margin-top:12px">Recorded: pins, hikes, routes, areas, peak lists, saved maps, visits, names, notes, wish list, favorites, hidden map items, Deleted Items, the range outline, the park border, ideas and pin types. Not recorded: photos, map data downloads and per-device settings. A rollback is itself a change, so it can be undone. The newest ${HX_MAX.toLocaleString()} changes are kept.</div>`;
+}
+async function hxUndoAction(id) {
+  const e = HX.entries.find(x => x.id === id); if (!e) return;
+  hxFlush();
+  const laterE = HX.entries.filter(x => x.at > e.at && x.id !== e.id && !(x.rb || []).includes(e.id));
+  const touchedLater = d => laterE.some(x => x.d.some(o => o.c === d.c && o.id === d.id));
+  const stale = e.d.filter(d => !hxIsCurrent(d) || touchedLater(d)).length;
+  if (stale) {
+    const later = laterE.filter(x => x.d.some(d => e.d.some(o => o.c === d.c && o.id === d.id))).map(x => devName(x.dev)).filter((v, i, a) => a.indexOf(v) === i);
+    const ok = await dialog({ title: 'Changed Again Since', ok: 'Roll Back Anyway', cancel: 'Cancel', body: esc(`${stale} of the ${e.d.length} item${e.d.length === 1 ? '' : 's'} in this change ${stale === 1 ? 'was' : 'were'} changed again later${later.length ? ' (by ' + later.join(', ') + ')' : ''}. Rolling back puts ${stale === 1 ? 'it' : 'them'} back to how ${stale === 1 ? 'it was' : 'they were'} before this change, which also undoes those later edits.`) });
+    if (!ok) return;
+  }
+  const r = hxRollback([id], { force: true });
+  toast(r.done ? 'Rolled back.' : 'Nothing to roll back: it already looks like that.');
+}
+async function hxDevRollbackAction() {
+  const f = view.hx || {}, rolled = hxRolledBy(), ids = hxFiltered().filter(e => !rolled[e.id] && !e.rb).map(e => e.id);
+  if (!ids.length) return;
+  const ok = await sure(`Roll back ${ids.length} change${ids.length === 1 ? '' : 's'} from ${devName(f.dev)}?`, { ok: 'Roll Back', body: esc('Newest first. Anything another device changed again afterwards is left alone (you will see how many). You can undo the whole rollback from this page.') });
+  if (!ok) return;
+  const r = hxRollback(ids, { label: `Rolled back ${ids.length} change${ids.length === 1 ? '' : 's'} from ${devName(f.dev)}` });
+  toast(`Rolled back ${r.done} item${r.done === 1 ? '' : 's'}.` + (r.skipped ? ` ${r.skipped} left alone because they were changed again later.` : ''), 8000);
 }
 function updateSaveState() { if (!$('menu').hidden) renderMenu(); }
 function saveLocal() {
@@ -4446,7 +4780,7 @@ function renderSideInner() {
   const d = view.detail;
   if (d) {
     if (d.type === 'track') { const tt = findTrack(d.id); if (tt && hikeType(tt) === 'uploaded') { body().innerHTML = pageReview(Object.assign({}, d, { step: d.step || 'path' })); return; } }
-    const fn = { review: pageReview, print: pagePrint, feature: pageFeature, route: pageRoute, track: pageTrack, pin: pagePin, editor: pageEditor, history: pageHistory, settings: pageSettings, help: pageHelp, ideas: pageIdeas, offline: pageOffline, report: pageReport, area: pageArea, areaEditor: pageAreaEditor, list: pageList, trash: pageTrash, hikeEdit: pageHikeEdit }[d.type];
+    const fn = { review: pageReview, print: pagePrint, feature: pageFeature, route: pageRoute, track: pageTrack, pin: pagePin, editor: pageEditor, history: pageHistory, settings: pageSettings, help: pageHelp, ideas: pageIdeas, offline: pageOffline, report: pageReport, area: pageArea, areaEditor: pageAreaEditor, list: pageList, trash: pageTrash, hikeEdit: pageHikeEdit, changes: pageChanges }[d.type];
     if (fn) { body().innerHTML = fn(d); updatePrintFrame(); return; }
   }
   updatePrintFrame();
@@ -5689,7 +6023,9 @@ function applyTheme() {
   try { pref = pref || localStorage.getItem('teton-theme') || 'auto'; } catch (e) { pref = pref || 'auto'; }
   const eff = pref === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : pref;
   document.documentElement.setAttribute('data-theme', eff);
-  const m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', eff === 'dark' ? '#111111' : '#1f5e2c');
+  // V20: phones have no green title bar any more, so the strip iOS draws behind the clock is a neutral dark in both themes
+  const phone = window.matchMedia('(max-width:800px)').matches;
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', phone ? '#15181a' : eff === 'dark' ? '#111111' : '#1f5e2c');
 }
 function setTheme(pref) {
   data.settings.theme = pref;
@@ -5905,6 +6241,10 @@ function onAction(act, el) {
   const t = (d.type === 'track' || d.type === 'hikeEdit' || d.type === 'review') ? findTrack(d.id) : null, r = d.type === 'route' ? findRoute(d.id) : null, p = d.type === 'pin' ? findPin(d.id) : null;
   switch (act) {
     case 'back': goBack(); break;
+    case 'hxUndo': hxUndoAction(el.dataset.id); break;
+    case 'hxDevRollback': hxDevRollbackAction(); break;
+    case 'hxRename': askDeviceName(false).then(() => renderSide()); break;
+    case 'hxMore': view.hx.n += 60; renderSide(); break;
     case 'fetchAll': fetchArea(BBOX.s, BBOX.w, BBOX.n, BBOX.e, 5).catch(e => toast('Download failed: ' + e.message + '. Check your connection and try again.', 8000)); break;
     case 'fetchView': {
       const b = map.getBounds();
@@ -6218,6 +6558,7 @@ $('side').addEventListener('click', e => {
   const dw = e.target.closest('[data-delwp]'); if (dw) { removePoint(+dw.dataset.delwp); return; }
 });
 $('side').addEventListener('change', e => {
+  if (e.target.id === 'hxDev' || e.target.id === 'hxSince') { view.hx = Object.assign(view.hx || {}, { [e.target.id === 'hxDev' ? 'dev' : 'since']: e.target.value, n: 40 }); renderSide(); return; }
   const id = e.target.id;
   if (id === 'pmFile' && e.target.files[0]) { const f = e.target.files[0]; pmInstall(f, f.name); e.target.value = ''; }
   if (id === 'pmOn') pmToggle(e.target.checked);
@@ -6408,6 +6749,7 @@ function renderMenu() {
     ${item('importJson', 'restore', 'Restore a Backup')}
     ${syncOn() ? '' : item('save', 'save', 'Save File', dirty ? 'You have unsaved changes' : 'Everything is saved', dirty ? '<span class="mdot"></span>' : '')}
     ${item('trash', 'trash', 'Deleted Items', 'Bring back anything you removed')}
+    ${item('changes', 'history', 'Change History', DEVICE.name ? 'Who changed what · this is ' + esc(DEVICE.name) : 'Who changed what, by device')}
     <div class="mh">App</div>
     <div class="segbtn" role="group" aria-label="Appearance">${[['light', '☀︎ Light'], ['dark', '☾ Dark'], ['auto', 'Auto']].map(([k, l]) => `<button data-theme-set="${k}" class="${th === k ? 'on' : ''}">${l}</button>`).join('')}</div>
     ${item('settings', 'gear', 'Settings')}
@@ -6437,6 +6779,7 @@ $('menu').addEventListener('click', e => {
   if (m === 'exportJson') exportBackup();
   if (m === 'pdfMap') { leave(); openDetail({ type: 'print' }); }
   if (m === 'savedMaps') { leave(); openDetail({ type: 'print', tab: 'saved' }); }
+  if (m === 'changes') { leave(); hxFlush(); openDetail({ type: 'changes' }); }
   if (['history', 'settings', 'help', 'offline', 'trash'].includes(m)) { leave(); openDetail({ type: m }); if (m === 'offline') setTimeout(updateOffStatus, 50); }
 });
 // Photos: how much space they take in the file, shown in Settings
@@ -6767,12 +7110,12 @@ $('layers').addEventListener('change', e => { if (e.target.dataset && e.target.d
 $('gpxFile').addEventListener('change', async e => { const files = [...e.target.files]; e.target.value = ''; if (files.length) await importGPXFiles(files); });
 $('oldFile').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  try { const n = mergeData(extractEmbedded(await f.text())); for (const t of data.tracks) matchTrack(t); touch(); if (data.settings.photoStore) migratePhotosToStore(); toast(`Imported ${n} items from ${f.name}.`, 6000); }
+  try { HX.tag = { label: 'Imported from ' + f.name }; const n = mergeData(extractEmbedded(await f.text())); for (const t of data.tracks) matchTrack(t); touch(); if (data.settings.photoStore) migratePhotosToStore(); toast(`Imported ${n} items from ${f.name}.`, 6000); }
   catch (err) { toast('Could not import: ' + err.message, 7000); }
 });
 $('jsonFile').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  try { const n = mergeData(JSON.parse(await f.text())); touch(); if (data.settings.photoStore) migratePhotosToStore(); toast(`Imported ${n} items.`); } catch (err) { toast('Could not import: ' + err.message, 7000); }
+  try { HX.tag = { label: 'Restored a backup (' + f.name + ')' }; const n = mergeData(JSON.parse(await f.text())); touch(); if (data.settings.photoStore) migratePhotosToStore(); toast(`Imported ${n} items.`); } catch (err) { toast('Could not import: ' + err.message, 7000); }
 });
 document.addEventListener('keydown', e => {
   const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
@@ -6793,6 +7136,15 @@ function setCollapsed(on) {
   if (map) { const t0 = performance.now(); const tick = () => { map.resize(); if (performance.now() - t0 < 320) requestAnimationFrame(tick); }; tick(); }
 }
 $('collapseBtn').addEventListener('click', () => setCollapsed(!document.body.classList.contains('collapsed')));
+// V20, phones: swipe up on the bottom bar (or its tab) to open the panel, like pulling up a sheet
+for (const id of ['toolbar', 'collapseBtn']) {
+  let y0 = null, x0 = 0;
+  $(id).addEventListener('touchstart', e => { const t = e.touches[0]; y0 = (window.innerWidth <= 800 && document.body.classList.contains('collapsed') && !$('toolbar').classList.contains('ctx')) ? t.clientY : null; x0 = t.clientX; }, { passive: true });
+  $(id).addEventListener('touchend', e => {
+    if (y0 === null) return; const t = e.changedTouches[0], dy = t.clientY - y0, dx = Math.abs(t.clientX - x0); y0 = null;
+    if (dy < -28 && dx < Math.abs(dy)) { if (e.cancelable) e.preventDefault(); setCollapsed(false); }
+  });
+}
 
 // ================= GitHub sync (private data repo) =================
 // Your data lives in two files in a private repo: <folder>/atlas.json (trips, pins, ideas, notes...) and <folder>/photos.json.
@@ -6902,6 +7254,7 @@ async function uploadPhotoQueue(dir) {
 async function syncOnce() {
   const { dir, shas } = await syncListing();
   const st = sync.st;
+  hxFlush();                                                                   // V20: record local edits before anything from another device arrives
   let needPush = st.pending || !shas['atlas.json'];
   if (shas['atlas.json'] && shas['atlas.json'] !== st.sha.atlas) {            // remote has changes we have not seen
     const remote = await syncRead(shas['atlas.json']);
@@ -6915,7 +7268,25 @@ async function syncOnce() {
       needPush = true;
     }
     st.sha.atlas = shas['atlas.json']; if (shas['photos.json']) st.sha.photos = shas['photos.json'];
+    hxRebase();                                                                // changes that came from other devices are theirs, not this device's
     saveLocal(); updateSources(); renderSide();
+  }
+  // V20: Change History travels in its own file, combined change by change
+  let hxPush = HX.pending || (!shas['history.json'] && HX.entries.length > 0);
+  if (shas['history.json'] && shas['history.json'] !== st.sha.history) {
+    const r = hxMergeRemote(await syncRead(shas['history.json']));
+    st.sha.history = shas['history.json'];
+    if (r.localOnly) hxPush = true;
+    idbPut('history', { entries: HX.entries, devices: HX.devices, pending: hxPush });
+    if (view.detail && view.detail.type === 'changes') renderSide();
+  }
+  if (hxPush) {
+    hxTouchDevice();
+    const nh = await syncWrite(dir, 'history.json', hxPayload(), shas['history.json']);
+    if (nh === null) return false;
+    st.sha.history = nh; HX.pending = false;
+    for (const e of HX.entries) if (e.dev === DEVICE.id) e.up = 1;              // uploaded changes are never merged into again
+    idbPut('history', { entries: HX.entries, devices: HX.devices, pending: false });
   }
   if (needPush) {
     const sig = photoSig();
@@ -6972,7 +7343,8 @@ function updateNetPill() {
 window.addEventListener('offline', updateNetPill);
 for (const id of ['netPill', 'netPill2']) $(id).addEventListener('click', e => { e.stopPropagation(); if (!navigator.onLine) toast('Offline. Your changes are kept on this device and upload when you are back online.', 5000); else if (syncOn()) syncNow(true); else saveFile(); });
 setInterval(updateNetPill, 30000);
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(); else hxFlush(); });
+window.addEventListener('pagehide', () => hxFlush());
 window.addEventListener('online', () => { updateNetPill(); syncNow(); });
 
 // ================= Offline base map (PMTiles) =================
@@ -7359,6 +7731,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
   } catch (e) { /* ignore */ }
   if (!(data.osm && data.osm.features && data.osm.features.length)) { const cached = await idbGet('osm'); if (cached && cached.features) data.osm = cached; }
   indexFeatures(); migrateV17();
+  await hxLoad(); hxRebase();                                   // V20: changes from here on are recorded
   await pmLoad();
   applyTheme();
   if (window.maplibregl) initMap(); else toast('The map engine could not load. Connect to the internet and reload.', 0);
@@ -7372,6 +7745,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
   // Find unnamed peaks in the terrain once (quietly); Layers → Show on Map → Scan Again redoes it
   if (FEATS.length && !data.identified && navigator.onLine) setTimeout(() => { if (!data.identified) identifyPeaks({ quiet: true, render: true }).catch(() => { /* offline: try next time */ }); }, 8000);
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* optional */ }
+  if (!DEVICE.name && !DEVICE.asked) setTimeout(() => { if ($('dlg').hidden) askDeviceName(true); }, 2500);   // V20: name each device once
 })();
 </script>
 </body>
