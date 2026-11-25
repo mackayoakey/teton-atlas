@@ -645,7 +645,7 @@ html[data-theme] .mapbtn.on,html[data-theme=dark] .mapbtn.on{background:var(--in
 select.fsel{width:auto;flex:none;min-width:7.5em;padding:6px 28px 6px 10px;font-size:13px}
 .denrow.one{flex-wrap:wrap;align-items:center}
 .denck{position:relative;padding-right:20px;white-space:nowrap}
-.ib{position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;background:var(--card);color:var(--muted);border:1px solid var(--line);font:italic 700 9.5px/13px Georgia,serif;text-align:center;cursor:help;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.ib{text-transform:lowercase;position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;background:var(--card);color:var(--muted);border:1px solid var(--line);font:italic 700 9.5px/13px Georgia,serif;text-align:center;cursor:help;box-shadow:0 1px 2px rgba(0,0,0,.15)}
 .ib:hover{color:var(--ink);border-color:var(--ink)}
 .msel{position:relative}
 .msel>summary{list-style:none;cursor:pointer}
@@ -778,7 +778,7 @@ a.srow[data-open]:hover{background:var(--hover)}
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V19';
+const APP_VERSION = 'V19.1';
 // Rough outline of the Teton Range (Teton Pass to Conant Pass, Jackson Hole side and Teton Valley side). Editable from the Layers panel.
 // Borders you can restyle (Layers -> Borders). Add an entry here to make another outline styleable.
 const BORDERS = [
@@ -1039,6 +1039,8 @@ const VERSIONS = [
     'Smart snap a section of any shape: in the shape editor press 🧲 Snap a Section, click where it starts and ends on the outline, then switch on Smart Snap and that part follows the roads and rivers (or trails and lake shores). Choose how far to look (100, 300 or 800 m) and ⇄ Other Side. Click the map to keep it and move on; click the outline to start the next section.',
     'Works for your areas, the Teton Range outline and the Grand Teton NP border.',
     'The GTNP border is now editable: Layers → Borders → Grand Teton NP → Edit the Outline. Your edited border syncs; Use the Official Outline puts it back.'] },
+  { name: 'Teton Atlas V19.1', date: '2026-11-25', notes: [
+    'Info buttons always show a lower-case i (some were turned into a capital I by the title-case styling).'] },
 ];
 
 // ================= State =================
@@ -1275,7 +1277,7 @@ function applyTitleCase(root) {
   if (!root) return;
   root.querySelectorAll(TC_SEL).forEach(el => {
     if (el.closest('[data-nocase]')) return;
-    const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: n => n.parentElement && n.parentElement.closest('.muted, .sv, .sub, .nocase, input, textarea, select, [data-nocase]') && n.parentElement.closest('.muted, .sv, .sub, .nocase, input, textarea, select, [data-nocase]') !== el ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+    const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: n => n.parentElement && n.parentElement.closest('.muted, .sv, .sub, .nocase, .ib, input, textarea, select, [data-nocase]') && n.parentElement.closest('.muted, .sv, .sub, .nocase, .ib, input, textarea, select, [data-nocase]') !== el ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
     for (let n = w.nextNode(); n; n = w.nextNode()) { const t = titleCase(n.nodeValue); if (t !== n.nodeValue) n.nodeValue = t; }
   });
 }
@@ -4721,7 +4723,7 @@ function openDash() { closeAllPops(); $('dash').hidden = false; renderDash(); po
 function closeDash() { if ($('dash') && !$('dash').hidden) { $('dash').hidden = true; popButtons(); } }
 function closeAllPops() { for (const k of ['menu', 'layers', 'markers']) $(k).hidden = true; }
 // A small (i) in the corner of a pill: hover or tap to read what it means
-const ib = txt => `<span class="ib" data-info="${esc(txt)}" title="${esc(txt)}" role="button" tabindex="0">i</span>`;
+const ib = txt => `<span class="ib nocase" data-info="${esc(txt)}" title="${esc(txt)}" role="button" tabindex="0">i</span>`;
 function completion() {
   const o = dashOpts(), ro = rangeOnly();
   const keep = f => (!ro || inRangeF(f)) && (!!nameOf(f) || (f.ident ? o.ident : f.kind === 'lake' ? o.unLakes : f.kind === 'peak' ? o.unPeaks : o.unOther));
