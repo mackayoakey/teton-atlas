@@ -1043,7 +1043,7 @@ const VERSIONS = [
     'Info buttons always show a lower-case i (some were turned into a capital I by the title-case styling).'] },
   { name: 'Teton Atlas V19.2', date: '2026-11-25', notes: [
     'While you mark the trail you took (or draw a section onto a hike), a GPS line opacity slider makes your recorded line see-through so the trails under it show. Starts at 70%.',
-    'Parts you trim away are now hidden on the map. They only show (gray dotted) on that hike\'s Trim or Add page, where you can restore them.',
+    'Parts you trim away are now dropped from the hike completely (no more gray dotted line). Undo or Back to Original still brings them back. Parts trimmed before this update are dropped too.',
     'Trimming after you have marked the trail now trims the GPS line (which measures distance and climbing), not the blue line. Restoring, deleting and adding parts work the same way.'] },
 ];
 
@@ -1084,6 +1084,8 @@ function normalize(d) {
       const ap = t.segments.filter(s => s.src === 'approved').flatMap(s => s.pts), t0 = ap.length && ap[0][3], t1 = ap.length && ap[ap.length - 1][3];
       if (t0 != null && t1 != null && t1 > t0) for (const s of t.segments) if (s.src === 'ignored' && s.pts.length > 1 && s.pts.every(q => q[3] != null && q[3] >= t0 - 1 && q[3] <= t1 + 1)) s.meas = true;
     }
+    // V19.3: trimmed parts are dropped from the hike (Back to Original still has them in t.orig)
+    if (t.orig && t.segments.some(s => s.src === 'ignored' && !s.meas) && t.segments.some(s => s.src !== 'ignored' && s.pts.length > 1)) t.segments = t.segments.filter(s => s.src !== 'ignored' || s.meas);
     for (const s of t.segments || []) s.pts = s.pts || [];
     if (t.approved === undefined) t.approved = true; // hikes from before V5 were already counted
     if (!Array.isArray(t.camps)) t.camps = [];
@@ -2618,10 +2620,9 @@ function updateSources() {
     if (!inFilter(t.date) || !trackShown(t)) continue;
     // Hike status: planned and pending hikes show on the map, but only approved, taken hikes count in the heatmap
     const ts = t.planned ? 'planned' : t.approved === false ? 'pending' : 'done', isSel = (sel.type === 'track' || sel.type === 'hikeEdit' || sel.type === 'review') && sel.id === t.id;
-    // cut-away parts (set aside, not measuring) are hidden, except on this hike's Trim or Add page where you can restore them
-    const showCut = sel.type === 'hikeEdit' && sel.id === t.id;
+    // trimmed parts are dropped from hikes; any left over (set aside, not measuring) are never drawn
     t.segments.forEach((s, si) => {
-      if (s.pts.length < 2 || (s.src === 'ignored' && !s.meas && !showCut)) return;
+      if (s.pts.length < 2 || (s.src === 'ignored' && !s.meas)) return;
       trackF.push({ type: 'Feature', properties: { tid: t.id, si, src: s.src, ts, sel: isSel }, geometry: { type: 'LineString', coordinates: s.pts.map(p => [p[0], p[1]]) } });
       if (ts === 'done' && s.src !== 'ignored' && hm !== 'places') for (const p of resample(s.pts, 40)) heatF.push({ type: 'Feature', properties: { w: 1 }, geometry: { type: 'Point', coordinates: [p[0], p[1]] } });
     });
@@ -3306,6 +3307,10 @@ function applyOps(t, fn, sel) {
   ensureTimes(t);
   const meas = !!sel && isMeasured(t), F = flatTrack(t), act = []; F.forEach((f, i) => { if ((sel || (x => !x.ig))(f)) act.push(i); });
   const err = fn(F, act); if (err) { toast(err, 4500); return false; }
+  // Trimmed (set-aside) points are dropped for good; Undo and Back to Original still bring them back.
+  // A dropped stretch in the middle leaves a gap, so nothing is ever credited or measured across it.
+  // (GPS points behind a marked trail are set aside but kept: ig + ms, they measure the hike.)
+  { let cut = false, n = 0; for (const f of F) { if (f.ig && !f.ms) { cut = true; continue; } if (cut && n) f.gap = true; cut = false; F[n++] = f; } F.length = n; }
   fillTimesF(F);
   if (meas) {
     // the blue line's times follow the GPS line that is left (they were spread over the whole recording before)
@@ -3582,24 +3587,24 @@ function hedPlanHTML() {
     if (k === 'before') return box('A new section goes <b>before</b> the current start (the blue + on the map). Draw it, or join a GPX file recorded earlier.', how);
     if (k === 'after') return box('A new section goes <b>after</b> the current end (the blue + on the map). Draw it, or join a GPX file recorded later.', how);
     if (b <= a) return box('Move <b>A</b> and <b>B</b> onto the recorded points on either side of the missing part (B must be after A).');
-    return box(`The new section <b>replaces</b> the ${fmtMi(cum[b] - cum[a])} mi between A and B. What was there is kept aside in gray. If A and B are right next to each other, nothing is replaced: the new part just fills the gap.`, how);
+    return box(`The new section <b>replaces</b> the ${fmtMi(cum[b] - cum[a])} mi between A and B. What was there is removed (Undo brings it back). If A and B are right next to each other, nothing is replaced: the new part just fills the gap.`, how);
   }
   let ok = false, label = '', note = '';
   if (hed.mode === 'start') {
     if (a > 0) { ok = true; label = `Cut off the first ${fmtMi(cum[a])} mi${dur(0, a)}`; note = `The hike will start at ${hed.hasT ? clk(tm[a]) : fmtMi(cum[a]) + ' mi in'}.`; }
-    else note = 'Drag the green <b>A</b> marker forward. Everything before it (red) will be set aside.';
+    else note = 'Drag the green <b>A</b> marker forward. Everything before it (red) will be removed.';
   } else if (hed.mode === 'end') {
     if (b < N - 1) { ok = true; label = `Cut off the last ${fmtMi(tot - cum[b])} mi${dur(b, N - 1)}`; note = `The hike will end at ${hed.hasT ? clk(tm[b]) : fmtMi(cum[b]) + ' mi'}.`; }
-    else note = 'Drag the red <b>B</b> marker back. Everything after it (red) will be set aside.';
+    else note = 'Drag the red <b>B</b> marker back. Everything after it (red) will be removed.';
   } else if (hed.mode === 'mid') {
-    if (b - a >= 2) { ok = true; label = `Cut out ${fmtMi(cum[b] - cum[a])} mi${dur(a, b)}`; note = 'The part between A and B (red) is set aside. The rest stays, with a gap where it was.'; }
-    else note = 'Drag <b>A</b> and <b>B</b> apart. Everything between them (red) will be set aside.';
+    if (b - a >= 2) { ok = true; label = `Cut out ${fmtMi(cum[b] - cum[a])} mi${dur(a, b)}`; note = 'The part between A and B (red) is removed. The rest stays, with a gap where it was.'; }
+    else note = 'Drag <b>A</b> and <b>B</b> apart. Everything between them (red) will be removed.';
   } else {
     if (a > 0 || b < N - 1) { ok = true; label = `Keep only A to B (${fmtMi(cum[b] - cum[a])} mi)`; note = `Sets aside ${fmtMi(cum[a])} mi at the start and ${fmtMi(tot - cum[b])} mi at the end.`; }
-    else note = 'Drag <b>A</b> and <b>B</b> inward. Only the part between them stays; the rest (red) is set aside.';
+    else note = 'Drag <b>A</b> and <b>B</b> inward. Only the part between them stays; the rest (red) is removed.';
   }
   return `<div class="small" style="margin:8px 0">${note}</div><button class="btn primary big" data-act="hedApply" ${ok ? '' : 'disabled'}>✂ ${label || 'Choose what to cut'}</button>
-    <div class="small muted" style="margin-top:4px">Nothing is deleted: cut parts stay in gray below and can be restored. Only line that is still recorded or drawn counts toward trails, peaks and lakes.</div>`;
+    <div class="small muted" style="margin-top:4px">Cut parts are removed from the hike. Undo or Back to Original brings them back. Only line that is still recorded or drawn counts toward trails, peaks and lakes.</div>`;
 }
 function hedCardHTML(w) {
   const W = w.toUpperCase(), nm = w === 'a' ? 'Marker A' : 'Marker B';
@@ -3662,7 +3667,7 @@ function hedOp(kind) {
   hed.a = 0; hed.b = Infinity; hedLoad(t);
   const left = hed.cum[hed.pts.length - 1] || 0;
   hedModeInit(hed.mode);
-  hedAfter(t, `Cut off ${fmtMi(Math.max(0, total - left))} mi${t.timesSet ? `. The hike now runs ${clk(t.start / 1000)} to ${clk(t.end / 1000)}` : ''}. Places only on that part no longer count. It is kept aside in gray; restore it below.`);
+  hedAfter(t, `Cut off ${fmtMi(Math.max(0, total - left))} mi${t.timesSet ? `. The hike now runs ${clk(t.start / 1000)} to ${clk(t.end / 1000)}` : ''}. It is removed from the hike, and places only on that part no longer count. Undo brings it back.`);
 }
 // Add a section: attach at the start, the end, or between A and B. Drawing opens the map editor; a GPX file is joined directly.
 function hedAdd(kind) {
@@ -3793,9 +3798,9 @@ function pageHikeEdit(d) {
       <div class="row"><div style="flex:1"><label class="f">Start</label><input type="time" id="hedT0" step="1" value="${ts ? clockSec(t.start / 1000) : ''}"></div><div style="flex:1"><label class="f">End</label><input type="time" id="hedT1" step="1" value="${ts ? clockSec(t.end / 1000) : ''}"></div></div>
       <div class="row"><button class="btn" data-act="hedTimes">Apply times</button></div>
     </details>
-    <h2 class="sec">Cut-away parts <span class="small muted">${parts.length}</span></h2>
+    ${parts.length ? `<h2 class="sec">Cut-away parts <span class="small muted">${parts.length}</span></h2>
     ${parts.map(x => `<div class="visit"><div class="tx"><b>${where[x.where]}</b> <span class="muted small">${fmtMi(x.len)} mi${x.t0 != null && x.t1 != null ? ' · ' + clk(x.t0) + '–' + clk(x.t1) : ''}</span></div><button class="btn sm" data-act="hedRestore" data-from="${x.from}" data-to="${x.to}">Restore</button>${x.where !== 'middle' ? `<button class="btn sm danger" data-act="hedDrop" data-from="${x.from}" data-to="${x.to}">Delete</button>` : ''}</div>`).join('') || '<div class="empty small">Nothing cut away.</div>'}
-    ${parts.length > 1 ? '<div class="row"><button class="btn sm" data-act="hedRestoreAll">Restore all</button></div>' : ''}
+    ${parts.length > 1 ? '<div class="row"><button class="btn sm" data-act="hedRestoreAll">Restore all</button></div>' : ''}` : ''}
     <div class="row"><button class="btn" data-act="hedUndo" ${stack.length ? '' : 'disabled'}>↶ Undo last change</button><button class="btn" data-act="hedRevert" ${t.orig ? '' : 'disabled'}>Back to original</button></div>
     <div class="small muted">Tip: on a computer, ← → nudge the selected marker (Shift = 10 points) and Ctrl/Cmd+Z undoes.</div>
     <div class="row"><button class="btn primary" style="flex:1;padding:12px" data-act="hedDone">Done</button></div>
@@ -5301,7 +5306,7 @@ function pageReview(d) {
     ${t.edited && timed ? `<div class="small muted" style="margin:-8px 0 8px">ⓘ Start and end times follow your path edits.</div>` : ''}
     <div class="steps">${REVIEW_STEPS.map(([k, n, l]) => `<button data-act="revStep" data-k="${k}" class="${k === step ? 'on' : ''}"><b>${n}</b>${l}</button>`).join('')}</div>`;
   if (step === 'path') {
-    const n = hedStack(t.id).length, ign = t.segments.filter(x => x.src === 'ignored').length, hasAppr = t.segments.some(x => x.src === 'approved');
+    const n = hedStack(t.id).length, ign = t.segments.filter(x => x.src === 'ignored' && !x.meas).length, hasAppr = t.segments.some(x => x.src === 'approved');
     return head + `
       ${(() => { const pc = pathCoverage(t), rv = reviewOf(t);
         if (!pc) return `<div class="notice warn"><b>Mark the trail you took.</b> Tap along your route and it snaps to the trails. Use ⛺ Camp Here on the points where you slept to split the days. Your distance still comes from the GPS line.</div>`;
