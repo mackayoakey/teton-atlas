@@ -137,7 +137,7 @@ body.collapsed #toolbar,body.collapsed #toast{left:50%}
 #side header{display:flex;align-items:center;gap:10px;padding:16px 20px 8px}
 #side header svg{flex:none}
 #side header h1{font-size:20px;margin:0;letter-spacing:-.01em}
-.hm{width:26px;height:26px;border-radius:50%;background:#2e7d32;color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);cursor:grab}.hm.b{background:#c62828}.hm.a{background:#c62828}.hm.sel{outline:3px solid #ffeb3b}
+.hm{width:26px;height:26px;border-radius:50%;background:#2e7d32;color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);cursor:grab}.hm.b{background:#c62828}.hkpick{display:flex;gap:10px;align-items:flex-start;padding:7px 2px;cursor:pointer}.hkpick input{margin-top:3px;width:auto;flex:none}.hkpick>span{flex:1;text-align:left}.hkpick span{display:flex;flex-direction:column}.hkpick[hidden]{display:none}.hm.a{background:#c62828}.hm.sel{outline:3px solid #ffeb3b}
 .chip-v{font-size:11px;background:var(--soft);border-radius:999px;padding:2px 8px;color:var(--muted)}
 .search{padding:6px 20px 10px;position:relative}
 .search input{border-radius:999px;padding:10px 16px 10px 38px;background:var(--soft);border-color:transparent}
@@ -863,7 +863,7 @@ a.srow[data-open]:hover{background:var(--hover)}
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V20.5';
+const APP_VERSION = 'V20.6';
 // Rough outline of the Teton Range (Teton Pass to Conant Pass, Jackson Hole side and Teton Valley side). Editable from the Layers panel.
 // Borders you can restyle (Layers -> Borders). Add an entry here to make another outline styleable.
 const BORDERS = [
@@ -1161,6 +1161,7 @@ const VERSIONS = [
     'Activity type defaults to Backpacking (was Backpacking trip). Tidier Photos section (no count when empty, no Photos From date button); Save Details is full width, Delete This Hike sits below it.',
     'Viewpoints are gone from the app. Show on Map: Waterfalls, Completed Hikes. The menu always opens at the top with sections folded. The panel tab works over Stats.'] },
   { name: 'Teton Atlas V20.5', date: '2026-11-25', notes: ['While you review or edit an upload, the map shows only that hike: no past hikes, routes or heatmap.', 'Hide a Trail Section: click two points on a trail and the stretch between them is hidden (no showing, snapping or counting); a line you are drawing re-snaps around it. Undo or restore from Deleted Items.', 'Upload several GPX files (or a file with several recordings) as one trip.'] },
+  { name: 'Teton Atlas V20.6', date: '2026-11-26', notes: ['Trail Data: regions and updates. Add regions (Palisades & Snake River Range, Big Holes, Gros Ventre, Wyoming Range, Wind Rivers, southern Yellowstone, or the map view), check every region for new trails, and see what was added, changed or removed and where.', 'No more green trails: only sections you completed show, in the completed blue; seen or partly walked stays a normal trail.', 'Hikes you drew are blue too; completed lines are thinner.', 'While drawing, Mark a Place Seen or Completed on the day you were there.', 'Mark Been There / Seen It on a place page lets you pick the hike or hikes it was on.'] },
 ];
 
 // ================= State =================
@@ -1634,6 +1635,158 @@ async function fetchArea(s, w, n, e, bands) {
   toast(`Map data ready: ${FEATS.length.toLocaleString()} trails, peaks, lakes and more.`);
 }
 
+// ================= V20.6: trail data regions and update checks =================
+// OpenStreetMap trail data comes in by region (a box). Each region is downloaded in tiles of at most 0.5° × 0.5°.
+// settings.regions (synced) lists them; each device downloads the data itself (the data is not synced).
+// "Check for Trail Updates" downloads every region again and reports what is new, changed or gone, and where.
+const REGION_PRESETS = [
+  { id: 'teton', name: 'Teton Range', s: BBOX.s, w: BBOX.w, n: BBOX.n, e: BBOX.e },
+  { id: 'palisades', name: 'Palisades & Snake River Range (ID/WY)', s: 43.10, w: -111.65, n: 43.62, e: -110.85 },
+  { id: 'bigholes', name: 'Big Hole Mountains (ID)', s: 43.40, w: -111.80, n: 43.85, e: -111.25 },
+  { id: 'grosventre', name: 'Gros Ventre Range (WY)', s: 43.15, w: -110.80, n: 43.70, e: -110.00 },
+  { id: 'wyoming', name: 'Wyoming Range (WY)', s: 42.40, w: -110.90, n: 43.15, e: -110.40 },
+  { id: 'windriver', name: 'Wind River Range (WY)', s: 42.40, w: -110.05, n: 43.55, e: -108.85 },
+  { id: 'yellowstone-s', name: 'Southern Yellowstone', s: 44.10, w: -111.10, n: 44.60, e: -110.00 }
+];
+const REGION_MAX = 8;   // square degrees per region (about 32 tiles)
+function regions() {
+  const st = data.settings; if (!Array.isArray(st.regions)) st.regions = [];
+  if (!st.regions.some(r => r.id === 'teton')) st.regions.unshift(Object.assign({}, REGION_PRESETS[0], { at: (data.osm && data.osm.fetchedAt) || null }));
+  return st.regions;
+}
+let REG_HERE = null;   // regions downloaded on this device (IndexedDB 'regionsHere')
+async function regionsHere() { if (!REG_HERE) REG_HERE = new Set((await idbGet('regionsHere')) || (data.osm && data.osm.features && data.osm.features.length ? ['teton'] : [])); return REG_HERE; }
+const inBox = (c, r) => c[1] >= r.s && c[1] <= r.n && c[0] >= r.w && c[0] <= r.e;
+const featPts = f => f.coord ? [f.coord] : f.coords ? f.coords : f.polys ? f.polys.flat() : [];
+const featIn = (f, r) => featPts(f).some(c => inBox(c, r));
+const featAllIn = (f, r) => { const p = featPts(f); return p.length && p.every(c => inBox(c, r)); };
+function regionTiles(r) {
+  const out = [], ny = Math.max(1, Math.ceil((r.n - r.s) / 0.5 - 1e-9)), nx = Math.max(1, Math.ceil((r.e - r.w) / 0.5 - 1e-9)), h = (r.n - r.s) / ny, w = (r.e - r.w) / nx;
+  for (let i = 0; i < ny; i++) for (let j = 0; j < nx; j++) out.push([r.s + i * h, r.w + j * w, r.s + (i + 1) * h, r.w + (j + 1) * w]);
+  return out;
+}
+// Download one or more regions; returns a report of what changed
+async function fetchRegions(list, opts) {
+  opts = opts || {};
+  const tiles = list.flatMap(r => regionTiles(r).map(t => ({ r, t }))), byId = new Map(), byReg = new Map(list.map(r => [r.id, new Set()]));
+  for (let k = 0; k < tiles.length; k++) {
+    const { r, t } = tiles[k];
+    toast(`${opts.check ? 'Checking' : 'Downloading'} trail data… ${k + 1} of ${tiles.length}${list.length > 1 ? ` (${r.name})` : ''}`, 0);
+    const json = await overpass(overpassQuery(t[0], t[1], t[2], t[3]));
+    for (const el of json.elements) { const id = el.type + '/' + el.id; byId.set(id, el); byReg.get(r.id).add(id); }
+  }
+  const fresh = buildFeatures([...byId.values()]), freshIds = new Set(fresh.map(f => f.id));
+  const old = new Map(((data.osm && data.osm.features) || []).map(f => [f.id, f]));
+  const rep = { at: Date.now(), regions: list.map(r => r.name), byRegion: {}, added: [], changed: 0, gone: 0, goneKept: 0, first: !!opts.first };
+  const regOf = f => (list.find(r => byReg.get(r.id).has(f.id)) || list[0]);
+  for (const f of fresh) {
+    const o = old.get(f.id), r = regOf(f);
+    const b = rep.byRegion[r.name] = rep.byRegion[r.name] || { trails: 0, mi: 0, peaks: 0, lakes: 0, other: 0, changed: 0, gone: 0 };
+    if (r.id !== 'teton') f.rg = r.id; else if (o && o.rg) f.rg = o.rg;
+    if (!o) {
+      if (f.kind === 'trail') { const len = lineLen(f.coords); b.trails++; b.mi += len / 1609.34; rep.added.push({ id: f.id, kind: 'trail', name: f.name || '', len, reg: r.name, c: f.coords[Math.floor(f.coords.length / 2)] }); }
+      else { b[f.kind === 'peak' ? 'peaks' : f.kind === 'lake' ? 'lakes' : 'other']++; rep.added.push({ id: f.id, kind: f.kind, name: f.name || '', reg: r.name, c: f.coord || (f.polys && f.polys[0][0]) }); }
+    } else if (JSON.stringify(o.coords || o.coord || o.polys) !== JSON.stringify(f.coords || f.coord || f.polys) || o.name !== f.name) { rep.changed++; b.changed++; }
+    old.set(f.id, f);
+  }
+  // Gone from OpenStreetMap: only features wholly inside a region that was downloaded again. Kept if you have visits on them.
+  for (const r of list) for (const [id, f] of [...old]) {
+    if (freshIds.has(id) || f.ident || !featAllIn(f, r)) continue;
+    if (data.visits[id]) { rep.goneKept++; continue; }
+    old.delete(id); rep.gone++; (rep.byRegion[r.name] = rep.byRegion[r.name] || { trails: 0, mi: 0, peaks: 0, lakes: 0, other: 0, changed: 0, gone: 0 }).gone++;
+  }
+  data.osm = { fetchedAt: Date.now(), features: [...old.values()] };
+  indexFeatures(); migrateV17();
+  hxFlush(); HX.tag = { label: 'Map data update (hikes re-checked against the new trails)' };
+  for (const t of data.tracks) if (!t.planned && t.approved !== false) matchTrack(t);
+  await idbPut('osm', data.osm);
+  const here = await regionsHere(); for (const r of list) { here.add(r.id); r.at = Date.now(); const reg = regions().find(x => x.id === r.id); if (reg) reg.at = r.at; else regions().push(r); }
+  await idbPut('regionsHere', [...here]);
+  rep.mi = rep.added.filter(a => a.kind === 'trail').reduce((a, x) => a + x.len, 0) / 1609.34;
+  if (opts.check || !opts.first) { data.settings.trailCheck = { at: rep.at, regions: rep.regions, trails: rep.added.filter(a => a.kind === 'trail').length, mi: +rep.mi.toFixed(1), other: rep.added.filter(a => a.kind !== 'trail').length, changed: rep.changed, gone: rep.gone }; }
+  await idbPut('trailReport', rep); TRAIL_REP = rep;
+  touch();
+  return rep;
+}
+let TRAIL_REP = null;
+async function addRegion(r) {
+  const area = (r.n - r.s) * (r.e - r.w);
+  if (area > REGION_MAX) return toast(`That area is too big to download at once (${area.toFixed(1)} square degrees; the most is ${REGION_MAX}). Zoom in, or pick a smaller region.`, 7000);
+  const tiles = regionTiles(r).length;
+  if (tiles > 6 && !(await sure(`Download ${r.name}?`, { body: `${tiles} pieces. This can take a few minutes and adds the trails, peaks and lakes there to this device.`, ok: 'Download', danger: false }))) return;
+  try {
+    const rep = await fetchRegions([r], { first: !regions().some(x => x.id === r.id && x.at) });
+    toast(`${r.name}: added ${rep.added.filter(a => a.kind === 'trail').length.toLocaleString()} trails (${fmtMi(rep.mi * 1609.34)} mi) and ${rep.added.filter(a => a.kind !== 'trail').length.toLocaleString()} peaks, lakes and more.`, 8000, { label: 'Show', run: () => openDetail({ type: 'trailReport' }) });
+    renderSide();
+  } catch (e) { toast('Download failed: ' + e.message + '. Check your connection and try again.', 8000); }
+}
+async function checkTrailUpdates() {
+  const here = await regionsHere(), list = regions().filter(r => here.has(r.id));
+  if (!list.length) return toast('No trail data on this device yet. Download a region first.', 5000);
+  try {
+    const rep = await fetchRegions(list, { check: true });
+    const nt = rep.added.filter(a => a.kind === 'trail').length;
+    toast(nt || rep.changed || rep.gone ? `Trail data updated: ${nt} new trail${nt === 1 ? '' : 's'} (${fmtMi(rep.mi * 1609.34)} mi), ${rep.changed} changed, ${rep.gone} removed.` : 'Trail data is up to date. Nothing new in your regions.', 9000, { label: 'Details', run: () => openDetail({ type: 'trailReport' }) });
+    renderSide();
+  } catch (e) { toast('Update check failed: ' + e.message + '. Try again later; the public trail server may be busy.', 8000); }
+}
+function showNewOnMap(rep, which) {
+  if (!mapReady) return;
+  if (!map.getSource('newtr')) {
+    map.addSource('newtr', { type: 'geojson', data: fc([]) });
+    map.addLayer({ id: 'newtr-line', type: 'line', source: 'newtr', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#db2777', 'line-width': 4, 'line-opacity': 0.85 } });
+    map.addLayer({ id: 'newtr-pt', type: 'circle', source: 'newtr', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 6, 'circle-color': '#db2777', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
+  }
+  const ids = new Set((which || rep.added).map(a => a.id)), feats = [];
+  for (const id of ids) { const f = FEAT[id]; if (!f) continue; feats.push({ type: 'Feature', properties: {}, geometry: f.coords ? { type: 'LineString', coordinates: f.coords } : { type: 'Point', coordinates: f.coord || f.center } }); }
+  map.getSource('newtr').setData(fc(feats));
+  const pts = feats.flatMap(g => g.geometry.type === 'Point' ? [g.geometry.coordinates] : g.geometry.coordinates);
+  if (pts.length) fitTo(pts);
+}
+function clearNewOnMap() { if (mapReady && map.getSource('newtr')) map.getSource('newtr').setData(fc([])); }
+function pageRegions() {
+  const here = REG_HERE || new Set(), list = regions(), ck = data.settings.trailCheck;
+  const when = at => at ? new Date(at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : 'never';
+  const cnt = r => FEATS.filter(f => f.kind === 'trail' && featIn(f, r)).length;
+  return `${backBtn()}<div class="d-title">Trail Data</div>
+    <div class="d-sub">Trails, peaks, lakes, passes and waterfalls come from OpenStreetMap, downloaded by region. The whole world (or the whole US) is far too big to keep on a phone, so add the regions you hike in. Each region is checked for updates together.</div>
+    <div class="notice info">${ck ? `Last check ${when(ck.at)}: ${ck.trails} new trail${ck.trails === 1 ? '' : 's'} (${ck.mi} mi), ${ck.other} new places, ${ck.changed} changed, ${ck.gone} removed.` : 'Not checked for updates yet.'} <a href="#" data-act="trailReport">See the details</a></div>
+    <button class="btn primary big" data-act="trailCheck">🔄 Check All Regions for Trail Updates</button>
+    <label class="f">Remind me to check</label><select id="trailEvery">${[[0, 'Never'], [30, 'Every month'], [90, 'Every 3 months'], [180, 'Every 6 months']].map(([v, l]) => `<option value="${v}" ${(data.settings.trailEvery ?? 30) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    <h2 class="sec">Your Regions <span class="small muted">${list.length}</span></h2>
+    ${list.map(r => `<div class="visit"><span>🗺️</span><div class="tx"><b>${esc(r.name)}</b><div class="small muted">${here.has(r.id) ? `${cnt(r).toLocaleString()} trails · downloaded ${when(r.at)}` : 'Not downloaded on this device'}</div></div>
+      <button class="btn sm" data-act="regionZoom" data-id="${esc(r.id)}">Show</button><button class="btn sm ${here.has(r.id) ? '' : 'primary'}" data-act="regionGet" data-id="${esc(r.id)}">${here.has(r.id) ? 'Update' : 'Download'}</button>${r.id === 'teton' ? '' : `<button class="x" data-act="regionDel" data-id="${esc(r.id)}" title="Remove from the list (the data already downloaded stays)">×</button>`}</div>`).join('')}
+    <h2 class="sec">Add a Region</h2>
+    <button class="btn wide" data-act="regionView">＋ Download Trails in This Map View</button>
+    <div class="small muted" style="margin:4px 0 8px">Up to about ${REGION_MAX} square degrees (roughly 300 × 200 miles at this latitude).</div>
+    ${REGION_PRESETS.filter(p => !list.some(r => r.id === p.id)).map(p => `<div class="visit"><span>⛰️</span><div class="tx"><b>${esc(p.name)}</b></div><button class="btn sm" data-act="regionZoom" data-id="${p.id}">Show</button><button class="btn sm primary" data-act="regionAdd" data-id="${p.id}">Download</button></div>`).join('')}
+    <div class="small muted" style="margin-top:8px">Trails outside your Teton Range outline always show on the map, even with "Only Show What's Inside" on. Stats for the range still count only what is inside.</div>`;
+}
+function pageTrailReport() {
+  const rep = TRAIL_REP; clearNewOnMap();
+  if (!rep) return `${backBtn()}<div class="d-title">Trail Data Updates</div><div class="empty">No update report on this device yet. Run a check from Trail Data.</div>`;
+  const trails = rep.added.filter(a => a.kind === 'trail'), places = rep.added.filter(a => a.kind !== 'trail');
+  const named = {}; for (const a of trails) { const k = (a.name || 'Unnamed trail') + '|' + a.reg; (named[k] = named[k] || { name: a.name || 'Unnamed trails', reg: a.reg, len: 0, n: 0, ids: [] }); named[k].len += a.len; named[k].n++; named[k].ids.push(a.id); }
+  const rows = Object.values(named).sort((a, b) => b.len - a.len);
+  view.repRows = rows;
+  return `${backBtn()}<div class="d-title">Trail Data ${rep.first ? 'Download' : 'Updates'}</div>
+    <div class="d-sub">${new Date(rep.at).toLocaleString()} · ${esc(rep.regions.join(', '))}</div>
+    <div class="stats three">${statHTML(trails.length.toLocaleString(), '', 'New Trails')}${statHTML(fmtMi(rep.mi * 1609.34), 'mi', 'New Trail Miles')}${statHTML(places.length.toLocaleString(), '', 'New Places')}</div>
+    <div class="small muted" style="margin:6px 0">${rep.changed} changed · ${rep.gone} removed from OpenStreetMap${rep.goneKept ? ` · ${rep.goneKept} removed there but kept here because you have visits on them` : ''}</div>
+    ${trails.length || places.length ? '<button class="btn wide" data-act="repShowAll">Show Everything New on the Map (pink)</button>' : ''}
+    <h2 class="sec">By Region</h2>
+    ${Object.entries(rep.byRegion).map(([n, b]) => `<div class="kv1"><span>${esc(n)}</span><b>${b.trails} trails</b><span class="small muted">${b.mi.toFixed(1)} mi · ${b.peaks} peaks · ${b.lakes} lakes · ${b.changed} changed · ${b.gone} removed</span></div>`).join('') || '<div class="empty small">Nothing changed.</div>'}
+    ${rows.length ? `<h2 class="sec">New Trails <span class="small muted">${rows.length}</span></h2>${rows.slice(0, 150).map((g, i) => `<div class="visit"><span>🥾</span><div class="tx"><b>${esc(g.name)}</b><div class="small muted">${fmtMi(g.len)} mi${g.n > 1 ? ` · ${g.n} sections` : ''} · ${esc(g.reg)}</div></div><button class="btn sm" data-act="repShow" data-i="${i}">Show</button></div>`).join('')}${rows.length > 150 ? `<div class="small muted">…and ${rows.length - 150} more (Show Everything New)</div>` : ''}` : ''}
+    ${places.length ? `<h2 class="sec">New Places <span class="small muted">${places.length}</span></h2><div class="small">${esc(places.filter(p => p.name).slice(0, 40).map(p => p.name).join(', ') || 'Unnamed only')}${places.filter(p => p.name).length > 40 ? '…' : ''}</div>` : ''}`;
+}
+async function trailReminder() {
+  const every = data.settings.trailEvery ?? 30; if (!every || !navigator.onLine) return;
+  const here = await regionsHere(); if (!here.size) return;
+  const last = Math.max((data.settings.trailCheck || {}).at || 0, ...regions().filter(r => here.has(r.id)).map(r => r.at || 0));
+  if (!last || Date.now() - last < every * 864e5) return;
+  toast(`Trail data was last checked ${Math.round((Date.now() - last) / 864e5)} days ago.`, 15000, { label: 'Check Now', run: checkTrailUpdates });
+}
+
 // ================= IndexedDB cache (so map data survives reloads before saving) =================
 function idb() {
   return new Promise((res, rej) => {
@@ -1973,9 +2126,12 @@ function matchTrack(t) {
   const rv = t.review || {}, off = rv.off || {}, swim = rv.swim || {};
   const hits = matchHits(samples).filter(h => !off[h.id] && !off[WAY2GROUP[h.id]]);
   for (const id of rv.add || []) for (const fid of (isGroup(id) ? idsOf(id) : [id])) if ((FEAT[fid] || findArea(fid)) && !hits.some(h => h.id === fid)) hits.push({ id: fid, cov: 1, byYou: true });
+  // V20.6: places you marked Seen on this hike (while drawing, or from the place's page)
+  for (const id of Object.keys(rv.seen || {})) for (const fid of (isGroup(id) ? idsOf(id) : [id])) if ((FEAT[fid] || findArea(fid)) && !hits.some(h => h.id === fid)) hits.push({ id: fid, seen: true, byYou: true });
   for (const h of hits) {
-    const { id, ...extra } = h;
-    const v = Object.assign({ vid: uid(), date: t.date, src: 'track', trackId: t.id, status: 'been', note: '' }, extra);
+    const { id, seen, ...extra } = h;
+    const at = (rv.at || {})[id] || (rv.at || {})[WAY2GROUP[id]];   // V20.6: the day of a multi-day hike you marked it on
+    const v = Object.assign({ vid: uid(), date: at || t.date, src: 'track', trackId: t.id, status: seen ? 'seen' : 'been', note: '' }, extra);
     if (swim[id]) v.swim = true;
     if ((rv.full || {})[WAY2GROUP[id]] || (rv.full || {})[id]) v.cov = 1;   // you said you walked the whole section
     (data.visits[id] = data.visits[id] || []).push(v);
@@ -2931,8 +3087,8 @@ function restyleIcons() {
 // w = thickness or size (×), o = opacity (×), c = color where the color is not set by status.
 const LST = {
   trails: { label: 'Trails', kind: 'line', line: ['trail-line', 'trail-planned', 'trail-done'], cas: ['trail-case'] },
-  tracks: { label: 'My Hikes (GPS lines)', kind: 'line', line: ['track-garmin', 'track-manual', 'track-planned', 'track-pending', 'track-ignored'], cas: ['track-case'], color: { layers: ['track-garmin'], def: '#1d4ed8' } },
-  completed: { label: 'Completed Trails', kind: 'line', line: ['track-approved'], cas: ['track-approved-case'], color: { layers: ['track-approved'], def: '#1e6fe0' } },
+  tracks: { label: 'My Hikes (GPS lines)', kind: 'line', line: ['track-garmin', 'track-planned', 'track-pending', 'track-ignored'], cas: ['track-case'], color: { layers: ['track-garmin'], def: '#1d4ed8' } },
+  completed: { label: 'Completed Trails (and hikes you drew)', kind: 'line', line: ['track-approved', 'track-manual'], cas: ['track-approved-case'], color: { layers: ['track-approved', 'track-manual'], def: '#1e6fe0' } },
   routes: { label: 'My Routes', kind: 'line', line: ['route-line'], cas: ['route-case'] },
   peaks: { label: 'Peaks', kind: 'icon', m: 'peak' }, passes: { label: 'Passes', kind: 'icon', m: 'pass' }, places: { label: 'Waterfalls', kind: 'icon', m: 'waterfall' },
   lakes: { label: 'Lakes', kind: 'fill', fill: ['lake-fill'], line: ['lake-line'], m: 'lake' },
@@ -2993,7 +3149,7 @@ function applyStatusPaint() {
   map.setPaintProperty('lake-line', 'line-color', stMatch('st', '#2b7bbd'));
   map.setPaintProperty('area-fill', 'fill-color', stMatch('st', '#7cb342'));
   map.setPaintProperty('area-line', 'line-color', stMatch('st', '#558b2f'));
-  map.setPaintProperty('trail-done', 'line-color', ['case', ['==', ['get', 'st'], 'been'], stColor('been'), ['==', ['get', 'cov'], 2], stColor('done'), '#8cc56f']);
+  map.setPaintProperty('trail-done', 'line-color', lsOf('completed').c || '#1e6fe0');   // V20.6: no green trails; seen or partly walked stays a normal trail
   map.setPaintProperty('trail-planned', 'line-color', stColor('planned'));
 }
 // Peak labels only on the big peaks until you zoom in; everything from zoom 12.5
@@ -3027,12 +3183,12 @@ function addOverlays() {
   const trailW = (lo, hi) => ['interpolate', ['linear'], ['zoom'], 9, lo, 15, hi];
   // Trails, AllTrails style: a soft white edge under a dashed brown line; trails you have done turn solid in your status colors
   map.addLayer({ id: 'trail-case', type: 'line', source: 'trails', minzoom: 10, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-opacity': 0.75, 'line-width': trailW(2.4, 5.2) } });
-  map.addLayer({ id: 'trail-line', type: 'line', source: 'trails', filter: ['all', ['==', ['get', 'cov'], 0], ['!=', ['get', 'st'], 'planned'], ['!=', ['get', 'st'], 'been']], layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: {
+  map.addLayer({ id: 'trail-line', type: 'line', source: 'trails', filter: ['all', ['<', ['get', 'cov'], 2], ['!=', ['get', 'st'], 'planned'], ['!=', ['get', 'st'], 'been']], layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: {
     'line-color': ['match', ['get', 'hw'], 'track', '#8d6e63', '#a0522d'], 'line-width': trailW(1, 2.6), 'line-dasharray': [2, 1.4] } });
-  map.addLayer({ id: 'trail-planned', type: 'line', source: 'trails', filter: ['all', ['==', ['get', 'cov'], 0], ['==', ['get', 'st'], 'planned']], layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: { 'line-color': stColor('planned'), 'line-width': trailW(1.4, 3.2), 'line-dasharray': [2, 1.2] } });
-  map.addLayer({ id: 'trail-done', type: 'line', source: 'trails', filter: ['any', ['>', ['get', 'cov'], 0], ['==', ['get', 'st'], 'been']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: {
-    'line-color': '#15803d', 'line-width': trailW(2.2, 5) } });
-  map.addLayer({ id: 'route-case', type: 'line', source: 'routes', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': ['case', ['get', 'sel'], 9, 6], 'line-opacity': 0.9 } });
+  map.addLayer({ id: 'trail-planned', type: 'line', source: 'trails', filter: ['all', ['<', ['get', 'cov'], 2], ['==', ['get', 'st'], 'planned']], layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: { 'line-color': stColor('planned'), 'line-width': trailW(1.4, 3.2), 'line-dasharray': [2, 1.2] } });
+  map.addLayer({ id: 'trail-done', type: 'line', source: 'trails', filter: ['any', ['==', ['get', 'cov'], 2], ['==', ['get', 'st'], 'been']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: {
+    'line-color': '#1e6fe0', 'line-width': trailW(1.6, 3) } });   // V20.6: only sections you completed (75%+ walked, or marked by hand), in the completed blue
+  map.addLayer({ id: 'route-case', type: 'line', source: 'routes', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': ['case', ['get', 'sel'], 7.5, 4.8], 'line-opacity': 0.9 } });
   map.addLayer({ id: 'route-line', type: 'line', source: 'routes', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': ['case', ['get', 'sel'], 5.5, 3.5], 'line-opacity': ['case', ['get', 'sel'], 1, 0.85] } });
   map.addLayer({ id: 'track-hit', type: 'line', source: 'tracks', paint: { 'line-width': 14, 'line-opacity': 0 } });
   // Hike status (ts): done = taken and approved, planned = future trip, pending = imported and waiting for approval
@@ -3040,11 +3196,11 @@ function addOverlays() {
   map.addLayer({ id: 'track-ignored', type: 'line', source: 'tracks', filter: ['==', ['get', 'src'], 'ignored'], paint: { 'line-color': '#9e9e9e', 'line-width': 2.5, 'line-dasharray': [1, 2] } });
   map.addLayer({ id: 'track-case', type: 'line', source: 'tracks', filter: ['all', ['!=', ['get', 'src'], 'ignored'], ['!=', ['get', 'src'], 'approved']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': ['case', ['get', 'sel'], 9, 6], 'line-opacity': 0.85 } });
   map.addLayer({ id: 'track-garmin', type: 'line', source: 'tracks', filter: ['all', ['==', ['get', 'src'], 'garmin'], isDone], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#1d4ed8', 'line-width': ['case', ['get', 'sel'], 5.5, 3.5] } });
-  map.addLayer({ id: 'track-manual', type: 'line', source: 'tracks', filter: ['all', ['==', ['get', 'src'], 'manual'], isDone], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#7e22ce', 'line-width': ['case', ['get', 'sel'], 5.5, 3.5], 'line-dasharray': [2, 1] } });
+  map.addLayer({ id: 'track-manual', type: 'line', source: 'tracks', filter: ['all', ['==', ['get', 'src'], 'manual'], isDone], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#1e6fe0', 'line-width': ['case', ['get', 'sel'], 4.5, 2.6] } });   // V20.6: hikes you drew are blue like the completed trail
   map.addLayer({ id: 'track-planned', type: 'line', source: 'tracks', filter: ['all', ['==', ['get', 'ts'], 'planned'], ['!=', ['get', 'src'], 'ignored']], layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: { 'line-color': stColor('planned'), 'line-width': ['case', ['get', 'sel'], 5.5, 3.5], 'line-dasharray': [3, 1.6] } });
   map.addLayer({ id: 'track-pending', type: 'line', source: 'tracks', filter: ['all', ['==', ['get', 'ts'], 'pending'], ['!=', ['get', 'src'], 'ignored']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ea580c', 'line-width': ['case', ['get', 'sel'], 5.5, 3.5], 'line-dasharray': [0.6, 1.6] } });
-  map.addLayer({ id: 'track-approved-case', type: 'line', source: 'tracks', filter: ['==', ['get', 'src'], 'approved'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': ['case', ['get', 'sel'], 9, 6], 'line-opacity': 0.9 } });
-  map.addLayer({ id: 'track-approved', type: 'line', source: 'tracks', filter: ['==', ['get', 'src'], 'approved'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#1e6fe0', 'line-width': ['case', ['get', 'sel'], 5.5, 3.5] } });
+  map.addLayer({ id: 'track-approved-case', type: 'line', source: 'tracks', filter: ['==', ['get', 'src'], 'approved'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': ['case', ['get', 'sel'], 7.5, 4.8], 'line-opacity': 0.9 } });
+  map.addLayer({ id: 'track-approved', type: 'line', source: 'tracks', filter: ['==', ['get', 'src'], 'approved'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#1e6fe0', 'line-width': ['case', ['get', 'sel'], 4.5, 2.6] } });
   // Direction arrows on the hike or route that is open
   for (const [id, src] of [['track-dir', 'tracks'], ['route-dir', 'routes']]) map.addLayer({ id, type: 'symbol', source: src, minzoom: 11, filter: ['all', ['==', ['get', 'sel'], true], ['!=', ['get', 'src'], 'ignored']], layout: { 'symbol-placement': 'line', 'symbol-spacing': 70, 'icon-image': 'dir-arrow', 'icon-size': 0.55, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-rotation-alignment': 'map' } });
   map.addLayer({ id: 'ends', type: 'circle', source: 'ends', paint: { 'circle-radius': 7, 'circle-color': ['match', ['get', 'k'], 'start', '#16a34a', '#dc2626'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2.5 } });
@@ -3181,8 +3337,9 @@ function setBase(k) {
   setTimeout(() => captureThumb(k), 2500);   // remember what this map type looks like, for its preview in the Layers panel
 }
 // What to draw: unnamed places only when "Unnamed & identified" is on, and only places inside the Teton Range when "Only show the range" is on
+const rangeHides = f => data.settings.rangeView && !f.rg && !inRangeF(f);   // V20.6: trails from regions you added always show
 function featVisible(f) {
-  if (data.settings.rangeView && !inRangeF(f)) return false;
+  if (rangeHides(f)) return false;
   if (!nameOf(f) && f.kind !== 'trail' && !layerOn('unnamed')) return false;
   return true;
 }
@@ -3564,6 +3721,7 @@ const ICON = {
   clock: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'
 };
 function segHTML(name, color, s) {
+  if (!s) return `<div class="seg"><i style="background:${color}"></i><div><div class="n">${esc(name)}</div></div></div>`;   // no elevation data yet
   return `<div class="seg"><i style="background:${color}"></i><div><div class="n">${esc(name)}</div><div class="m">
     <span>${ICON.dist} ${fmtMi(s.len)} mi</span><span>${ICON.up} ${fmtFt(s.gain)} ft</span><span>${ICON.down} ${fmtFt(s.loss)} ft</span><span>${ICON.clock} ${s.time} hr</span></div></div></div>`;
 }
@@ -3896,6 +4054,7 @@ async function saveEditor() {
       }
       data.tracks.push(t);
     }
+    applyEditorMarks(t, e);
     const n = matchIfCounted(t);
     e.saved = true;
     stopEditor(); touch({ noRender: true }); openDetail(e.kind === 'extend' ? backFromEdit(t.id) : { type: 'track', id: t.id }, true);
@@ -5127,7 +5286,7 @@ function setTab(t) {
   renderSide(); updateSources();
 }
 function openDetail(d, replace) {
-  stopCut();
+  stopCut(); if (d.type !== 'trailReport') clearNewOnMap();
   // Opening something else always ends a drawing tool, so a later map click can never add points or pins by surprise
   if (editor && d.type !== 'editor') stopEditor();
   if (areaEd && d.type !== 'areaEditor') stopAreaEditor();
@@ -5142,7 +5301,7 @@ function openDetail(d, replace) {
   body().scrollTop = 0;
 }
 function goBack() {
-  stopCut(); stopHed();
+  stopCut(); clearNewOnMap(); stopHed();
   if (editor) { stopEditor(); }
   if (areaEd) { stopAreaEditor(); }
   view.detail = viewStack.pop() || null; selectedPinId = view.detail && view.detail.type === 'pin' ? view.detail.id : null;
@@ -5172,7 +5331,7 @@ function renderSideInner() {
   const d = view.detail;
   if (d) {
     if (d.type === 'track') { const tt = findTrack(d.id); if (tt && hikeType(tt) === 'uploaded') { body().innerHTML = pageReview(Object.assign({}, d, { step: d.step || 'path' })); return; } }
-    const fn = { review: pageReview, print: pagePrint, feature: pageFeature, route: pageRoute, track: pageTrack, pin: pagePin, editor: pageEditor, history: pageHistory, settings: pageSettings, help: pageHelp, ideas: pageIdeas, offline: pageOffline, report: pageReport, area: pageArea, areaEditor: pageAreaEditor, list: pageList, trash: pageTrash, hikeEdit: pageHikeEdit, changes: pageChanges }[d.type];
+    const fn = { review: pageReview, print: pagePrint, feature: pageFeature, route: pageRoute, track: pageTrack, pin: pagePin, editor: pageEditor, history: pageHistory, settings: pageSettings, help: pageHelp, ideas: pageIdeas, offline: pageOffline, report: pageReport, area: pageArea, areaEditor: pageAreaEditor, list: pageList, trash: pageTrash, regions: pageRegions, trailReport: pageTrailReport, hikeEdit: pageHikeEdit, changes: pageChanges }[d.type];
     if (fn) { body().innerHTML = fn(d); updatePrintFrame(); return; }
   }
   updatePrintFrame();
@@ -5214,13 +5373,13 @@ function featureItems() {
   const items = [], showUn = view.explore && view.explore.chip === 'unnamed';
   for (const f of FEATS) {
     if (f.kind === 'trail') continue;
-    if (data.settings.rangeView && !inRangeF(f)) continue;
+    if (rangeHides(f)) continue;
     const nm = nameOf(f); if (!nm && !showUn) continue;
     const st = placeStatus(f.id), ki = kindInfo(f.kind);
     items.push({ kind: nm ? f.kind : 'unnamed', k2: f.kind, title: nm || unnamedLabel(f), ident: !nm, icon: ki.icon, sub: (nm ? ki.label : (f.ident ? 'No name · found in the terrain' : 'No name on the map')) + (f.ele ? ' · ' + fmtFt(f.ele) + ' ft' : ''), st, wish: isWish(f.id), ele: f.ele || 0, rc: rcOf(f.id), photo: !!data.photos[f.id], open: { type: 'feature', id: f.id } });
   }
   for (const g of Object.values(GROUPS)) {
-    if (data.settings.rangeView && !g.ways.some(inRangeF)) continue;
+    if (data.settings.rangeView && !g.ways.some(w => !rangeHides(w))) continue;
     const cov = g.ways.reduce((a, w) => a + w.len * wayCoverage(w.id), 0) / g.len;
     items.push({ kind: 'trail', title: g.name, icon: '🥾', sub: `Trail · ${fmtMi(g.len)} mi${cov > 0.02 ? ` · ${Math.round(cov * 100)}% completed` : ''}`, st: placeStatus(g.id), wish: isWish(g.id), ele: 0, len: g.len, rc: rcOf(g.id), photo: !!data.photos[g.id], open: { type: 'feature', id: g.id } });
   }
@@ -5851,6 +6010,47 @@ function statusLineHTML(id) {
   const why = st === 'done' && t ? `Credited by <a href="#" data-open='${esc(JSON.stringify({ type: 'track', id: t.id }))}'>${esc(t.name)}</a> · ${fmtDate(hike.date)}` : st === 'been' ? 'Marked by you. Complete a hike that went here to make it Completed.' : st === 'planned' ? 'On a planned trip.' : st === 'wish' ? 'On a potential trip, a route, or saved.' : st === 'seen' ? 'Seen from nearby.' : 'Not been yet. It turns Completed when you complete a hike that went here.';
   return `<div class="row" style="margin:8px 0 2px;gap:10px;flex-wrap:nowrap;align-items:flex-start"><span class="stpill"><i style="background:${stColor(st)}"></i>${STATUS[st].label}</span><span class="small muted" style="padding-top:3px">${why}</span></div>`;
 }
+// V20.6: credit a place to one or more of your hikes (or mark it by hand with no hike). Ticking a hike adds the place to
+// that hike's review (Completed → review.add, Seen → review.seen); unticking takes it off (and stops the line crediting it).
+function hikeCredits(t, id) { const ids = new Set(idsOf(id).concat([id])); return Object.entries(data.visits).filter(([fid]) => ids.has(fid)).flatMap(([, l]) => l).filter(v => v.trackId === t.id); }
+function placeNearHike(t, id) {
+  const f = FEAT[id], g = isGroup(id) && GROUPS[id], a = !f && !g && findArea(id);
+  const pts = f ? (f.coord ? [f.coord] : f.center ? [f.center] : f.coords || []) : g ? g.ways.flatMap(w => w.coords) : a ? a.ring : [];
+  const ln = trackLine(t); if (!pts.length || ln.length < 2) return Infinity;
+  const tb = bboxOf(ln), pb = bboxOf(pts); if (pb[2] < tb[0] - 0.03 || pb[0] > tb[2] + 0.03 || pb[3] < tb[1] - 0.03 || pb[1] > tb[3] + 0.03) return Infinity;
+  const smp = resample(ln, 60), pp = pts.length > 60 ? resample(pts, 60) : pts; let b = Infinity;
+  for (const q of pp) for (const r of smp) { const dd = dist(q[1], q[0], r[1], r[0]); if (dd < b) b = dd; }
+  return b;
+}
+function assignToHikes(id, status) {
+  const nm = reviewName({ id, kind: FEAT[id] ? FEAT[id].kind : isGroup(id) ? 'trail' : 'area' });
+  const hikes = data.tracks.filter(t => !t.planned).map(t => ({ t, d: placeNearHike(t, id), on: hikeCredits(t, id).some(v => v.status === status) || (status === 'been' ? reviewOf(t).add.includes(id) : !!reviewOf(t).seen[id]) }))
+    .sort((a, b) => (b.on - a.on) || ((a.d < 1500) === (b.d < 1500) ? (b.t.date || '').localeCompare(a.t.date || '') : a.d < 1500 ? -1 : 1));
+  const mine = visitsFor(id).find(v => v.src === 'log' && v.status === status);
+  const row = (h, i) => `<label class="hkpick"><input type="checkbox" data-i="${i}" ${h.on ? 'checked' : ''}><span><b>${esc(h.t.name)}</b><span class="small muted">${fmtDate(h.t.date)}${h.t.approved === false ? ' · uploaded, not completed yet' : ''}${h.d < 1500 ? ` · passes within ${h.d < 160 ? Math.round(h.d * 3.281) + ' ft' : fmtMi(h.d) + ' mi'}` : ''}</span></span></label>`;
+  const dlg = $('dlg'); dlg.hidden = false;
+  dlg.innerHTML = `<div class="dlg-card" role="dialog" aria-modal="true" style="max-width:440px"><div class="dlg-t">${status === 'been' ? 'Completed' : 'Seen'}: ${esc(nm)}</div>
+    <div class="dlg-b">Which hike${hikes.length > 1 ? 's' : ''} was it on? Hikes that pass close by are listed first.</div>
+    <input id="hkQ" placeholder="Find a hike" autocomplete="off" style="margin:4px 0 6px">
+    <div id="hkList" style="max-height:300px;overflow:auto">${hikes.map(row).join('')}</div>
+    <label class="hkpick" style="border-top:1px solid var(--line);margin-top:6px;padding-top:8px"><input type="checkbox" id="hkNone" ${mine ? 'checked' : ''}><span><b>No specific hike</b><span class="small muted">${mine ? 'marked by hand, ' + fmtDate(mine.date) : 'mark it by hand, dated today'}</span></span></label>
+    <div class="dlg-a"><button class="btn" data-dlg="0">Cancel</button><button class="btn primary" data-dlg="1">Save</button></div></div>`;
+  $('hkQ').oninput = () => { const q = $('hkQ').value.toLowerCase(); dlg.querySelectorAll('#hkList .hkpick').forEach((el, i) => { el.hidden = q && !(hikes[i].t.name + ' ' + hikes[i].t.date).toLowerCase().includes(q); }); };
+  const close = () => { dlg.hidden = true; dlg.innerHTML = ''; };
+  dlg.onclick = e => {
+    const b = e.target.closest('[data-dlg]'); if (!b && e.target !== dlg) return; if (!b || b.dataset.dlg === '0') return close();
+    let ch = 0;
+    dlg.querySelectorAll('#hkList input').forEach(el => {
+      const h = hikes[+el.dataset.i]; if (el.checked === h.on) return; const rv = reviewOf(h.t); ch++;
+      if (el.checked) { if (status === 'been') { if (!rv.add.includes(id)) rv.add.push(id); delete rv.seen[id]; } else rv.seen[id] = true; for (const k of idsOf(id).concat([id])) delete rv.off[k]; }
+      else { if (status === 'been') { rv.add = rv.add.filter(x => x !== id); if (hikeCredits(h.t, id).some(v => v.status === 'been' && !v.byYou)) rv.off[id] = true; } else delete rv.seen[id]; }
+      matchIfCounted(h.t);
+    });
+    const none = $('hkNone').checked;
+    if (none && !mine) { addVisit(id, status, today()); ch++; } else if (!none && mine) { delVisit(id, mine.vid); ch++; }
+    close(); if (ch) { touch(); toast(status === 'been' ? 'Saved. Credits on uploaded hikes count once you complete them.' : 'Saved.'); }
+  };
+}
 // Small text actions instead of the old round buttons. Marking by hand is still possible, but hikes do it for you.
 function markLinksHTML(id, kind) {
   const st = statusOf(id), wish = isWish(id), mine = visitsFor(id).filter(v => v.src === 'log');
@@ -5972,7 +6172,7 @@ function pageRoute(d) {
 // lake you really got, mark lakes you jumped in, add anything the GPS missed), 3 Details, 4 Complete.
 let reviewReturn = null;   // after trimming or drawing from the review, come back to it
 const REVIEW_STEPS = [['path', '1', 'Path'], ['places', '2', 'Places'], ['details', '3', 'Details'], ['approve', '4', 'Complete']];
-function reviewOf(t) { if (!t.review) t.review = { off: {}, add: [], swim: {} }; for (const k of ['off', 'swim']) if (!t.review[k]) t.review[k] = {}; if (!t.review.add) t.review.add = []; return t.review; }
+function reviewOf(t) { if (!t.review) t.review = { off: {}, add: [], swim: {} }; for (const k of ['off', 'swim', 'seen']) if (!t.review[k]) t.review[k] = {}; if (!t.review.add) t.review.add = []; return t.review; }
 // What the line touches (exact rules), plus near misses worth asking about
 function reviewCandidates(t) {
   const smp = trackSamples(t), out = [];
@@ -6229,6 +6429,7 @@ function pageEditor() {
     ${e.kind === 'track' ? `<label class="f">Date hiked</label><input type="date" id="edDate" value="${esc(e.date)}">` : ''}
     <label class="toggle"><input type="checkbox" id="edSnap" ${e.snap ? 'checked' : ''}> Follow trails${GRAPH && GRAPH.lon.length ? '' : ' (download map data to enable)'}</label>
     ${GRAPH && GRAPH.lon.length ? `<button class="btn wide" data-act="cutStart" style="margin:2px 0 4px" title="Click two points on a trail to hide the stretch between them">✂️ Hide a Trail Section</button><div class="small muted" style="margin:0 0 8px">Snapped onto a trail that is wrong or not there? Click two points on it to hide that stretch; your line goes around it.</div>` : ''}
+    ${e.kind === 'track' || e.mode === 'approve' ? editorMarksHTML(e) : ''}
     ${e.kind === 'extend' && e.trackId ? `<label class="f" for="gpsOp">GPS line opacity: <b id="gpsOpV">${Math.round(gpsOp() * 100)}%</b></label><input type="range" id="gpsOp" min="0.15" max="1" step="0.05" value="${gpsOp()}" style="padding:0" aria-label="GPS line opacity"><div class="small muted" style="margin:-2px 0 6px">Lower it to see the mapped trails under your recorded line.</div>` : ''}
     ${e.kind === 'route' ? `<div class="swatches" style="margin:6px 0">${COLORS.map(cl => `<button data-ecolor="${cl}" class="${e.color === cl ? 'on' : ''}" style="background:${cl}"></button>`).join('')}</div>` : ''}
     ${e.endPt ? `<div class="row" style="align-items:center"><span class="small" style="flex:1">${e.closed ? 'The section ends at B.' : 'End the section at the red B marker.'}</span><button class="btn" data-act="edFinishB" ${e.closed ? 'disabled' : ''}>Finish at B</button></div>` : ''}
@@ -6267,6 +6468,46 @@ function editorPointsHTML(e) {
     : e.awaitDay ? `<button class="btn wide" data-act="addDay">＋ Add Day ${k + 1}</button>`
     : n >= 1 ? `<button class="btn wide" data-act="campPick">⛺ Mark Campsite</button>` : '';
   return `<h3 class="sec">Days <span class="small muted">${k} day${k === 1 ? '' : 's'}${k > 1 || e.awaitDay ? ` · ${e.awaitDay ? k : k - 1} night${(e.awaitDay ? k : k - 1) === 1 ? '' : 's'}` : ''}</span></h3>${out}${act}`;
+}
+// V20.6: while drawing a hike (or marking the trail you took), click a place and mark it Completed or Seen at that point.
+// The line still credits what it passes automatically; these are added on top when you save (review.add / review.seen),
+// dated to the day you were on when you marked it.
+function editorMarksHTML(e) {
+  const m = e.marks || [];
+  return `<button class="btn wide ${e.markPick ? 'primary' : ''}" data-act="markPick" style="margin:0 0 4px">${e.markPick ? '📍 Click a place on the map… (tap to stop)' : '📍 Mark a Place Seen or Completed'}</button>
+    ${m.length ? `<div style="margin:2px 0 8px">${m.map((x, i) => `<div class="visit"><span>${x.st === 'been' ? '✅' : '👁'}</span><div class="tx"><b>${esc(x.name)}</b> <span class="small muted">${x.st === 'been' ? 'Completed' : 'Seen'} · Day ${x.day + 1}</span></div><button class="x" data-act="unMark" data-i="${i}" title="Remove">×</button></div>`).join('')}</div>` : ''}`;
+}
+function markPickAt(pt) {
+  const e = editor; if (!e) return;
+  const box = [[pt.x - 8, pt.y - 8], [pt.x + 8, pt.y + 8]];
+  let id = null, kind = null;
+  for (const l of ['poi', 'lake-fill', 'area-fill', 'trail-hit']) {
+    if (!map.getLayer(l) || map.getLayoutProperty(l, 'visibility') === 'none') continue;
+    const h = map.queryRenderedFeatures(box, { layers: [l] }); if (!h.length) continue;
+    const pid = h[0].properties.id; id = l === 'trail-hit' ? (WAY2GROUP[pid] || pid) : pid; kind = l === 'area-fill' ? 'area' : l === 'trail-hit' ? 'trail' : (FEAT[pid] || {}).kind; break;
+  }
+  if (!id) return toast('Click right on a peak, lake, pass, waterfall, trail or area.', 3000);
+  const name = reviewName({ id, kind });
+  const dlg = $('dlg'); dlg.hidden = false;
+  dlg.innerHTML = `<div class="dlg-card" role="dialog" aria-modal="true"><div class="dlg-t">${esc(name)}</div><div class="dlg-b">Mark it on this hike as:</div>
+    <div class="dlg-a"><button class="btn" data-m="">Cancel</button><button class="btn" data-m="seen">👁 Seen</button><button class="btn primary" data-m="been">✅ Completed</button></div></div>`;
+  dlg.onclick = ev => {
+    const b = ev.target.closest('[data-m]'); if (!b && ev.target !== dlg) return;
+    dlg.hidden = true; dlg.innerHTML = ''; const st = b && b.dataset.m;
+    if (!st || !editor) return;
+    const day = editor.wps.slice(1).filter(w => w.brk).length;
+    editor.marks = (editor.marks || []).filter(x => x.id !== id); editor.marks.push({ id, st, name, day });
+    editor.markPick = false; renderSide(); toast(`${name}: ${st === 'been' ? 'Completed' : 'Seen'} on Day ${day + 1}. It is credited when you save.`, 4000);
+  };
+}
+function applyEditorMarks(t, e) {
+  if (!t || !(e.marks || []).length) return;
+  const rv = reviewOf(t); rv.at = rv.at || {};
+  for (const m of e.marks) {
+    if (m.st === 'been') { if (!rv.add.includes(m.id)) rv.add.push(m.id); delete rv.seen[m.id]; } else if (!rv.add.includes(m.id)) rv.seen[m.id] = true;
+    for (const k of idsOf(m.id).concat([m.id])) delete rv.off[k];
+    if (m.day && t.date) { const d = new Date(t.date + 'T12:00:00'); d.setDate(d.getDate() + m.day); rv.at[m.id] = d.toISOString().slice(0, 10); }
+  }
 }
 // V20.4: snapping turns off while you pick the campsite (camps are usually off the trail) and back on when the next day starts
 function setEdSnap(on) { if (!editor) return; editor.snap = on; const ck = $('edSnap'); if (ck) ck.checked = on; }
@@ -6337,6 +6578,7 @@ function pageSettings() {
     </details>
     <details class="set" data-k="map" ${setOpen('map', false)}><summary>Map data<span class="sv">${FEATS.length ? FEATS.length.toLocaleString() + ' features' : 'Not downloaded'}</span></summary>
       <p class="muted small">${FEATS.length && data.osm && data.osm.fetchedAt ? 'Downloaded ' + new Date(data.osm.fetchedAt).toLocaleDateString() + '. ' : ''}${data.parkOutline ? 'Park outline loaded.' : 'Park outline not loaded yet.'}</p>
+      <div class="row"><button class="btn primary" data-act="openRegions">🗺️ Trail Data: Regions and Updates</button></div>
       <div class="row"><button class="btn" data-act="fetchAll">Re-download range</button><button class="btn" data-act="fetchView">Add this view</button><button class="btn" data-act="parkOutline">Park outline</button></div>
     </details>
     <div class="row" style="margin-top:18px"><button class="btn primary" data-act="saveSettings">Save settings</button></div>
@@ -6705,8 +6947,8 @@ function legendHTML() {
     <div class="legend-st">${ST_KEYS.map(k => `<i style="background:${stColor(k)}"></i><span><b>${STATUS[k].label}</b> <span class="muted">· ${STATUS[k].sub}</span></span>`).join('')}</div>
     <div class="small muted" style="margin:6px 0 10px">Change these colors in Settings → Status Colors.</div>
     <div class="small" style="line-height:1.9">
-      <span style="color:#a0522d">┅</span> trail · <span style="color:${stColor('done')}">━</span> trail you completed · <span style="color:#8cc56f">━</span> partly done<br>
-      <span style="color:#1d4ed8">━</span> completed hike (GPS) · <span style="color:#7e22ce">┅</span> drawn hike · <span style="color:#1e6fe0">━</span> Completed Trail<br>
+      <span style="color:#a0522d">┅</span> trail · <span style="color:#1e6fe0">━</span> trail section you completed (partly walked or only seen stays a normal trail)<br>
+      <span style="color:#1d4ed8">━</span> completed hike (GPS) · <span style="color:#1e6fe0">━</span> Completed Trail or drawn hike<br>
       <span style="color:${stColor('planned')}">┅</span> planned trip · <span style="color:#ea580c">┈</span> uploaded, waiting for review<br>
       ▲ peak · ◆ pass · ● waterfall · 💧 lake · dashed outline = unnamed<br>lake and waterfall markers are white until you have seen or visited them, then blue<br>
       <span style="color:#16a34a">●</span> start · <span style="color:#dc2626">●</span> finish · ➤ direction of the hike or route you have open</div>`;
@@ -6722,12 +6964,23 @@ function onAction(act, el) {
     case 'hxDevRollback': hxDevRollbackAction(); break;
     case 'hxRename': askDeviceName(false).then(() => renderSide()); break;
     case 'hxMore': view.hx.n += 60; renderSide(); break;
-    case 'fetchAll': fetchArea(BBOX.s, BBOX.w, BBOX.n, BBOX.e, 5).catch(e => toast('Download failed: ' + e.message + '. Check your connection and try again.', 8000)); break;
-    case 'fetchView': {
-      const b = map.getBounds();
-      if ((b.getNorth() - b.getSouth()) * (b.getEast() - b.getWest()) > 0.6) { toast('Zoom in a bit first (this view is too large).'); break; }
-      fetchArea(b.getSouth(), b.getWest(), b.getNorth(), b.getEast(), 1).catch(e => toast('Download failed: ' + e.message, 8000)); break;
+    case 'fetchAll': addRegion(regions().find(r => r.id === 'teton')); break;
+    case 'fetchView': case 'regionView': {
+      const b = map.getBounds(), r = { id: 'v' + uid(), s: +b.getSouth().toFixed(4), w: +b.getWest().toFixed(4), n: +b.getNorth().toFixed(4), e: +b.getEast().toFixed(4) };
+      if ((r.n - r.s) * (r.e - r.w) > REGION_MAX) { toast('This view is too large. Zoom in a little first.', 5000); break; }
+      const near = FEATS.filter(f => f.kind === 'peak' && nameOf(f) && inBox(f.coord, r)).sort((a, b2) => (b2.ele || 0) - (a.ele || 0))[0];
+      askText('Name this region', { value: near ? 'Around ' + nameOf(near) : 'Region ' + (regions().length + 1), ok: 'Download' }).then(nm => { if (nm == null) return; r.name = nm.trim() || 'My region'; addRegion(r); });
+      break;
     }
+    case 'openRegions': regionsHere().then(() => openDetail({ type: 'regions' })); break;
+    case 'trailCheck': checkTrailUpdates(); break;
+    case 'trailReport': idbGet('trailReport').then(r => { if (r && !TRAIL_REP) TRAIL_REP = r; openDetail({ type: 'trailReport' }); }); break;
+    case 'regionAdd': { const p0 = REGION_PRESETS.find(x => x.id === el.dataset.id); if (p0) addRegion(Object.assign({}, p0)); break; }
+    case 'regionGet': { const r = regions().find(x => x.id === el.dataset.id); if (r) addRegion(r); break; }
+    case 'regionDel': { const r = regions().find(x => x.id === el.dataset.id); if (!r) break; sure(`Remove ${r.name} from your regions?`, { body: 'It will no longer be checked for updates. Trails already downloaded stay on the map.', ok: 'Remove' }).then(ok => { if (!ok) return; data.settings.regions = regions().filter(x => x.id !== r.id); if (REG_HERE) { REG_HERE.delete(r.id); idbPut('regionsHere', [...REG_HERE]); } touch(); }); break; }
+    case 'regionZoom': { const r = regions().find(x => x.id === el.dataset.id) || REGION_PRESETS.find(x => x.id === el.dataset.id); if (r) fitTo([[r.w, r.s], [r.e, r.n]]); break; }
+    case 'repShowAll': if (TRAIL_REP) showNewOnMap(TRAIL_REP); break;
+    case 'repShow': { const g = (view.repRows || [])[+el.dataset.i]; if (g && TRAIL_REP) showNewOnMap(TRAIL_REP, g.ids.map(id => ({ id }))); break; }
     case 'more': view.explore.limit += 200; renderSide(); break;
     case 'exMore': view.explore.more = !view.explore.more; view.explore.sortOpen = false; renderSide(); break;
     case 'exSortMenu': view.explore.sortOpen = !view.explore.sortOpen; view.explore.more = false; renderSide(); break;
@@ -6860,7 +7113,7 @@ function onAction(act, el) {
     case 'hedDone': goBack(); break;
     case 'gpx': $('gpxFile').click(); break;
     case 'importOld': $('oldFile').click(); break;
-    case 'been': case 'seen': {
+    case 'been': case 'seen': if (data.tracks.some(x => !x.planned)) { assignToHikes(d.id, act); break; } else {
       const mine = visitsFor(d.id).find(v => v.src === 'log' && v.status === act && v.date === today());
       if (mine) delVisit(d.id, mine.vid); else addVisit(d.id, act, today());
       touch(); toast(mine ? 'Removed.' : act === 'been' ? 'Logged as been, today. Change the date below if needed.' : 'Logged as seen, today.'); break;
@@ -6991,6 +7244,8 @@ function onAction(act, el) {
     case 'delPin': sure(`Delete “${pinName(p)}”?`, { body: 'You can restore it from Deleted Items.' }).then(ok => { if (ok) { trashPut('pin', p); selectedPinId = null; touch({ noRender: true }); goBack(); } }); break;
     case 'edUndo': undoPoint(); break;
     case 'campPick': startCampPick(); break;
+    case 'markPick': if (editor) { if (editor.campPick) cancelCampPick(); editor.markPick = !editor.markPick; renderSide(); if (editor.markPick) toast('Click a peak, lake, pass, waterfall, trail or area to mark it on this hike.', 5000); } break;
+    case 'unMark': if (editor && editor.marks) { editor.marks.splice(+el.dataset.i, 1); renderSide(); } break;
     case 'cutStart': startCut(); toast('Click two points on a trail. The stretch between them is hidden: it stops showing, snapping and counting.', 6000); break;
     case 'campCancel': cancelCampPick(); break;
     case 'addDay': addDayNow(); break;
@@ -7089,6 +7344,7 @@ $('side').addEventListener('change', e => {
   if (id === 'exEle') { view.explore.minEle = e.target.value; renderSide(); }
   if (id === 'exPhoto') { view.explore.photo = e.target.checked; renderSide(); }
   if (id === 'gpsOp') { data.settings.gpsOp = +e.target.value; touch({ noRender: true }); }
+  if (id === 'trailEvery') { data.settings.trailEvery = +e.target.value; touch({ noRender: true }); toast(+e.target.value ? 'Saved. You will get a reminder when trail data is due for a check.' : 'No reminders.'); }
   if (id === 'edSnap') { editor.snap = e.target.checked; data.settings.snap = editor.snap; touch({ noRender: true }); renderToolbar(); }
   if (id === 'edName' && editor) editor.name = e.target.value;
   if (id === 'arName' && areaEd) areaEd.name = e.target.value;
@@ -7227,7 +7483,7 @@ function renderMenu() {
     ${item('rangeEdit', 'range', 'Teton Range Outline', 'Reshape what counts as the range')}
     ${item('cleanup', 'broom', 'Clean Up the Map', 'Hide trails, lakes or peaks in a shape')}
     ${item('offline', 'offline', 'Offline Maps & Terrain')}
-    ${item('fetchAll', 'data', 'Update Map Data', FEATS.length ? `${FEATS.length.toLocaleString()} trails and places on this device` : 'Not downloaded yet')}
+    ${item('regions', 'data', 'Trail Data: Regions & Updates', FEATS.length ? `${regions().length} region${regions().length === 1 ? '' : 's'} · add more, check for new trails` : 'Not downloaded yet')}
     <div class="mh">Your Data</div>
     ${item('sync', 'sync', 'Sync Between Devices', syncOn() ? 'Connected · tap to sync now' : 'Not connected')}
     ${item('exportJson', 'backup', 'Export a Backup', 'Everything, photos included (JSON)')}
@@ -7265,6 +7521,7 @@ $('menu').addEventListener('click', e => {
   if (m === 'pdfMap') { leave(); openDetail({ type: 'print' }); }
   if (m === 'savedMaps') { leave(); openDetail({ type: 'print', tab: 'saved' }); }
   if (m === 'changes') { leave(); hxFlush(); openDetail({ type: 'changes' }); }
+  if (m === 'regions') { leave(); regionsHere().then(() => openDetail({ type: 'regions' })); }
   if (['history', 'settings', 'help', 'offline', 'trash'].includes(m)) { leave(); openDetail({ type: m }); if (m === 'offline') setTimeout(updateOffStatus, 50); }
 });
 // Photos: how much space they take in the file, shown in Settings
@@ -8158,6 +8415,7 @@ function initMap() {
     if (overlaysDone) return; overlaysDone = true;
     try { addOverlays(); } catch (e) { console.error('Overlay setup failed', e); }
     mapReady = true;
+    setTimeout(() => { trailReminder().catch(() => {}); }, 8000);   // V20.6
     try { if (data.settings.terrain) set3D(true); } catch (e) { console.warn(e); }
     try { updateSources(); } catch (e) { console.error(e); }
   };
@@ -8201,6 +8459,7 @@ function initMap() {
       return;
     }
     if (hed) { hedMapClick(ll); return; }
+    if (editor && editor.markPick) { markPickAt(e.point); return; }
     if (editor) { if (editor.campPick) campPicked(ll); else if (editor.awaitDay) toast('Press ＋ Add Day to keep drawing, or save if you are done.', 3500); else addPoint(ll); return; }
     const box = [[e.point.x - 7, e.point.y - 7], [e.point.x + 7, e.point.y + 7]];
     if (mode === 'split') {
