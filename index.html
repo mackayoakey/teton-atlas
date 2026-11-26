@@ -233,7 +233,21 @@ h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 #toolbar button span{position:absolute;bottom:-26px;font-size:11px;color:#fff;background:var(--pill);padding:1px 6px;border-radius:6px;opacity:0;pointer-events:none;white-space:nowrap}
 #toolbar button:hover span{opacity:1}
 #toast{position:absolute;z-index:8;top:16px;left:calc(200px + 50%);transform:translateX(-50%);background:var(--pill);color:#fff;border-radius:999px;padding:9px 18px;font-size:13px;max-width:60vw;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.25)}
-.pinw{position:relative;cursor:pointer}
+.pinw{cursor:pointer}
+/* V20.3 pins */
+.pindrag{cursor:grab;line-height:0}.pindrag:active{cursor:grabbing}
+.pindrag img{display:block;filter:drop-shadow(0 0 0 transparent);transition:transform .12s;transform-origin:50% 100%}
+.pindrag:hover img{transform:scale(1.08)}
+.pinhead{display:flex;gap:12px;align-items:center;margin:4px 0 6px}
+.pinprev{width:48px;height:48px;flex:none}
+.pst{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 4px}
+.pst button{display:inline-flex;align-items:center;gap:7px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:7px 12px;font-weight:600;font-size:13px}
+.pst button i{width:12px;height:12px;border-radius:50%;background:var(--c);box-shadow:0 0 0 1.5px #263238}
+.pst button.on{background:var(--c);border-color:#263238;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45)}
+.pst button.on[style*="#ffffff"]{color:#1b1b1b;text-shadow:none}
+.pst button.on i{box-shadow:0 0 0 2px #fff}
+.pinfoot{display:grid;gap:8px;padding:12px 0 6px;margin-top:16px;border-top:1px solid var(--line)}
+.btn svg.bi{vertical-align:-3px;margin-right:3px}
 .pin{--s:32px;width:var(--s);height:var(--s);display:flex;align-items:center;justify-content:center;border:2.5px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,.4);box-sizing:border-box}
 .pin.s{--s:24px}.pin.l{--s:44px}
 .pin.drop{border-radius:50% 50% 50% 0;transform:rotate(-45deg)}
@@ -680,6 +694,13 @@ a.srow[data-open]:hover{background:var(--hover)}
 .dayg>summary i{width:12px;height:12px;border-radius:50%;flex:none}
 .dayg .wp:last-child{border-bottom:0}
 .camprow{display:flex;align-items:center;gap:8px;padding:6px 10px;margin:2px 0;border-radius:12px;background:var(--soft)}
+.dayc{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;margin:6px 0;padding:8px 10px;background:var(--card)}
+.dayc>i{width:12px;height:12px;border-radius:50%;flex:none}
+.dayc input{flex:0 1 130px;min-width:0;padding:5px 8px;font-weight:700;font-size:14px;border-color:transparent;background:transparent}
+.dayc input:focus{border-color:var(--line);background:var(--bg)}
+.dayc span{margin-left:auto;text-align:right}
+.camprow input{font-weight:600}
+.camprow .x{flex:none}
 .camprow b{white-space:nowrap;font-size:13px}
 .camprow input{flex:1;padding:6px 9px;font-size:13px;min-width:0}
 .denrow.one{flex-wrap:nowrap;gap:8px}
@@ -826,7 +847,7 @@ a.srow[data-open]:hover{background:var(--hover)}
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V20.2';
+const APP_VERSION = 'V20.3';
 // Rough outline of the Teton Range (Teton Pass to Conant Pass, Jackson Hole side and Teton Valley side). Editable from the Layers panel.
 // Borders you can restyle (Layers -> Borders). Add an entry here to make another outline styleable.
 const BORDERS = [
@@ -913,7 +934,7 @@ function pinTypes() {
 }
 // Place status: one color per state, used for every peak, pass, lake, trail, area and pin. Change them in Settings → Status Colors.
 const STATUS = {
-  done: { label: 'Completed', sub: 'Credited by an approved hike', color: '#15803d' },
+  done: { label: 'Completed', sub: 'Credited by a completed hike', color: '#15803d' },
   been: { label: 'Been There', sub: 'Marked by you, no hike yet', color: '#0891b2' },
   planned: { label: 'Planned', sub: 'On a planned trip with a date', color: '#2563eb' },
   wish: { label: 'Potential', sub: 'On a potential trip, a route, or saved', color: '#a21caf' },
@@ -1105,6 +1126,16 @@ const VERSIONS = [
     'While you draw on a hike, the yellow-and-black hover highlight fades with the GPS line too, so the trails underneath show. The GPS line opacity slider now starts at 50%.'] },
   { name: 'Teton Atlas V20.2', date: '2026-11-25', notes: [
     'Sync fix: a Teton Range outline (or GTNP border) edited on one device now reaches your other devices even when they have changes of their own waiting. Before, a device that already had an outline kept its own and uploaded it over yours.'] },
+  { name: 'Teton Atlas V20.3', date: '2026-11-25', notes: [
+    'Pins: right-click the map (or press and hold on a phone) to place one. It appears where you clicked; drag it, or click the map, to move it. Nothing is saved until Save Pin; Cancel throws it away.',
+    "Pins are drawn like the map's own markers, so they no longer slide sideways when you zoom. The pin you have open can be dragged.",
+    'Pin color now comes from its status only (Been There, Seen, Planned, Potential; white = Not Yet). Custom pin and pin-type colors are gone. The selected status is filled with its color.',
+    'Cleaner pin page: status first, then type, with icon and label folded away. Save Pin / Save and Close at the bottom closes the panel.',
+    'Drawing routes and trails: no more list of points. Days (Day 1, Day 2...) with ⛺ Mark Campsite between them (Night 1, Night 2...) and ＋ Add Day. Days and nights can be renamed.',
+    'Undo and Redo use round arrows everywhere.',
+    "Approve is now Complete everywhere: Completed Trail, Complete Now (asks first), Complete All, Mark as Completed. The review's two skip buttons say what they do: Skip to Places, or Complete Now.",
+    'Layers: Peaks and Passes have their own switches (plus Waterfalls & Viewpoints). My Hikes shows your GPX uploads and plans; My Completed Hikes shows completed hikes.',
+    "Change History shows just your device's name. The note about start and end times following path edits is gone."] },
 ];
 
 // ================= State =================
@@ -1791,7 +1822,7 @@ const trackShown = t => !(tetonsOnly() && hikeOutside(t));
 const TRACKS = () => data.tracks.filter(trackShown);
 function hikeType(t) { if (t.planned) return t.date ? 'planned' : 'potential'; return t.approved === false ? 'uploaded' : 'completed'; }
 const HIKE_TYPES = { uploaded: { label: 'Uploaded', icon: '⬆️', color: '#ea580c' }, completed: { label: 'Completed', icon: '✅', color: '#15803d' }, planned: { label: 'Planned', icon: '🗓️', color: '#2563eb' }, potential: { label: 'Potential', icon: '💭', color: '#a21caf' } };
-// Status used for colors everywhere: Completed (an approved hike credited it) > Been There (marked by you) > Planned > Potential > Seen > Not Yet
+// Status used for colors everywhere: Completed (an completed hike credited it) > Been There (marked by you) > Planned > Potential > Seen > Not Yet
 let plannedCache = { key: '', ids: new Set(), pot: new Set() };
 function planSets() {
   const key = data.editedAt + ':' + FEATS.length;
@@ -1999,7 +2030,7 @@ async function importGPXFiles(files) {
     for (const t of list) {
       const n = t.segments.reduce((a, s) => a + s.pts.length, 0);
       if (data.tracks.some(o => o.name === t.name && o.date === t.date && o.segments.reduce((a, s) => a + s.pts.length, 0) === n)) { dup++; continue; }
-      // Imports wait in Pending review; places are matched and stats counted once you approve them
+      // Imports wait in Pending review; places are matched and stats counted once you complete them
       t.approved = false; data.tracks.push(t); added++; lastId = t.id;
     }
   }
@@ -2015,7 +2046,8 @@ async function importGPXFiles(files) {
 
 // ================= Track helpers =================
 const findTrack = id => data.tracks.find(t => t.id === id);
-const findPin = id => data.pins.find(p => p.id === id);
+let pinDraft = null;   // V20.3: a pin being placed; not in data.pins until Save Pin
+const findPin = id => (pinDraft && pinDraft.id === id) ? pinDraft : data.pins.find(p => p.id === id);
 const findRoute = id => data.routes.find(r => r.id === id);
 const trackLine = t => t.segments.filter(s => s.src !== 'ignored').flatMap(s => s.pts);
 const trackMeters = t => t.segments.filter(s => s.src !== 'ignored').reduce((a, s) => a + lineLen(s.pts), 0);
@@ -2026,7 +2058,7 @@ function tripMeta(t) {
   return { num: i >= 0 ? i + 1 : null, tag: t.segments.some(s => s.src === 'garmin' || s.was === 'garmin') ? 'GPS' : 'Manual' };
 }
 function tripLabel(t) { if (t.planned) return 'Planned'; const m = tripMeta(t); return `Trip #${m.num} · ${m.tag}`; }
-function approveTrack(t) { t.approved = true; const n = matchTrack(t).length; touch(); toast(`Approved${n ? `, matched ${n} places` : ''}.`); }
+function approveTrack(t) { t.approved = true; const n = matchTrack(t).length; touch(); toast(`Completed${n ? `, matched ${n} places` : ''}.`); }
 function campsHTML(t) {
   const used = (t.camps || []).map(findPin).filter(Boolean);
   const camps = data.pins.filter(p => p.type === 'camp' && !used.includes(p));
@@ -2464,7 +2496,7 @@ function pageChanges() {
   const nDev = f.dev ? hxFiltered().filter(e => !rolled[e.id] && !e.rb).length : 0;
   return `${backBtn()}<div class="d-title">Change History</div>
     <div class="d-sub">Every change to your atlas, with the device it came from. Roll back one change, or everything a device did.</div>
-    <div class="visit" style="align-items:center"><div class="tx" style="flex:1"><b>This device</b><div class="small muted">${esc(DEVICE.name || 'Not named yet')} · ${esc(deviceGuess())}</div></div><button class="btn sm" data-act="hxRename">${DEVICE.name ? 'Rename' : 'Name It'}</button></div>
+    <div class="visit" style="align-items:center"><div class="tx" style="flex:1"><b>This device</b><div class="small muted">${esc(DEVICE.name || 'Not named yet (' + deviceGuess() + ')')}</div></div><button class="btn sm" data-act="hxRename">${DEVICE.name ? 'Rename' : 'Name It'}</button></div>
     <div class="hx-filters"><select id="hxDev"><option value="">All devices</option>${devs.map(id => `<option value="${esc(id)}" ${f.dev === id ? 'selected' : ''}>${esc(devName(id))}${id === DEVICE.id ? ' (this one)' : ''}</option>`).join('')}</select>
       <select id="hxSince">${HX_SINCE.map(([k, l]) => `<option value="${k}" ${f.since === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
     ${f.dev && nDev ? `<button class="btn wide danger" data-act="hxDevRollback">Roll Back ${nDev} Change${nDev === 1 ? '' : 's'} From ${esc(devName(f.dev))}${f.since !== 'all' ? ' (' + HX_SINCE.find(s => s[0] === f.since)[1].toLowerCase() + ')' : ''}</button>` : ''}
@@ -2562,7 +2594,12 @@ function extractEmbedded(html) {
 }
 
 // ================= Map =================
-function layerOn(k) { const L = data.settings.layers || {}; return L[k] !== undefined ? L[k] : k === 'hillshade' ? true : !['heat', 'recency'].includes(k); }
+function layerOn(k) {
+  const L = data.settings.layers || {};
+  if (L[k] === undefined && (k === 'peaks' || k === 'passes') && L.places !== undefined) return L.places;    // V20.3: split from the old Peaks & Passes switch
+  if (L[k] === undefined && k === 'completed' && L.tracks !== undefined) return L.tracks;
+  return L[k] !== undefined ? L[k] : k === 'hillshade' ? true : !['heat', 'recency'].includes(k);
+}
 // Recency buckets for "last visited": y1 = within a year, y3 = 1 to 3 years, old = over 3 years, none = never been
 const RC_COLORS = ['match', ['get', 'rc'], 'y1', '#2bb24c', 'y3', '#fbc02d', 'old', '#f57c00', 'rgba(0,0,0,0)'];   // never visited: no highlight
 const RC_LAKE = ['match', ['get', 'rc'], 'y1', '#2bb24c', 'y3', '#fbc02d', 'old', '#f57c00', '#4fa3e0'];            // never visited: normal lake color
@@ -2733,12 +2770,15 @@ function addIcons() {
 }
 function restyleIcons() {
   for (const n of ICON_NAMES.splice(0)) if (map.hasImage(n)) map.removeImage(n);
+  for (const n of map.listImages()) if (n.startsWith('upin|')) map.removeImage(n);
   addIcons(); applyStatusPaint(); updateSources();
 }
 function applyMarkerStyle() {
   if (!map || !map.getLayer('poi')) return;
   const k = MK().size;
   map.setLayoutProperty('poi', 'icon-size', ['interpolate', ['linear'], ['zoom'], 9, +(0.8 * k).toFixed(3), 14, +(1.25 * k).toFixed(3)]);
+  if (map.getLayer('mypins')) map.setLayoutProperty('mypins', 'icon-size', ['interpolate', ['linear'], ['zoom'], 9, +(0.8 * k).toFixed(3), 14, +(1.25 * k).toFixed(3)]);
+  sizePinDrag();
 }
 // Status colors on lakes, areas and trails (set again whenever you change a status color)
 const stMatch = (prop, fallback) => ['match', ['get', prop], ...['done', 'been', 'planned', 'wish', 'seen'].flatMap(k => [k, stColor(k)]), fallback];
@@ -2820,6 +2860,12 @@ function addOverlays() {
     'icon-allow-overlap': true, 'symbol-sort-key': ['-', 0, ['get', 'ele']] } });
   map.addLayer({ id: 'poi-label', type: 'symbol', source: 'poi-text', minzoom: 11, layout: {
     'text-field': POI_LABEL, 'text-font': ['case', ['get', 'ident'], ['literal', FONT_IT], ['literal', FONT]], 'text-size': 12, 'text-offset': [0, 1.0], 'text-anchor': 'top', 'text-optional': true, 'symbol-sort-key': ['-', 0, ['get', 'ele']] }, paint: halo });
+  // V20.3: your pins, drawn like the other markers (status colors, same outline, halo and size)
+  map.addSource('mypins', { type: 'geojson', data: fc([]) });
+  map.addLayer({ id: 'mypins', type: 'symbol', source: 'mypins', layout: { 'icon-image': ['get', 'img'], 'icon-anchor': 'bottom', 'icon-offset': [0, 3],
+    'icon-size': ['interpolate', ['linear'], ['zoom'], 9, 0.8, 14, 1.25], 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
+  map.addLayer({ id: 'mypins-label', type: 'symbol', source: 'mypins', layout: { 'text-field': ['step', ['zoom'], ['case', ['get', 'always'], ['get', 'label'], ''], 12, ['get', 'label']],
+    'text-font': FONT, 'text-size': 12, 'text-anchor': 'top', 'text-offset': [0, 0.3], 'text-optional': true }, paint: halo });
   map.addLayer({ id: 'lake-label', type: 'symbol', source: 'lake-pts', minzoom: 12.5, layout: { 'text-field': ['get', 'label'], 'text-font': FONT, 'text-size': 12, 'text-offset': [0, 1.35], 'text-anchor': 'top' }, paint: { 'text-color': '#0d47a1', 'text-halo-color': '#ffffff', 'text-halo-width': 1.4 } });
   map.addLayer({ id: 'trail-label', type: 'symbol', source: 'trail-text', minzoom: 13.5, layout: { 'symbol-placement': 'line', 'text-field': ['get', 'label'], 'text-font': FONT, 'text-size': 11.5 }, paint: halo });
   map.addLayer({ id: 'area-label', type: 'symbol', source: 'area-text', minzoom: 12.5, layout: { 'text-field': ['get', 'label'], 'text-font': FONT_IT, 'text-size': 12 }, paint: { 'text-color': '#33691e', 'text-halo-color': '#ffffff', 'text-halo-width': 1.4 } });
@@ -2833,7 +2879,7 @@ function addOverlays() {
   applyLayerVisibility(); applyMarkerStyle(); applyStatusPaint(); applyOutdoorPalette();
 }
 const LAYER_GROUPS = {
-  trails: ['trail-case', 'trail-line', 'trail-planned', 'trail-done', 'trail-hit'], places: ['poi', 'poi-label'], lakes: ['lake-fill', 'lake-line'], tracks: ['track-case', 'track-garmin', 'track-manual', 'track-approved-case', 'track-approved', 'track-ignored', 'track-planned', 'track-pending', 'track-hit', 'track-dir'],
+  trails: ['trail-case', 'trail-line', 'trail-planned', 'trail-done', 'trail-hit'], lakes: ['lake-fill', 'lake-line'], tracks: [],   // V20.3: hikes are filtered in updateSources (My Hikes = GPX uploads and plans, My Completed Hikes = completed)
   hidden: ['hidden-line', 'hidden-pt'], routes: ['route-case', 'route-line', 'route-dir'], labels: ['trail-label', 'lake-label', 'poi-label', 'area-label', 'river-name'], heat: ['heat-layer'], areas: ['area-fill', 'area-line', 'area-label']
 };
 function applyLayerVisibility() {
@@ -2842,13 +2888,14 @@ function applyLayerVisibility() {
   const outdoor = isVectorBase(data.settings.base || 'outdoor');
   for (const id of OUT_LAYERS) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', outdoor && (!id.startsWith('o-contour') || layerOn('contours')) && (id !== 'o-hillshade' || layerOn('hillshade')) ? 'visible' : 'none');
   if (map.getLayer('hillshade')) map.setLayoutProperty('hillshade', 'visibility', !outdoor && layerOn('hillshade') ? 'visible' : 'none');
-  if (map.getLayer('poi-label')) map.setLayoutProperty('poi-label', 'visibility', layerOn('places') && layerOn('labels') ? 'visible' : 'none');
+  if (map.getLayer('poi-label')) map.setLayoutProperty('poi-label', 'visibility', layerOn('labels') ? 'visible' : 'none');
+  if (map.getLayer('mypins-label')) map.setLayoutProperty('mypins-label', 'visibility', layerOn('labels') ? 'visible' : 'none');
   if (map.getLayer('boundary-line')) map.setLayoutProperty('boundary-line', 'visibility', layerOn('boundary') ? 'visible' : 'none');
   if (map.getLayer('range-line')) map.setLayoutProperty('range-line', 'visibility', layerOn('range') ? 'visible' : 'none');
   for (const b of BORDERS) if (map.getLayer(b.layer + '-fill')) map.setLayoutProperty(b.layer + '-fill', 'visibility', layerOn(b.layer) ? 'visible' : 'none');
   // Recency colors (off by default): a colored halo under each peak, and lake fills colored by last visit
   const rec = layerOn('recency');
-  if (map.getLayer('poi-rec')) map.setLayoutProperty('poi-rec', 'visibility', rec && layerOn('places') ? 'visible' : 'none');
+  if (map.getLayer('poi-rec')) map.setLayoutProperty('poi-rec', 'visibility', rec ? 'visible' : 'none');
   applyStatusPaint();
   syncPins();
 }
@@ -2945,10 +2992,11 @@ function updateSources() {
       const st = placeStatus(f.id), showL = featShown(f), nm = nameOf(f);
       lakeF.push({ type: 'Feature', properties: { id: f.id, st, rc: rcOf(f.id) }, geometry: { type: 'MultiPolygon', coordinates: f.polys.map(r => [r]) } });
       // Every lake gets a teardrop marker (dashed when it has no name) so its status shows at a glance; named lakes keep their label on the water
-      if (showL) poiF.push({ type: 'Feature', properties: { id: f.id, kind: 'lake', icon: nm ? 'lakept' : 'ilakept', ident: !nm, st, rc: rcOf(f.id), ele: 0, label: nm ? '' : 'Unnamed Lake' }, geometry: { type: 'Point', coordinates: f.center } });
+      if (showL && layerOn('lakes')) poiF.push({ type: 'Feature', properties: { id: f.id, kind: 'lake', icon: nm ? 'lakept' : 'ilakept', ident: !nm, st, rc: rcOf(f.id), ele: 0, label: nm ? '' : 'Unnamed Lake' }, geometry: { type: 'Point', coordinates: f.center } });
       if (nm && showL) lakeP.push({ type: 'Feature', properties: { label: nm }, geometry: { type: 'Point', coordinates: f.center } });
     } else {
       if (!featShown(f)) continue;
+      if (!layerOn(f.kind === 'peak' ? 'peaks' : f.kind === 'pass' ? 'passes' : 'places')) continue;
       const nm = nameOf(f), ft = f.ele ? Math.round(f.ele * FT_PER_M).toLocaleString() + ' ft' : '';
       const icon = f.kind === 'peak' && !nm ? 'ipeak' : ICON_SHAPES[f.kind] ? f.kind : 'peak';
       const label = nm || unnamedLabel(f);
@@ -2970,6 +3018,7 @@ function updateSources() {
     // trimmed parts are dropped from hikes; any left over (set aside, not measuring) are never drawn
     t.segments.forEach((s, si) => {
       if (s.pts.length < 2 || (s.src === 'ignored' && !s.meas)) return;
+      if (!isSel && !layerOn(ts === 'done' ? 'completed' : 'tracks')) return;
       trackF.push({ type: 'Feature', properties: { tid: t.id, si, src: s.src, ts, sel: isSel }, geometry: { type: 'LineString', coordinates: s.pts.map(p => [p[0], p[1]]) } });
       if (ts === 'done' && s.src !== 'ignored' && hm !== 'places') for (const p of resample(s.pts, 40)) heatF.push({ type: 'Feature', properties: { w: 1 }, geometry: { type: 'Point', coordinates: [p[0], p[1]] } });
     });
@@ -3065,7 +3114,6 @@ function renderMarkers() {
     ${sec('pins', 'My Pin Types', types.map(([k, t]) => `<div class="pinrow"><input type="checkbox" data-mkpin="${k}" ${m.pinTypes[k] === false ? '' : 'checked'} title="Show on the map" style="width:auto">
         <button class="emo" data-pt-emoji="${k}" title="${esc(emojiName(t.icon))}: tap to change">${t.icon}</button>
         <input type="text" data-pt-label="${k}" value="${esc(t.label)}" aria-label="Type name">
-        <label class="cdot" style="background:${t.color}" title="Color"><input type="color" data-pt-color="${k}" value="${/^#[0-9a-f]{6}$/i.test(t.color) ? t.color : '#455a64'}"></label>
         <span class="n" title="Pins of this type">${pinCt[k] || 0}</span>
         ${k === 'other' ? '<span style="width:28px"></span>' : `<button class="x" data-pt-del="${k}" title="Delete this type">×</button>`}</div>`).join('') +
       `<div class="row"><button class="btn sm" data-pt-add="1">＋ Add a Pin Type</button><button class="btn sm" data-pt-reset="1">Reset to Defaults</button></div>`, `${types.length} types`)}
@@ -3118,34 +3166,88 @@ $('markers').addEventListener('input', e => {
 });
 
 // Pins are HTML markers so they can show emoji icons and be dragged// Pins are HTML markers so they can show emoji icons and be dragged
+// V20.3: pins are drawn by the map itself (like peaks and lakes), so they stay exactly in place while zooming.
+// The pin you have open (or are placing) is a draggable marker on top, so you can nudge it.
+// Color = status (Been There, Seen, Planned, Potential; white = Not Yet). Custom pin colors are gone.
+const PIN_PX = 64;
+function pinIconCanvas(st, emo) {
+  const c = document.createElement('canvas'); c.width = c.height = PIN_PX; const g = c.getContext('2d');
+  const cx = 32, cy = 24, R = 17, tipY = 58, th = Math.acos(R / (tipY - cy));
+  const path = () => { g.beginPath(); g.moveTo(cx, tipY); g.arc(cx, cy, R, Math.PI / 2 + th, Math.PI * 2.5 - th); g.closePath(); };
+  const fill = st === 'none' ? '#ffffff' : stColor(st);
+  g.save(); g.shadowColor = 'rgba(0,0,0,.4)'; g.shadowBlur = 5; g.shadowOffsetY = 2;
+  path(); g.lineJoin = 'round'; g.lineWidth = 7; g.strokeStyle = '#fff'; g.stroke(); g.restore();
+  path(); g.fillStyle = fill; g.fill(); g.lineWidth = 2; g.strokeStyle = '#263238'; g.stroke();
+  g.beginPath(); g.arc(cx, cy, 12, 0, Math.PI * 2); g.fillStyle = '#ffffff'; g.fill();
+  g.font = '15px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(emo || '📍', cx, cy + 1);
+  return c;
+}
+const pinIconId = p => 'upin|' + pinStatus(p) + '|' + (p.icon || (PIN_TYPES[p.type] || PIN_TYPES.other).icon);
+function pinIconURL(p) { const [, st, emo] = pinIconId(p).split('|'); return pinIconCanvas(st, emo).toDataURL(); }
+function pinImageMissing(e) {
+  if (!e.id || !e.id.startsWith('upin|') || map.hasImage(e.id)) return;
+  const [, st, emo] = e.id.split('|'), c = pinIconCanvas(st, emo);
+  map.addImage(e.id, { width: PIN_PX, height: PIN_PX, data: c.getContext('2d').getImageData(0, 0, PIN_PX, PIN_PX).data }, { pixelRatio: 2 });
+}
+const pinScale = () => { const z = map ? map.getZoom() : 12, k = MK().size || 1; return (z <= 9 ? 0.8 : z >= 14 ? 1.25 : 0.8 + (z - 9) * 0.09) * k; };
+let pinDragM = null;
 function syncPins() {
   if (!map) return;
-  const show = layerOn('pins'), live = new Set();
-  for (const p of data.pins) {
-    live.add(p.id);
-    let m = pinMarkers.get(p.id);
-    const t = PIN_TYPES[p.type] || PIN_TYPES.other, shape = p.shape || 'drop', size = p.size || 'm', sig = shape + size;
-    if (m && m._sig !== sig) { m.remove(); pinMarkers.delete(p.id); m = null; }
-    if (!m) {
-      const el = document.createElement('div'); el.className = 'pinw';
-      el.addEventListener('click', e => { e.stopPropagation(); if (mode === 'browse') openDetail({ type: 'pin', id: p.id }); });
-      m = new maplibregl.Marker({ element: el, anchor: shape === 'drop' ? 'bottom' : 'center', offset: shape === 'drop' ? [0, -2] : [0, 0] }).setLngLat([p.lon, p.lat]); m._sig = sig;
-      m.on('dragend', () => { const ll = m.getLngLat(), pin = findPin(p.id); if (pin) { pin.lon = +ll.lng.toFixed(6); pin.lat = +ll.lat.toFixed(6); touch(); toast('Pin moved.'); } });
-      pinMarkers.set(p.id, m);
-    }
-    const el = m.getElement();
-    // The pin's edge shows its status color (Completed, Been There, Planned, Potential, Seen); white when not yet
-    const st = pinStatus(p), ring = st === 'none' ? '#ffffff' : stColor(st);
-    el.innerHTML = `<div class="pin ${shape} ${size}" style="background:${esc(p.color || t.color)};border-color:${ring}"><span>${esc(p.icon || t.icon)}</span></div>${p.label ? `<em class="pl">${esc(pinName(p))}</em>` : ''}`;
-    el.title = `${pinName(p)} · ${STATUS[st].label}`;
-    el.classList.toggle('sel', selectedPinId === p.id);
-    el.style.opacity = 1;
-    m.setLngLat([p.lon, p.lat]);
-    m.setDraggable(selectedPinId === p.id);
-    if (show && inFilterPin(p) && pinShown(p)) { if (!m._map) m.addTo(map); } else m.remove();
+  const show = layerOn('pins'), live = (selectedPinId && findPin(selectedPinId)) || null, F = [];
+  if (show) for (const p of data.pins) {
+    if (live && live.id === p.id) continue;                       // drawn by the draggable marker instead
+    if (!inFilterPin(p) || !pinShown(p)) continue;
+    F.push({ type: 'Feature', properties: { id: p.id, img: pinIconId(p), label: p.name || '', always: !!p.label }, geometry: { type: 'Point', coordinates: [p.lon, p.lat] } });
   }
-  for (const [id, m] of pinMarkers) if (!live.has(id)) { m.remove(); pinMarkers.delete(id); }
+  const src = map.getSource('mypins'); if (src) src.setData(fc(F));
+  if (!live) { if (pinDragM) { pinDragM.remove(); pinDragM = null; } return; }
+  if (!pinDragM) {
+    const el = document.createElement('div'); el.className = 'pindrag'; el.title = 'Drag to move this pin';
+    el.innerHTML = '<img alt="" draggable="false">';
+    pinDragM = new maplibregl.Marker({ element: el, anchor: 'bottom', draggable: true });
+    pinDragM.on('dragend', () => {
+      const pin = selectedPinId && findPin(selectedPinId); if (!pin) return;
+      const ll = pinDragM.getLngLat(); pin.lon = +ll.lng.toFixed(6); pin.lat = +ll.lat.toFixed(6);
+      if (pin.draft) renderSide(); else { touch({ noRender: true }); renderSide(); toast('Pin moved.'); }
+    });
+  }
+  const el = pinDragM.getElement(), img = el.firstChild, key = pinIconId(live);
+  if (img.dataset.key !== key) { img.src = pinIconURL(live); img.dataset.key = key; }
+  sizePinDrag();
+  pinDragM.setLngLat([live.lon, live.lat]);
+  if (!pinDragM._map) pinDragM.addTo(map);
 }
+function sizePinDrag() {
+  if (!pinDragM) return;
+  const k = pinScale(), w = Math.round(PIN_PX / 2 * k), img = pinDragM.getElement().firstChild;
+  img.style.width = img.style.height = w + 'px';
+  pinDragM.setOffset([0, Math.round(3 * k)]);             // the pin's tip sits 3 px above the bottom of the picture
+}
+// Place a new pin: shows it where you clicked; drag it, or click the map again, to move it. Nothing is saved until Save Pin.
+function startPinDraft(ll) {
+  if (editor || areaEd || hed) return;
+  if (mode === 'pin') setMode('browse');
+  pinDraft = { id: uid(), lon: +ll[0].toFixed(6), lat: +ll[1].toFixed(6), name: '', type: 'other', status: 'been', note: '', date: today(), icon: '', draft: true };
+  const p = pinDraft;
+  openDetail({ type: 'pin', id: p.id });
+  syncPins();
+  elevations([ll]).then(el => { if (el[0] != null) { p.ele = Math.round(el[0]); if (view.detail && view.detail.id === p.id) renderSide(); } }).catch(() => {});
+}
+function closePinPage() {
+  view.detail = null; viewStack = []; selectedPinId = null; renderSide(); updateSources(); syncPins();
+  if (window.matchMedia('(max-width:800px)').matches) setCollapsed(true);
+}
+function savePin() {
+  const p = view.detail && view.detail.type === 'pin' && findPin(view.detail.id); if (!p) return;
+  if (p.draft) {
+    delete p.draft; if (p.ele != null && !p.note) p.note = `Elevation about ${fmtFt(p.ele)} ft.`;
+    delete p.ele; data.pins.push(p); pinDraft = null; touch({ noRender: true }); toast('Pin saved.');
+  } else { touch({ noRender: true }); toast('Pin saved.'); }
+  closePinPage();
+}
+// An unsaved pin only redraws; a saved one saves and syncs as usual
+function pinTouch(p, noRender) { if (p && p.draft) { syncPins(); if (!noRender) renderSide(); } else touch(noRender ? { noRender: true } : undefined); }
+function cancelPinDraft() { pinDraft = null; closePinPage(); }
 function inFilterPin(p) { return (filter.year === 'all' && filter.season === 'all') || inFilter(p.date); }
 
 // 3D terrain
@@ -3272,7 +3374,7 @@ function startEditor(kind, opts) {
     wps: r ? r.wps.map(w => Object.assign({}, w, { c: w.c.slice() })) : [],
     legs: r ? r.legs.map(l => ({ off: l.off, pts: l.pts.map(p => p.slice()) })) : [], markers: [], prof: null, redo: []
   };
-  editor.origWps = JSON.stringify(editor.wps.map(w => w.c)); editor.camps = r ? r.wps.map(w => w.camp || '') : [];
+  editor.origWps = JSON.stringify(editor.wps.map(w => w.c)); editor.camps = r ? r.wps.map(w => w.camp || '') : []; editor.dayNames = r && r.dayNames ? r.dayNames.slice() : [];
   if (opts.start) { addPoint(opts.start, true); editor.wps[0].c = [opts.start[0], opts.start[1]]; editor.wps[0].snap = false; }
   editor.plan = !!opts.plan; editor.mode = opts.mode || null; editor.anchorPt = opts.anchorPt || null; editor.endPt = opts.endPt || null; editor.aIdx = opts.aIdx; editor.bIdx = opts.bIdx; editor.snapshot = opts.snapshot || null; editor.closed = false;
   if (editor.endPt && mapReady) { const el = document.createElement('div'); el.className = 'hm b'; el.textContent = 'B'; el.title = 'Your drawn section must end here'; editor.endMarker = new maplibregl.Marker({ element: el }).setLngLat([editor.endPt[0], editor.endPt[1]]).addTo(map); }
@@ -3458,7 +3560,7 @@ function editorStatsHTML() {
   const c = prof ? climb(prof) : { gain: 0 };
   return `<div class="stats">${statHTML(fmtMi(len), 'mi', 'Length')}${statHTML(prof ? fmtFt(c.gain) : '…', 'ft', 'Elev. gain')}${statHTML(prof ? fmtFt(c.loss) : '…', 'ft', 'Elev. loss')}${statHTML(estTime(len, c.gain), 'hr', 'Est. time')}</div>
     ${line.length > 1 ? (prof ? chartHTML(prof, breaks) : '<div class="empty small">Loading elevation…</div>') : ''}
-    ${editor.kind === 'route' && editor.wps.length > 1 ? edSegmentsHTML(len, prof, breaks) : ''}`;
+`;
 }
 // AllTrails-style Segments: one colored card per day, with a stepper that splits the route into N days
 function edSegmentsHTML(len, prof, breaks) {
@@ -3538,7 +3640,7 @@ async function saveEditor() {
   for (const l of legs) await fillElevation(l.pts);
   if (e.kind === 'route') {
     const r = (e.routeId && findRoute(e.routeId)) || { id: uid(), created: today() };
-    Object.assign(r, { name: ($('edName') && $('edName').value.trim()) || e.name || 'Route', color: e.color, notes: e.notes, wps: e.wps.map((w, i) => Object.assign({ c: w.c, brk: !!w.brk, snap: w.snap }, w.brk && (e.camps || [])[i] ? { camp: e.camps[i] } : {})), legs });
+    Object.assign(r, { name: ($('edName') && $('edName').value.trim()) || e.name || 'Route', color: e.color, notes: e.notes, wps: e.wps.map((w, i) => Object.assign({ c: w.c, brk: !!w.brk, snap: w.snap }, w.brk && (e.camps || [])[i] ? { camp: e.camps[i] } : {})), legs, dayNames: (e.dayNames || []).slice() });
     const st = lineStats(routeLine(r)); r.stats = { len: st.len, gain: st.gain, loss: st.loss, days: routeBreaks(r).length + 1 };
     if (!findRoute(r.id)) data.routes.push(r);
     if (e.plan) {   // "Plan a Trip": the route becomes a Potential trip right away (a date makes it Planned)
@@ -3562,8 +3664,9 @@ async function saveEditor() {
         const oldAuto = new Set(t.autoCamps || []); data.pins = data.pins.filter(p => !oldAuto.has(p.id)); t.camps = (t.camps || []).filter(id => !oldAuto.has(id));
         t.autoCamps = []; t.dayCuts = brks.map(i => [e.wps[i].c[0], e.wps[i].c[1]]);
         brks.forEach((i, k) => { const c = e.wps[i].c, d0 = new Date(t.date + 'T12:00:00'); d0.setDate(d0.getDate() + k);
-          const pin = { id: uid(), lon: +c[0].toFixed(6), lat: +c[1].toFixed(6), name: (e.camps || [])[i] || `Camp, night ${k + 1}`, type: 'camp', status: 'been', note: `Night ${k + 1} of ${t.name}`, date: d0.toISOString().slice(0, 10), icon: '', color: '' };
+          const pin = { id: uid(), lon: +c[0].toFixed(6), lat: +c[1].toFixed(6), name: (e.camps || [])[i] || `Night ${k + 1}`, type: 'camp', status: 'been', note: `Night ${k + 1} of ${t.name}`, date: d0.toISOString().slice(0, 10), icon: '' };
           data.pins.push(pin); t.camps.push(pin.id); t.autoCamps.push(pin.id); });
+        t.dayNames = (e.dayNames || []).slice();
         if (brks.length) { t.nights = brks.length; const d1 = new Date(t.date + 'T12:00:00'); d1.setDate(d1.getDate() + brks.length); t.endDate = t.endDate || d1.toISOString().slice(0, 10); }
         const rv = reviewOf(t); delete rv.pathOk;
       }
@@ -3578,7 +3681,7 @@ async function saveEditor() {
         if (segs.length) t.segments = segs;
         t.camps = []; t.nights = brks.length;
         brks.forEach((i, k) => { const c = e.wps[i].c, d0 = new Date(t.date + 'T12:00:00'); d0.setDate(d0.getDate() + k);
-          const pin = { id: uid(), lon: +c[0].toFixed(6), lat: +c[1].toFixed(6), name: (e.camps || [])[i] || `Camp, night ${k + 1}`, type: 'camp', status: 'been', note: `Night ${k + 1} of ${t.name}`, date: d0.toISOString().slice(0, 10), icon: '', color: '' };
+          const pin = { id: uid(), lon: +c[0].toFixed(6), lat: +c[1].toFixed(6), name: (e.camps || [])[i] || `Night ${k + 1}`, type: 'camp', status: 'been', note: `Night ${k + 1} of ${t.name}`, date: d0.toISOString().slice(0, 10), icon: '', color: '' };
           data.pins.push(pin); t.camps.push(pin.id); });
       }
       data.tracks.push(t);
@@ -4110,7 +4213,7 @@ function hikeUndo(t) {
 }
 async function hikeRevert(t) {
   if (!t || !t.orig) return;
-  if (!(await sure('Go back to the original line?', { body: 'This removes every trim and every part you drew, including the Approved Trail.', ok: 'Go Back', danger: false }))) return;
+  if (!(await sure('Go back to the original line?', { body: 'This removes every trim and every part you drew, including the Completed Trail.', ok: 'Go Back', danger: false }))) return;
   hedPush(t); t.segments = t.orig; delete t.orig; t.edited = false; syncHikeTimes(t);
   if (hed && hed.tid === t.id) { hed.a = 0; hed.b = Infinity; hedLoad(t); hedModeInit(hed.mode); }
   hedAfter(t, 'Back to the original.');
@@ -4128,7 +4231,7 @@ function pageHikeEdit(d) {
   setTimeout(() => { if (hed) hedRefreshPage(); }, 0);
   return `${backBtn()}
     <div class="d-title">Trim or add to this hike</div><div class="d-sub">${esc(t.name)}</div>
-    ${t.approved === false ? '<div class="small" style="background:#fff4e5;border-radius:12px;padding:10px 12px;margin:8px 0">Good time to fix it: this hike is still waiting for your approval, and nothing counts yet.</div>' : ''}
+    ${t.approved === false ? '<div class="small" style="background:#fff4e5;border-radius:12px;padding:10px 12px;margin:8px 0">Good time to fix it: this hike is still waiting to be completed, and nothing counts yet.</div>' : ''}
     ${isMeasured(t) ? '<div class="small" style="background:var(--soft);border-radius:12px;padding:10px 12px;margin:8px 0">Your trail is marked in blue, so this trims your <b>GPS line</b> (the one that measures distance and climbing). The blue line stays as you drew it; redraw it if it also needs to change.</div>' : ''}
     <div class="hsum small" id="hedSum">${hedSummary(t)}</div>
     <div class="hs-bar"><div class="small muted">Drag the <b style="color:#2e7d32">A</b> / <b style="color:#c62828">B</b> handles, or tap the profile.</div>
@@ -4141,7 +4244,7 @@ function pageHikeEdit(d) {
       : `<div class="pills three">${addk('before', '⇤', 'Add to the start')}${addk('after', '⇥', 'Add to the end')}${addk('gap', '⇹', 'Add in the middle')}</div>`}
     ${hedCardHTML('a')}${hedCardHTML('b')}
     <div id="hedPlan"></div>
-    ${hed.tab === 'add' ? `<div class="small muted" style="margin-top:8px">Want to redraw the whole route instead? <button class="btn sm" data-act="hedApprove">🧭 Draw the Approved Trail (blue)</button></div>` : ''}
+    ${hed.tab === 'add' ? `<div class="small muted" style="margin-top:8px">Want to redraw the whole route instead? <button class="btn sm" data-act="hedApprove">🧭 Draw the Completed Trail (blue)</button></div>` : ''}
     <details class="set" style="margin-top:12px"><summary>Start and end time</summary>
       <div class="small muted">Trimming moves these for you. Change them here if the watch clock was off: every point's time stretches or shifts to match.</div>
       <div class="row"><div style="flex:1"><label class="f">Start</label><input type="time" id="hedT0" step="1" value="${ts ? clockSec(t.start / 1000) : ''}"></div><div style="flex:1"><label class="f">End</label><input type="time" id="hedT1" step="1" value="${ts ? clockSec(t.end / 1000) : ''}"></div></div>
@@ -4150,7 +4253,7 @@ function pageHikeEdit(d) {
     ${parts.length ? `<h2 class="sec">Cut-away parts <span class="small muted">${parts.length}</span></h2>
     ${parts.map(x => `<div class="visit"><div class="tx"><b>${where[x.where]}</b> <span class="muted small">${fmtMi(x.len)} mi${x.t0 != null && x.t1 != null ? ' · ' + clk(x.t0) + '–' + clk(x.t1) : ''}</span></div><button class="btn sm" data-act="hedRestore" data-from="${x.from}" data-to="${x.to}">Restore</button>${x.where !== 'middle' ? `<button class="btn sm danger" data-act="hedDrop" data-from="${x.from}" data-to="${x.to}">Delete</button>` : ''}</div>`).join('') || '<div class="empty small">Nothing cut away.</div>'}
     ${parts.length > 1 ? '<div class="row"><button class="btn sm" data-act="hedRestoreAll">Restore all</button></div>' : ''}` : ''}
-    <div class="row"><button class="btn" data-act="hedUndo" ${stack.length ? '' : 'disabled'}>↶ Undo last change</button><button class="btn" data-act="hedRevert" ${t.orig ? '' : 'disabled'}>Back to original</button></div>
+    <div class="row"><button class="btn" data-act="hedUndo" ${stack.length ? '' : 'disabled'}><svg class="bi" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> Undo last change</button><button class="btn" data-act="hedRevert" ${t.orig ? '' : 'disabled'}>Back to original</button></div>
     <div class="small muted">Tip: on a computer, ← → nudge the selected marker (Shift = 10 points) and Ctrl/Cmd+Z undoes.</div>
     <div class="row"><button class="btn primary" style="flex:1;padding:12px" data-act="hedDone">Done</button></div>
     <input type="file" id="hedJoinFile" accept=".gpx,application/gpx+xml,application/xml,text/xml,application/octet-stream" hidden>`;
@@ -4288,7 +4391,7 @@ function secPanelHTML() {
   if (S.mode === 'snap') return snapPanelHTML(S);
   const step = S.stage === 'a' ? 'Click the outline where the new section <b>starts</b>.' : S.stage === 'b' ? 'Now click where it <b>ends</b>.' : `Click along the new line (${S.pts.length} point${S.pts.length === 1 ? '' : 's'}). Drag to move the map.${S.paused ? ' <b>Paused</b>: clicks do nothing.' : ''}`;
   return `<div class="secbox"><div class="small">${step}</div><div class="row" style="margin:8px 0 0">
-    ${S.stage === 'draw' ? `<button class="btn sm" data-act="secPause">${S.paused ? '▶ Resume Drawing' : '⏸ Pause'}</button><button class="btn sm" data-act="areaUndo" ${S.pts.length ? '' : 'disabled'}>↶ Undo Point</button><button class="btn sm primary" data-act="secDone" ${S.pts.length ? '' : 'disabled'}>✓ Finish Section</button>` : ''}
+    ${S.stage === 'draw' ? `<button class="btn sm" data-act="secPause">${S.paused ? '▶ Resume Drawing' : '⏸ Pause'}</button><button class="btn sm" data-act="areaUndo" ${S.pts.length ? '' : 'disabled'}><svg class="bi" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> Undo Point</button><button class="btn sm primary" data-act="secDone" ${S.pts.length ? '' : 'disabled'}>✓ Finish Section</button>` : ''}
     <button class="btn sm" data-act="secCancel">Cancel</button></div></div>`;
 }
 function redrawArea() {
@@ -4834,7 +4937,9 @@ function goBack() {
   view.detail = viewStack.pop() || null; selectedPinId = view.detail && view.detail.type === 'pin' ? view.detail.id : null;
   renderSide(); updateSources();
 }
-function renderSide() { renderSideInner(); renderToolbar(); renderBrand(); if ($('dash') && !$('dash').hidden) renderDash(); }
+function renderSide() {
+  if (pinDraft && !(view.detail && view.detail.type === 'pin' && view.detail.id === pinDraft.id)) { pinDraft = null; syncPins(); }
+  renderSideInner(); renderToolbar(); renderBrand(); if ($('dash') && !$('dash').hidden) renderDash(); }
 function renderBrand() {
   const done = TRACKS().filter(t => hikeType(t) === 'completed').length, up = data.tracks.filter(t => t.approved === false).length;
   const pk = new Set(); for (const [id, l] of Object.entries(data.visits)) if (FEAT[id] && FEAT[id].kind === 'peak' && l.some(v => v.src === 'track' && v.status === 'been')) pk.add(id);
@@ -4903,7 +5008,7 @@ function featureItems() {
   }
   for (const p of data.pins) {
     const t = PIN_TYPES[p.type] || PIN_TYPES.other;
-    items.push({ kind: p.type === 'view' ? 'viewpoint' : 'pin', k2: 'pin', title: pinName(p), icon: p.icon || t.icon, color: p.color || t.color, sub: 'Your pin · ' + t.label + (p.date ? ' · ' + fmtDate(p.date) : ''), st: pinStatus(p), ele: 0, rc: rcFromDate(p.status === 'been' ? p.date : ''), photo: !!data.photos[p.id], open: { type: 'pin', id: p.id } });
+    items.push({ kind: p.type === 'view' ? 'viewpoint' : 'pin', k2: 'pin', title: pinName(p), icon: p.icon || t.icon, color: pinStatus(p) === 'none' ? '#90a4ae' : stColor(pinStatus(p)), sub: 'Your pin · ' + t.label + (p.date ? ' · ' + fmtDate(p.date) : ''), st: pinStatus(p), ele: 0, rc: rcFromDate(p.status === 'been' ? p.date : ''), photo: !!data.photos[p.id], open: { type: 'pin', id: p.id } });
   }
   return items;
 }
@@ -4997,7 +5102,7 @@ function pageActivity() {
   let html = `<div class="acttop"><button class="btn primary" data-act="gpx">⬆ Import GPX</button><button class="btn" data-act="drawHike">✏️ Draw a Hike</button><button class="btn" data-act="planTrip">🗓️ Plan a Trip</button></div>
     ${outN ? `<div class="lrow" style="border:0;padding:2px 2px 6px"><span class="lname" style="cursor:default;font-weight:600;font-size:13px">Tetons Hikes Only <span class="small muted">· ${outN} hike${outN === 1 ? '' : 's'} outside the range ${tetonsOnly() ? 'hidden' : 'shown'}</span></span>${swHTML('id="tetonsOnlyCk"', tetonsOnly())}</div>` : ''}
     <div class="seg2 act">${[['all', 'All', all.length], ['uploaded', 'Uploaded', up.length], ['completed', 'Completed', done.length], ['planned', 'Planned', pl.length], ['potential', 'Potential', po.length]].map(([k, l, n]) => `<button data-act="actF" data-k="${k}" class="${f === k ? 'on' : ''}">${l}<span class="n">${n}</span></button>`).join('')}</div>`;
-  if (show('uploaded') && up.length) html += `<div class="sect-h" style="--c:${HIKE_TYPES.uploaded.color}"><h2 class="sec">⬆️ Uploaded <span class="small muted">${up.length}</span></h2><div class="row" style="margin:0;flex-wrap:nowrap"><button class="btn sm" data-act="approveAll" title="Approve every upload with the places on its line, without reviewing">Approve All</button><button class="btn sm primary" data-act="reviewAll">Review ${up.length > 1 ? 'All' : 'It'} →</button></div></div>
+  if (show('uploaded') && up.length) html += `<div class="sect-h" style="--c:${HIKE_TYPES.uploaded.color}"><h2 class="sec">⬆️ Uploaded <span class="small muted">${up.length}</span></h2><div class="row" style="margin:0;flex-wrap:nowrap"><button class="btn sm" data-act="approveAll" title="Complete every upload with the places on its line, without reviewing">Complete All</button><button class="btn sm primary" data-act="reviewAll">Review ${up.length > 1 ? 'All' : 'It'} →</button></div></div>
     <div class="small muted" style="margin-bottom:4px">Raw GPX files. Review each one (path, places, details) to make it Completed. Nothing counts until then.</div>${up.map(t => hikeCard(t)).join('')}`;
   if (show('planned') && pl.length) html += `<div class="sect-h"><h2 class="sec">🗓️ Planned <span class="small muted">${pl.length}</span></h2><button class="btn sm" data-act="gpxPlanned">GPX</button></div>
     <div class="small muted" style="margin-bottom:4px">Trips with a date. Drag to reorder, or use Up and Down.</div>${dragList(pl)}`;
@@ -5208,7 +5313,7 @@ function renderDash() {
       <div class="denrow one">
         <details class="msel"><summary class="denck on">Total: ${ST_KEYS.filter(k => o.den[k]).length === ST_KEYS.length ? 'All' : ST_KEYS.filter(k => o.den[k]).length + ' of 6'} ▾${ib('Which statuses make up the total each percentage is out of. Uncheck Not Yet to see how much of what you have planned or marked you have done.')}</summary>
           <div class="msel-p">${ST_KEYS.map(k => `<label><input type="checkbox" data-den="${k}" ${o.den[k] ? 'checked' : ''}><i style="background:${stColor(k)}"></i><span><b>${STATUS[k].label}</b><span class="small muted">${STATUS[k].sub}</span></span></label>`).join('')}</div></details>
-        <label class="denck ${o.beenDone ? 'on' : ''}"><input type="checkbox" data-dopt="beenDone" ${o.beenDone ? 'checked' : ''}>Been There = Done${ib('Places you marked by hand, without an approved hike, count as completed too.')}</label>
+        <label class="denck ${o.beenDone ? 'on' : ''}"><input type="checkbox" data-dopt="beenDone" ${o.beenDone ? 'checked' : ''}>Been There = Done${ib('Places you marked by hand, without an completed hike, count as completed too.')}</label>
         <details class="msel"><summary class="denck ${o.unLakes || o.unPeaks || o.ident || o.unOther ? 'on' : ''}">Unnamed: ${[o.unLakes && 'Lakes', o.unPeaks && 'Peaks', o.ident && 'Terrain', o.unOther && 'Other'].filter(Boolean).join(', ') || 'None'} ▾${ib('Places with no name on the map are left out of the totals unless you include them here.')}</summary>
           <div class="msel-p">${[['unLakes', 'Unnamed lakes', 'Lakes and ponds with no name'], ['unPeaks', 'Unnamed peaks', 'Peaks on the map with no name'], ['ident', 'Peaks found in the terrain', 'High points the app found in the terrain data'], ['unOther', 'Other unnamed places', 'Passes, waterfalls and viewpoints with no name']].map(([k, l, sub]) => `<label><input type="checkbox" data-dopt="${k}" ${o[k] ? 'checked' : ''}><span><b>${l}</b><span class="small muted">${sub}</span></span></label>`).join('')}</div></details>
 
@@ -5248,7 +5353,7 @@ function renderDash() {
     </div>
 
     <section class="dcard"><div class="dcard-h"><h2>Peak Checklist</h2><input id="ckQ" placeholder="Search peaks" value="${esc(view.ckQ || '')}" style="width:180px;padding:6px 10px;font-size:13px"></div>
-      <div class="small muted" style="margin:-4px 0 8px">Peaks tick themselves off when an approved hike reaches them. Tap one to open it.</div>
+      <div class="small muted" style="margin:-4px 0 8px">Peaks tick themselves off when an completed hike reaches them. Tap one to open it.</div>
       <div class="chk" id="ckList">${peakChecklistHTML()}</div></section>
 
     <section class="dcard"><div class="dcard-h"><h2>App Data</h2></div><div class="dgrid six small-t">
@@ -5442,13 +5547,15 @@ function suggestionsHTML() {
   if (!FEATS.length) return '';
   const list = suggestions();
   return `<details class="set" data-k="sug" ${setOpen('sug', false)}><summary>Maybe next<span class="sv">near places you've been</span></summary>
-    ${list.length ? list.map(s => cardHTML({ title: nameOf(s.f), icon: KIND_INFO[s.f.kind].icon, sub: `${KIND_INFO[s.f.kind].label}${s.f.ele ? ' · ' + fmtFt(s.f.ele) + ' ft' : ''} · ${fmtMi(s.d)} mi from your hikes`, st: statusOf(s.f.id), open: { type: 'feature', id: s.f.id } })).join('') : '<div class="empty small">Approve a few hikes and places close to where you have been will show up here.</div>'}</details>`;
+    ${list.length ? list.map(s => cardHTML({ title: nameOf(s.f), icon: KIND_INFO[s.f.kind].icon, sub: `${KIND_INFO[s.f.kind].label}${s.f.ele ? ' · ' + fmtFt(s.f.ele) + ' ft' : ''} · ${fmtMi(s.d)} mi from your hikes`, st: statusOf(s.f.id), open: { type: 'feature', id: s.f.id } })).join('') : '<div class="empty small">Complete a few hikes and places close to where you have been will show up here.</div>'}</details>`;
 }
 
 // ================= Detail pages =================
 const profCache = new Map();
 function actionBtn(act, title, inner, on) { return `<button data-act="${act}" title="${title}" class="${on ? 'on' : ''}">${inner}</button>`; }
 const SVG = {
+  rundo: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>',
+  rredo: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>',
   check: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12l5 5 9-10"/></svg>',
   eye: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
   heart: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20s-7-4.5-9-9a4.8 4.8 0 019-3 4.8 4.8 0 019 3c-2 4.5-9 9-9 9z"/></svg>',
@@ -5464,7 +5571,7 @@ const SVG = {
 function visitsHTML(id, kind) {
   const list = visitsFor(id), lake = kind === 'lake';
   return `<h2 class="sec">My Visits <span class="small muted">${list.length}</span></h2>
-    ${list.map(v => { const t = v.trackId && findTrack(v.trackId); return `<div class="visit"><span class="badge ${v.status}" style="${v.src === 'track' ? `background:${stColor('done')}22;color:${stColor('done')}` : ''}">${v.src === 'track' ? 'Hike' : v.status === 'been' ? 'Been' : 'Seen'}</span><div class="tx"><b>${fmtDate(v.date)}</b>${t ? ` · <a href="#" data-open='${esc(JSON.stringify({ type: 'track', id: t.id }))}'>${esc(t.name)}</a>` : ''}${v.note ? `<div class="small muted">${esc(v.note)}</div>` : ''}</div>${lake && v.status === 'been' ? `<button class="btn sm ${v.swim ? 'primary' : ''}" data-act="swimToggle" data-vid="${v.vid}" title="Did you jump in?">🏊 ${v.swim ? 'Jumped In' : 'Jumped In?'}</button>` : ''}${v.src === 'log' ? `<button class="x" data-act="delVisit" data-vid="${v.vid}" title="Remove">×</button>` : ''}</div>`; }).join('') || '<div class="empty small">No visits yet. Approve a hike that went here and it shows up on its own.</div>'}
+    ${list.map(v => { const t = v.trackId && findTrack(v.trackId); return `<div class="visit"><span class="badge ${v.status}" style="${v.src === 'track' ? `background:${stColor('done')}22;color:${stColor('done')}` : ''}">${v.src === 'track' ? 'Hike' : v.status === 'been' ? 'Been' : 'Seen'}</span><div class="tx"><b>${fmtDate(v.date)}</b>${t ? ` · <a href="#" data-open='${esc(JSON.stringify({ type: 'track', id: t.id }))}'>${esc(t.name)}</a>` : ''}${v.note ? `<div class="small muted">${esc(v.note)}</div>` : ''}</div>${lake && v.status === 'been' ? `<button class="btn sm ${v.swim ? 'primary' : ''}" data-act="swimToggle" data-vid="${v.vid}" title="Did you jump in?">🏊 ${v.swim ? 'Jumped In' : 'Jumped In?'}</button>` : ''}${v.src === 'log' ? `<button class="x" data-act="delVisit" data-vid="${v.vid}" title="Remove">×</button>` : ''}</div>`; }).join('') || '<div class="empty small">No visits yet. Complete a hike that went here and it shows up on its own.</div>'}
     <details class="sub2"><summary>Log a Visit by Hand</summary>
     <div class="row"><input type="date" id="vDate" value="${today()}" style="flex:1"><select id="vStatus" style="flex:1"><option value="been">Been here</option><option value="seen">Seen it</option></select></div>
     ${lake ? '<label class="toggle"><input type="checkbox" id="vSwim"> 🏊 Jumped in</label>' : ''}
@@ -5483,7 +5590,7 @@ function summitRoutesHTML(id) {
 // Status pill: where the status comes from (your hikes first; manual marks are secondary)
 function statusLineHTML(id) {
   const st = placeStatus(id), vs = visitsFor(id), hike = vs.find(v => v.src === 'track' && v.status === 'been'), t = hike && findTrack(hike.trackId);
-  const why = st === 'done' && t ? `Credited by <a href="#" data-open='${esc(JSON.stringify({ type: 'track', id: t.id }))}'>${esc(t.name)}</a> · ${fmtDate(hike.date)}` : st === 'been' ? 'Marked by you. Approve a hike that went here to make it Completed.' : st === 'planned' ? 'On a planned trip.' : st === 'wish' ? 'On a potential trip, a route, or saved.' : st === 'seen' ? 'Seen from nearby.' : 'Not been yet. It turns Completed when you approve a hike that went here.';
+  const why = st === 'done' && t ? `Credited by <a href="#" data-open='${esc(JSON.stringify({ type: 'track', id: t.id }))}'>${esc(t.name)}</a> · ${fmtDate(hike.date)}` : st === 'been' ? 'Marked by you. Complete a hike that went here to make it Completed.' : st === 'planned' ? 'On a planned trip.' : st === 'wish' ? 'On a potential trip, a route, or saved.' : st === 'seen' ? 'Seen from nearby.' : 'Not been yet. It turns Completed when you complete a hike that went here.';
   return `<div class="row" style="margin:8px 0 2px;gap:10px;flex-wrap:nowrap;align-items:flex-start"><span class="stpill"><i style="background:${stColor(st)}"></i>${STATUS[st].label}</span><span class="small muted" style="padding-top:3px">${why}</span></div>`;
 }
 // Small text actions instead of the old round buttons. Marking by hand is still possible, but hikes do it for you.
@@ -5594,7 +5701,7 @@ function pageRoute(d) {
       <button data-act="preview">▶ Preview in 3D</button><button data-act="editRoute">✏️ Edit Route</button><button data-act="gpxRoute">⬇ GPX for Your Watch</button><button data-act="hikedRoute">✅ I Hiked This</button><button data-act="delRoute" style="color:#dc2626">🗑 Delete</button>
     </div>
     <h2 class="sec">Segments</h2>
-    ${segs.map((s, i) => { const camp = segs.length > 1 && i < segs.length - 1 ? (r.wps.filter(w => w.brk)[i] || {}).camp : null; return segHTML(segs.length > 1 ? 'Day ' + (i + 1) : 'Full route', DAY_COLORS[i % DAY_COLORS.length], s) + (segs.length > 1 ? `<div class="row" style="margin:-2px 0 6px 17px"><button class="btn sm" data-act="gpxDay" data-i="${i}">GPX for Day ${i + 1}</button></div>` : '') + (segs.length > 1 && i < segs.length - 1 ? `<div class="camprow"><span>⛺</span><b>Night ${i + 1}</b><span class="small muted">${esc(camp || 'Camp (name it in Edit Route)')}</span></div>` : ''); }).join('')}
+    ${segs.map((s, i) => { const camp = segs.length > 1 && i < segs.length - 1 ? (r.wps.filter(w => w.brk)[i] || {}).camp : null; return segHTML(segs.length > 1 ? ((r.dayNames || [])[i] || 'Day ' + (i + 1)) : 'Full route', DAY_COLORS[i % DAY_COLORS.length], s) + (segs.length > 1 ? `<div class="row" style="margin:-2px 0 6px 17px"><button class="btn sm" data-act="gpxDay" data-i="${i}">GPX for Day ${i + 1}</button></div>` : '') + (segs.length > 1 && i < segs.length - 1 ? `<div class="camprow"><span>⛺</span><b>Night ${i + 1}</b><span class="small muted">${esc(camp || 'Camp (name it in Edit Route)')}</span></div>` : ''); }).join('')}
     <div class="small muted">Lowest ${fmtFt(c.min)} ft · highest ${fmtFt(c.max)} ft · loss ${fmtFt(c.loss)} ft. Time assumes ${data.settings.pace} mph plus 1 hour per 2,000 ft of climbing (change in Settings).</div>
     <h2 class="sec">Details</h2>
     <label class="f">Color</label><div class="swatches">${COLORS.map(cl => `<button data-color="${cl}" class="${(r.color || COLORS[0]) === cl ? 'on' : ''}" style="background:${cl}"></button>`).join('')}</div>
@@ -5603,9 +5710,9 @@ function pageRoute(d) {
 }
 // ================= Hike review (Uploaded → Completed) =================
 // Four steps: 1 Path (trim / add anywhere / mark the trail you took with smart snap), 2 Places (tick every trail, peak and
-// lake you really got, mark lakes you jumped in, add anything the GPS missed), 3 Details, 4 Approve.
+// lake you really got, mark lakes you jumped in, add anything the GPS missed), 3 Details, 4 Complete.
 let reviewReturn = null;   // after trimming or drawing from the review, come back to it
-const REVIEW_STEPS = [['path', '1', 'Path'], ['places', '2', 'Places'], ['details', '3', 'Details'], ['approve', '4', 'Approve']];
+const REVIEW_STEPS = [['path', '1', 'Path'], ['places', '2', 'Places'], ['details', '3', 'Details'], ['approve', '4', 'Complete']];
 function reviewOf(t) { if (!t.review) t.review = { off: {}, add: [], swim: {} }; for (const k of ['off', 'swim']) if (!t.review[k]) t.review[k] = {}; if (!t.review.add) t.review.add = []; return t.review; }
 // What the line touches (exact rules), plus near misses worth asking about
 function reviewCandidates(t) {
@@ -5652,7 +5759,6 @@ function pageReview(d) {
     <div class="row" style="margin:6px 0 0;gap:8px"><span class="stpill" style="background:${HT.color}1f;color:${HT.color}">${HT.icon} ${HT.label}</span><span class="small muted">${type === 'uploaded' ? 'Review it to make it Completed' : 'Change what this hike credits'}</span></div>
     ${titleInputHTML(t.name, 'Hike name')}
     <div class="d-sub">${fmtDate(t.date)} · ${fmtMi(st.len)} mi · ${fmtFt(st.gain)} ft up${timed ? ` · ${clockOf(t.start)}–${clockOf(t.end)}` : ''}</div>
-    ${t.edited && timed ? `<div class="small muted" style="margin:-8px 0 8px">ⓘ Start and end times follow your path edits.</div>` : ''}
     <div class="steps">${REVIEW_STEPS.map(([k, n, l]) => `<button data-act="revStep" data-k="${k}" class="${k === step ? 'on' : ''}"><b>${n}</b>${l}</button>`).join('')}</div>`;
   if (step === 'path') {
     const n = hedStack(t.id).length, ign = t.segments.filter(x => x.src === 'ignored' && !x.meas).length, hasAppr = t.segments.some(x => x.src === 'approved');
@@ -5670,12 +5776,12 @@ function pageReview(d) {
         ${t.segments.some(x => x.src === 'garmin') ? '<button data-act="split"><i>⌚</i><b>Watch Stopped Early</b><span>Tap where it stopped, then draw the rest.</span></button>' : ''}
       </div>
       <div class="notice ${n || ign || hasAppr ? 'ok' : 'info'}">${n || ign || hasAppr ? `${n} edit${n === 1 ? '' : 's'} so far${ign ? ` · ${ign} part${ign === 1 ? '' : 's'} set aside (gray)` : ''}${hasAppr ? ' · your trail is marked (blue); distance still comes from the GPS line' : ''}.` : 'No edits yet. If the line looks right, go straight to Places.'}</div>
-      <div class="row"><button class="btn" data-act="hikeUndoR" ${n ? '' : 'disabled'}>↶ Undo Last Edit</button><button class="btn" data-act="hikeOrigR" ${t.orig ? '' : 'disabled'}>Back to Original</button><button class="btn" data-act="zoomHike">⌖ Zoom to Hike</button></div>
+      <div class="row"><button class="btn" data-act="hikeUndoR" ${n ? '' : 'disabled'}><svg class="bi" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> Undo Last Edit</button><button class="btn" data-act="hikeOrigR" ${t.orig ? '' : 'disabled'}>Back to Original</button><button class="btn" data-act="zoomHike">⌖ Zoom to Hike</button></div>
       ${(() => { const pc = pathCoverage(t), rv = reviewOf(t), ready = rv.pathOk || (pc && pc.pct >= 0.95);
         return ready ? `<button class="btn primary big" data-act="revStep" data-k="places">Next: Places →</button>`
           : `<button class="btn primary big" data-act="revStep" data-k="places" disabled title="Mark the trail you took first">Next: Places →</button>
-             <div class="quickok"><span class="small muted">${pc ? 'Some of the GPS line is not marked.' : 'Rather not mark it?'}</span><button class="btn sm" data-act="pathOk">${pc ? '✓ I Did It All' : 'Skip: Use the GPS Line'}</button></div>`; })()}
-      <div class="quickok"><span class="small muted">Everything looks right already?</span><button class="btn sm" data-act="quickApprove">✓ Approve As Is</button></div>`;
+             <div class="quickok"><span class="small muted">${pc ? 'Some of the GPS line is not marked. Did you hike it all?' : 'Not marking the trail? Your GPS line finds the places instead.'}</span><button class="btn sm" data-act="pathOk">${pc ? '✓ Yes, Next: Places' : 'Skip to Places →'}</button></div>`; })()}
+      <div class="quickok"><span class="small muted">Skip the whole review and finish now?</span><button class="btn sm" data-act="quickApprove">✓ Complete Now</button></div>`;
   }
   if (step === 'places') {
     const cands = reviewCandidates(t), rv = reviewOf(t);
@@ -5694,7 +5800,7 @@ function pageReview(d) {
       <input id="revQ" placeholder="Add a peak, lake, trail or area by name" autocomplete="off"><div id="revRes"></div>
       <button class="btn primary big" data-act="revStep" data-k="details" style="margin-top:12px">Next: Details →</button>`;
   }
-  if (step === 'details') return head + trackDetailsHTML(t) + `<button class="btn primary big" data-act="revStep" data-k="approve" style="margin-top:14px">Next: Approve →</button>`;
+  if (step === 'details') return head + trackDetailsHTML(t) + `<button class="btn primary big" data-act="revStep" data-k="approve" style="margin-top:14px">Next: Complete →</button>`;
   // approve
   const cands = reviewCandidates(t), rv = reviewOf(t); for (const id of rv.add) if (!cands.some(c => c.id === id)) cands.push({ id, kind: FEAT[id] ? FEAT[id].kind : isGroup(id) ? 'trail' : 'area', auto: false, added: true });
   const inc = cands.filter(c => reviewIncluded(t, c)), by = k => inc.filter(c => c.kind === k);
@@ -5702,12 +5808,12 @@ function pageReview(d) {
   const line = (k, l) => by(k).length ? `<div class="kv1"><span>${l}</span><b>${by(k).length}</b><span class="small muted">${by(k).slice(0, 4).map(reviewName).map(esc).join(', ')}${by(k).length > 4 ? '…' : ''}</span></div>` : '';
   return head + `
     <div class="sumcard">
-      <div class="small muted" style="margin-bottom:6px">${type === 'uploaded' ? 'Approving makes this a Completed hike and credits:' : 'This hike credits:'}</div>
+      <div class="small muted" style="margin-bottom:6px">${type === 'uploaded' ? 'Completing makes this a Completed hike and credits:' : 'This hike credits:'}</div>
       ${line('trail', '🥾 Trails')}${line('peak', '⛰️ Peaks')}${line('lake', '💧 Lakes')}${swims ? `<div class="kv1"><span>🏊 Jumped in</span><b>${swims}</b><span></span></div>` : ''}${line('pass', '🏔️ Passes')}${line('waterfall', '🌊 Waterfalls')}${line('viewpoint', '🌄 Viewpoints')}${line('area', '🟩 Areas')}
-      ${inc.length ? '' : '<div class="small">Nothing ticked. You can still approve it; it counts for miles and climbing only.</div>'}
+      ${inc.length ? '' : '<div class="small">Nothing ticked. You can still complete it; it counts for miles and climbing only.</div>'}
       <div class="kv1"><span>📏 Distance</span><b>${fmtMi(st.len)} mi</b><span class="small muted">${fmtFt(st.gain)} ft up</span></div>
     </div>
-    ${type === 'uploaded' ? `<button class="btn primary big" data-act="revApprove">✓ Approve as Completed</button>
+    ${type === 'uploaded' ? `<button class="btn primary big" data-act="revApprove">✓ Mark as Completed</button>
       <div class="row"><button class="btn" data-act="revStep" data-k="places">← Back to Places</button><button class="btn danger" data-act="rejectTrack">Delete This Upload</button></div>`
       : `<button class="btn primary big" data-act="revApprove">✓ Save Credits</button>`}`;
 }
@@ -5786,7 +5892,6 @@ function pageTrack(d) {
     ${titleInputHTML(t.name, 'Hike name')}
     ${planBox}
     <div class="stats">${statHTML(fmtMi(len), 'mi', 'Length')}${statHTML(fmtFt(c.gain), 'ft', 'Elev. gain')}${dur ? statHTML(dur, '', 'Time') : statHTML(estTime(len, c.gain), 'hr', 'Est. time')}${statHTML(t.planned ? (() => { const smp = trackSamples(t); return smp.length > 1 ? new Set(matchHits(smp).map(h => WAY2GROUP[h.id] || h.id)).size : 0; })() : places.length, '', 'Places')}</div>
-    ${t.edited && dur ? '<div class="small muted" style="margin:-24px 0 18px">ⓘ Start and end times follow your path edits.</div>' : ''}
     ${measured ? '<div class="small muted" style="margin:-14px 0 14px">ⓘ Distance and climbing are measured on your GPS line (with your trims and additions); the blue trail line decides which places are credited.</div>' : ''}
     ${prof.length > 1 ? chartHTML(prof, breaks) : '<div class="empty small">This hike has no active path right now. Open Trim or Add and restore the cut-away parts.</div>'}
     ${planCardHTML(t)}
@@ -5794,12 +5899,12 @@ function pageTrack(d) {
       ${type === 'completed' ? '<button data-act="reviewHike">✅ Review What It Credits</button>' : ''}
       ${t.planned ? '' : '<button data-act="editHike">✂️ Trim or Add</button><button data-act="drawApproved">🧭 Mark the Trail I Took</button>'}
       ${t.segments.some(s => s.src === 'garmin') && !t.planned ? '<button data-act="split" title="Watch stopped early? Click where it stopped, then draw the rest">⌚ Watch Stopped Early</button>' : ''}
-      ${hasSplit ? '<button data-act="unsplit">↶ Undo All Path Edits</button>' : ''}
+      ${hasSplit ? '<button data-act="unsplit"><svg class="bi" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> Undo All Path Edits</button>' : ''}
       <button data-act="openReport">📄 ${t.planned ? 'Trip Plan' : 'Trip Report'}</button>
       <button data-act="gpxTrack">⬇ Export GPX</button>
       ${type === 'completed' ? '<button data-act="rematch">↻ Re-match Places</button>' : ''}
     </div>
-    ${byDays ? `<h2 class="sec">Days <span class="small muted">${breaks.length + 1} days · ${breaks.length} night${breaks.length > 1 ? 's' : ''}</span></h2>${sstats.map((x, i) => { const camp = i < breaks.length && findPin((t.camps || [])[i]); return segHTML('Day ' + (i + 1), DAY_COLORS[i % DAY_COLORS.length], x) + (i < breaks.length ? `<div class="camprow"><span>⛺</span><b>Night ${i + 1}</b>${camp ? `<a href="#" data-open='${esc(JSON.stringify({ type: 'pin', id: camp.id }))}'>${esc(pinName(camp))}</a>` : '<span class="small muted">Camp</span>'}</div>` : ''); }).join('')}`
+    ${byDays ? `<h2 class="sec">Days <span class="small muted">${breaks.length + 1} days · ${breaks.length} night${breaks.length > 1 ? 's' : ''}</span></h2>${sstats.map((x, i) => { const camp = i < breaks.length && findPin((t.camps || [])[i]); return segHTML((t.dayNames || [])[i] || 'Day ' + (i + 1), DAY_COLORS[i % DAY_COLORS.length], x) + (i < breaks.length ? `<div class="camprow"><span>⛺</span><b>Night ${i + 1}</b>${camp ? `<a href="#" data-open='${esc(JSON.stringify({ type: 'pin', id: camp.id }))}'>${esc(pinName(camp))}</a>` : '<span class="small muted">Camp</span>'}</div>` : ''); }).join('')}`
     : segs.length > 1 ? `<h2 class="sec">Segments</h2>${segs.map((s, i) => segHTML(t.planned ? 'Day ' + (i + 1) : (s.meas ? s.was : s.src) === 'garmin' ? 'Recorded' : s.src === 'approved' ? 'Trail I took' : 'Drawn by me', t.planned ? DAY_COLORS[i % DAY_COLORS.length] : (s.meas ? s.was : s.src) === 'garmin' ? '#1d4ed8' : s.src === 'approved' ? '#1e6fe0' : '#7e22ce', sstats[i])).join('')}` : ''}
     <h2 class="sec">${t.planned ? 'Places on This Trip' : 'Places Credited'} <span class="small muted">${t.planned ? '' : places.length}</span></h2>
     ${t.planned ? (() => { const smp = trackSamples(t), ids = smp.length > 1 ? [...new Set(matchHits(smp).map(h => WAY2GROUP[h.id] || h.id))] : []; return ids.map(id => { const g = GROUPS[id], f = FEAT[id]; if (!g && !f) return ''; const k = g ? 'trail' : f.kind; return cardHTML({ title: g ? g.name : (nameOf(f) || unnamedLabel(f)), icon: kindInfo(k).icon, sub: kindInfo(k).label + (f && f.ele ? ' · ' + fmtFt(f.ele) + ' ft' : ''), st: placeStatus(id), open: { type: 'feature', id } }); }).join('') || '<div class="empty small">No mapped places on this line yet.</div>'; })()
@@ -5811,7 +5916,7 @@ function pageTrack(d) {
 function setSwim(id, vid, on) { for (const fid of idsOf(id)) for (const v of data.visits[fid] || []) if (v.vid === vid) { if (on) v.swim = true; else delete v.swim; } }
 function saveTitle(v) {
   const d = view.detail || {};
-  if (d.type === 'pin') { const p = findPin(d.id); if (p && p.name !== v) { p.name = v; touch({ noRender: true }); syncPins(); toast(v ? 'Renamed.' : 'Name cleared.'); } }
+  if (d.type === 'pin') { const p = findPin(d.id); if (p && p.name !== v) { p.name = v; pinTouch(p, true); syncPins(); if (!p.draft) toast(v ? 'Renamed.' : 'Name cleared.'); } }
   else if (d.type === 'area') { const a = findArea(d.id); if (a && a.name !== v) { a.name = v; touch({ noRender: true }); updateSources(); toast('Renamed.'); } }
   else if (d.type === 'track' || d.type === 'review') { const t = findTrack(d.id); if (t && v && t.name !== v) { t.name = v; touch({ noRender: true }); toast('Renamed.'); } }
   else if (d.type === 'route') { const r = findRoute(d.id); if (r && v && r.name !== v) { r.name = v; touch({ noRender: true }); toast('Renamed.'); } }
@@ -5825,36 +5930,38 @@ function saveTitle(v) {
 }
 function pagePin(d) {
   const p = findPin(d.id); if (!p) return backBtn() + '<div class="empty">Pin not found.</div>';
-  const t = PIN_TYPES[p.type] || PIN_TYPES.other, st = pinStatus(p), col = p.color || t.color;
+  const t = PIN_TYPES[p.type] || PIN_TYPES.other, st = pinStatus(p), draft = !!p.draft;
   const stOpts = [['been', 'been', 'Been There'], ['seen', 'seen', 'Seen'], ['planned', 'planned', 'Planned'], ['want', 'wish', 'Potential'], ['none', 'none', 'Not Yet']];
-  return `${backBtn()}
-    <div class="d-head"><button class="emobig" data-act="pinEmoji" style="background:${esc(col)}26" title="${esc(emojiName(p.icon || t.icon))}: tap to change">${esc(p.icon || t.icon)}</button><div>${titleInputHTML(p.name, 'Unnamed ' + pinNoun(t))}<div class="d-sub" style="margin:0">${esc(t.label)} · your pin · drag it on the map to move it</div></div></div>
-    <div class="linkrow"><button data-act="fav" class="${data.fav[p.id] ? 'on' : ''}">${data.fav[p.id] ? '★ Favorite' : '☆ Favorite'}</button></div>
+  const cur = (p.status || 'none') === 'wish' ? 'want' : (p.status || 'none');
+  return `${draft ? '' : backBtn()}
+    <div class="pinhead"><img class="pinprev" src="${pinIconURL(p)}" alt=""><div style="flex:1;min-width:0">
+      ${draft ? '<div class="d-title" style="margin:0 0 6px">New Pin</div>' : ''}${titleInputHTML(p.name, 'Name this ' + pinNoun(t).toLowerCase())}
+      <div class="small muted" style="margin-top:4px">${draft ? 'Drag the pin on the map, or click the map, to move it.' : 'Drag the pin on the map to move it.'}</div></div></div>
+    <label class="f">Status <span class="small muted" style="font-weight:400">· sets the pin's color</span></label>
+    <div class="pst">${stOpts.map(([k, sk, l]) => `<button data-act="pinStatus" data-k="${k}" class="${cur === k ? 'on' : ''}" style="--c:${sk === 'none' ? '#ffffff' : stColor(sk)}"><i></i>${l}</button>`).join('')}</div>
     <label class="f">Type</label>
     <div class="chips" style="flex-wrap:wrap;padding-top:2px">${Object.entries(PIN_TYPES).map(([k, v]) => `<button data-act="pinType" data-k="${k}" class="${k === p.type ? 'on' : ''}" title="${esc(v.label)}">${v.icon} ${esc(v.label)}</button>`).join('')}</div>
-    <label class="f">Status</label>
-    <div class="seg2">${stOpts.map(([k, sk, l]) => `<button data-act="pinStatus" data-k="${k}" class="${(p.status || 'none') === k ? 'on' : ''}"><i style="background:${stColor(sk)}"></i>${l}</button>`).join('')}</div>
-    <label class="f">Icon</label>${emojiRowHTML('pin', p.icon || t.icon)}
-    <label class="f">Color</label>${colorRowHTML('pin', col, [t.color, ...COLORS.filter(c => c !== t.color)])}
-    <details class="sub2"><summary>Shape, Size and Label</summary>
-      <div class="row"><div style="flex:1"><label class="f">Shape</label><select id="pShape">${[['drop', 'Pin'], ['circle', 'Circle'], ['square', 'Square']].map(([k, l]) => `<option value="${k}" ${(p.shape || 'drop') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-        <div style="flex:1"><label class="f">Size</label><select id="pSize">${[['s', 'Small'], ['m', 'Medium'], ['l', 'Large']].map(([k, l]) => `<option value="${k}" ${(p.size || 'm') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
-      <label class="toggle"><input type="checkbox" id="pLabel" ${p.label ? 'checked' : ''}> Show the name on the map</label>
+    <details class="sub2"><summary>Icon and Label</summary>
+      <label class="f">Icon</label>${emojiRowHTML('pin', p.icon || t.icon)}
+      <label class="toggle"><input type="checkbox" id="pLabel" ${p.label ? 'checked' : ''}> Always show the name (otherwise from zoom 12)</label>
     </details>
-    ${infoHTML(p.id, [['Coordinates', coordTxt([p.lon, p.lat]), coordTxt([p.lon, p.lat])], ['Date', `<input type="date" id="pDate" value="${esc(p.date || '')}">`], ['Notes', `<textarea id="pNote" rows="2" placeholder="Notes">${esc(p.note || '')}</textarea>`]])}
-    ${photosHTML(p.id)}
-    <div class="row" style="margin-top:18px"><button class="btn danger" data-act="delPin">Delete Pin</button><span class="small muted">Changes save as you go.</span></div>`;
+    ${infoHTML(p.id, [['Coordinates', coordTxt([p.lon, p.lat]), coordTxt([p.lon, p.lat])], ...(p.ele != null ? [['Elevation', fmtFt(p.ele) + ' ft']] : []), ['Date', `<input type="date" id="pDate" value="${esc(p.date || '')}">`], ['Notes', `<textarea id="pNote" rows="2" placeholder="Notes">${esc(p.note || '')}</textarea>`]])}
+    ${draft ? '' : photosHTML(p.id)}
+    <div class="pinfoot">
+      <button class="btn primary big" data-act="pinSave">${draft ? 'Save Pin' : 'Save and Close'}</button>
+      ${draft ? '<button class="btn wide" data-act="pinCancel">Cancel</button>' : '<button class="btn wide danger" data-act="delPin">Delete Pin</button>'}
+    </div>`;
 }
 function pageEditor() {
   const e = editor; if (!e) return '';
-  const title = e.kind === 'extend' ? ({ before: 'Draw the start of this hike', gap: 'Draw the missing section', approve: 'Draw Your Approved Trail' }[e.mode] || 'Draw the rest of this hike') : { route: e.routeId ? 'Edit route' : 'Build a route', track: 'Draw a hike' }[e.kind];
+  const title = e.kind === 'extend' ? ({ before: 'Draw the start of this hike', gap: 'Draw the missing section', approve: 'Draw Your Completed Trail' }[e.mode] || 'Draw the rest of this hike') : { route: e.routeId ? 'Edit route' : 'Build a route', track: 'Draw a hike' }[e.kind];
   const help = e.kind === 'extend' ? ({
     before: 'The first point is where the recorded line begins. Click outward from it, back along the way you really started.',
     gap: 'The first point is A. Click along where you really walked, then press Finish at B to join the recorded line again.',
     after: 'The first point is where the recorded line ends. Click along where you went after that.',
     split: 'The first point is where the watch stopped. Click along where you actually went after that.',
-    approve: 'Click along the trails you actually hiked. This blue Approved Trail decides which places count; your GPS line still measures distance and climbing.'
-  }[e.mode] || 'Click along where you went.') : 'Click the map to add points. Drag points to adjust. Click a point to remove it' + (e.kind === 'route' ? ' or end a day there.' : '.');
+    approve: 'Click along the trails you actually hiked. This blue Completed Trail decides which places count; your GPS line still measures distance and climbing.'
+  }[e.mode] || 'Click along where you went.') : 'Click the map to add points. Drag points to adjust. Click a point to remove it.';
   return `${backBtn()}
     <div class="d-title">${title}</div><div class="d-sub">${help}</div>
     ${e.kind !== 'extend' ? `<label class="f">Name</label><input id="edName" value="${esc(e.name)}">` : ''}
@@ -5872,23 +5979,38 @@ function pageEditor() {
 // Points grouped by day: Day 1 (fold it away), the night's camp ("where you slept"), Day 2, and so on.
 // "Camp here" on any point ends that day there.
 // Undo, Clear and Cancel sit together at the bottom, under the Save button, in every editor
-function editBarHTML(undo, clear, cancel, undoOff) { return `<div class="editbar">${undo ? `<button class="btn" data-act="${undo}" ${undoOff ? 'disabled' : ''} title="Undo the last change (Ctrl/Cmd+Z)">↶ Undo</button>` : ''}${clear ? `<button class="btn" data-act="${clear}">Clear</button>` : ''}<button class="btn" data-act="${cancel}">Cancel</button></div>`; }
+function editBarHTML(undo, clear, cancel, undoOff) { return `<div class="editbar">${undo ? `<button class="btn" data-act="${undo}" ${undoOff ? 'disabled' : ''} title="Undo the last change (Ctrl/Cmd+Z)"><svg class="bi" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> Undo</button>` : ''}${clear ? `<button class="btn" data-act="${clear}">Clear</button>` : ''}<button class="btn" data-act="${cancel}">Cancel</button></div>`; }
+// V20.3: no list of points. Draw a day, press Mark Campsite and click where you slept, then + Add Day for the next one.
+// Days are named Day 1, Day 2... and nights Night 1, Night 2... by default; both can be renamed.
+function editorDays(e) {
+  const days = [[]], n = e.wps.length;
+  e.wps.forEach((w, i) => { if (w.brk && i > 0 && (i < n - 1 || !e.awaitDay)) { days[days.length - 1].push(i); days.push([i]); } else days[days.length - 1].push(i); });
+  if (e.awaitDay && n && e.wps[n - 1].brk && days[days.length - 1].length && days[days.length - 1][0] === n - 1) days.pop();
+  return days;
+}
 function editorPointsHTML(e) {
-  if (!e.wps.length) return '<h3 class="sec">Points</h3><div class="empty small">No points yet. Click the map to start.</div>';
-  const canDay = e.kind !== 'extend' || e.mode === 'approve', days = [[]];
-  e.wps.forEach((w, i) => { days[days.length - 1].push(i); if (w.brk && i > 0 && i < e.wps.length - 1 && canDay) days.push([i]); });
-  const legLen = i => (e.legs[i] ? lineLen(e.legs[i].pts) : 0);
-  e.dayOpen = e.dayOpen || {};
-  const row = (i, dayStart) => { const w = e.wps[i], last = i === e.wps.length - 1;
-    return `<div class="wp"><span class="num ${w.brk ? 'brk' : ''}">${i + 1}</span><span style="flex:1">${i === 0 ? 'Start' : w.brk && !last ? (dayStart ? 'Leave camp' : '⛺ Camp') : last ? 'Finish' : 'Point'}${i > 0 && e.legs[i - 1] && e.legs[i - 1].off ? ' <span class="muted small">(off-trail)</span>' : ''}</span>${canDay && i > 0 && !last && !dayStart ? `<button class="btn sm" data-brk="${i}" title="${w.brk ? 'Make this an ordinary point again' : 'End the day here: you camped at this point'}">${w.brk ? 'Not a Camp' : '⛺ Camp Here'}</button>` : ''}${dayStart ? '' : `<button class="x" data-delwp="${i}" title="Remove point">×</button>`}</div>`; };
-  if (days.length === 1) return `<h3 class="sec">Points <span class="small muted">${canDay ? 'tap ⛺ Camp Here on the point where you slept to split days' : ''}</span></h3>${days[0].map(i => row(i, false)).join('')}`;
-  return `<h3 class="sec">Days &amp; Points <span class="small muted">${days.length} days · ${days.length - 1} night${days.length > 2 ? 's' : ''}</span></h3>` + days.map((d, k) => {
+  const canDay = e.kind !== 'extend' || e.mode === 'approve', n = e.wps.length;
+  if (!canDay) return n ? '' : '<div class="empty small">Click the map to start.</div>';
+  if (e.awaitDay && !(n && e.wps[n - 1].brk)) e.awaitDay = false;
+  const days = editorDays(e), legLen = i => (e.legs[i] ? lineLen(e.legs[i].pts) : 0), dn = e.dayNames = e.dayNames || [];
+  const out = days.map((d, k) => {
     let len = 0; for (let j = 0; j < d.length - 1; j++) len += legLen(d[j]);
-    const brkI = d[d.length - 1], open = e.dayOpen[k] !== false;
-    return `<details class="dayg" data-day="${k}" ${open ? 'open' : ''}><summary><i style="background:${DAY_COLORS[k % DAY_COLORS.length]}"></i><b>Day ${k + 1}</b><span class="small muted">${fmtMi(len)} mi · ${d.length - (k ? 1 : 0)} point${d.length - (k ? 1 : 0) === 1 ? '' : 's'}</span></summary>
-      ${d.map((i, j) => j === 0 && k > 0 ? '' : row(i, false)).join('')}</details>
-      ${k < days.length - 1 ? `<div class="camprow"><span>⛺</span><b>Night ${k + 1}</b><input data-campname="${brkI}" value="${esc((e.camps || [])[brkI] || '')}" placeholder="Where you slept, e.g. Lake Solitude"></div>` : ''}`;
+    const last = k === days.length - 1, endI = d[d.length - 1], camp = !last || (e.awaitDay && n > 1);
+    const dayCard = `<div class="dayc"><i style="background:${DAY_COLORS[k % DAY_COLORS.length]}"></i><input data-dayname="${k}" value="${esc(dn[k] || 'Day ' + (k + 1))}" aria-label="Day name"><span class="small muted">${len ? fmtMi(len) + ' mi' : last && !e.campPick ? (n ? 'Click the map to keep drawing' : 'Click the map to start') : ''}</span></div>`;
+    const night = camp ? `<div class="camprow"><span>⛺</span><input data-campname="${endI}" value="${esc((e.camps || [])[endI] || 'Night ' + (k + 1))}" aria-label="Night name"><button class="x" data-uncamp="${endI}" title="Remove this campsite (the point stays)">×</button></div>` : '';
+    return dayCard + night;
   }).join('');
+  const k = days.length;
+  const act = e.campPick ? `<div class="notice info" style="display:flex;align-items:center;gap:8px"><span style="flex:1">⛺ Click the map where you camped.</span><button class="btn sm" data-act="campCancel">Cancel</button></div>`
+    : e.awaitDay ? `<button class="btn wide" data-act="addDay">＋ Add Day ${k + 1}</button>`
+    : n >= 1 ? `<button class="btn wide" data-act="campPick">⛺ Mark Campsite</button>` : '';
+  return `<h3 class="sec">Days <span class="small muted">${k} day${k === 1 ? '' : 's'}${k > 1 || e.awaitDay ? ` · ${e.awaitDay ? k : k - 1} night${(e.awaitDay ? k : k - 1) === 1 ? '' : 's'}` : ''}</span></h3>${out}${act}`;
+}
+function startCampPick() { if (!editor || !editor.wps.length) return; editor.campPick = true; renderSide(); renderToolbar(); toast('Click the map where you camped.', 4000); }
+function campPicked(ll) {
+  const e = editor; e.campPick = false;
+  addPoint(ll); const w = e.wps[e.wps.length - 1]; if (w && e.wps.length > 1) { w.brk = true; e.awaitDay = true; }
+  redrawEditor(); renderSide(); renderToolbar();
 }
 function pageIdeas() {
   const tab = view.ideaTab || 'sooner', list = data.ideas[tab];
@@ -5959,7 +6081,7 @@ function pageHelp() {
   <h3 class="sec">Your Hikes</h3>
   <ol class="small" style="padding-left:18px;line-height:1.7">
   <li><b>Import:</b> the Import button on the bottom bar (or drop .gpx files on the page). In Garmin Connect: open an activity → ⚙ → Export to GPX.</li>
-  <li><b>Review:</b> every upload opens a review in four steps. <i>Path</i>: trim the start or end, cut a middle part, add a section anywhere (draw it or join another GPX), or mark the trail you really took with smart snap. <i>Places</i>: tick each trail, peak and lake you got, mark lakes you jumped in 🏊, add anything the GPS missed. <i>Details</i>. <i>Approve</i>: it becomes Completed and credits exactly what you ticked.</li>
+  <li><b>Review:</b> every upload opens a review in four steps. <i>Path</i>: trim the start or end, cut a middle part, add a section anywhere (draw it or join another GPX), or mark the trail you really took with smart snap. <i>Places</i>: tick each trail, peak and lake you got, mark lakes you jumped in 🏊, add anything the GPS missed. <i>Details</i>. <i>Complete</i>: it becomes Completed and credits exactly what you ticked.</li>
   <li><b>Hike types:</b> Uploaded (raw GPX) → Completed (reviewed and approved). Planned trips have a date; Potential trips do not yet. A planned trip can be marked Completed or linked to the GPX you recorded.</li>
   <li><b>Plan:</b> Activity → Plan a Trip, or the Route button on the bottom bar. Points follow the trails; press Snap to go off-trail.</li></ol>
   <h3 class="sec">The Map</h3>
@@ -5974,7 +6096,7 @@ function pageHelp() {
 }
 
 // ================= Context toolbar (bottom bar) =================
-// Browsing shows the normal tools. Opening a hike shows hike tools (Approved Trail, trim, snap...). Drawing shows route-building tools.
+// Browsing shows the normal tools. Opening a hike shows hike tools (Completed Trail, trim, snap...). Drawing shows route-building tools.
 let TB_BROWSE = null;
 function toggleSnap() {
   const on = !(editor ? editor.snap : data.settings.snap !== false);
@@ -6005,13 +6127,13 @@ function renderToolbar() {
   const snapB = tbb('snap', '⚡', snapOn ? 'Snap: on' : 'Snap: off', { snap: snapOn, title: snapOn ? 'Points follow trails. Click to turn off.' : 'Points go exactly where you click. Click to follow trails.' });
   let h = '';
   if (c === 'route') {
-    h = tbb('undo', '↶', 'Undo', { dis: !editor.wps.length }) + tbb('redo', '↷', 'Redo', { dis: !editor.redo.length }) + snapB
+    h = tbb('undo', SVG.rundo, 'Undo', { dis: !editor.wps.length }) + tbb('redo', SVG.rredo, 'Redo', { dis: !editor.redo.length }) + snapB
       + tbb('reverse', '⇄', 'Reverse', { dis: editor.wps.length < 2 }) + tbb('loop', '⟳', 'Loop', { dis: editor.wps.length < 2, title: 'Close the loop: return to the start' }) + tbb('outback', '↔', 'Out & back', { dis: editor.wps.length < 2 })
-      + tbb('splitday', '✂', 'Split day', { dis: editor.wps.length < 2, title: 'End the day at the last point you placed' }) + tbb('clear', '🗑', 'Clear', { dis: !editor.wps.length })
+      + (editor.awaitDay ? tbb('addday', '＋', 'Add day') : tbb('camp', '⛺', 'Campsite', { dis: !editor.wps.length, on: !!editor.campPick, title: 'Mark where you camped, then add the next day' })) + tbb('clear', '🗑', 'Clear', { dis: !editor.wps.length })
       + tbb('save', '✓', 'Save', { pri: true, dis: editor.wps.length < 2 }) + tbb('cancel', '✕', 'Cancel');
   } else if (c === 'draw') {
     const first = editor.anchorPt ? 1 : 0;
-    h = (editor.mode === 'approve' ? '<span class="tbtag">Approved Trail</span>' : '') + tbb('undo', '↶', 'Undo', { dis: editor.wps.length <= first }) + tbb('redo', '↷', 'Redo', { dis: !editor.redo.length }) + snapB
+    h = (editor.mode === 'approve' ? '<span class="tbtag">Completed Trail</span>' : '') + tbb('undo', SVG.rundo, 'Undo', { dis: editor.wps.length <= first }) + tbb('redo', SVG.rredo, 'Redo', { dis: !editor.redo.length }) + snapB
       + tbb('clear', '🗑', 'Clear', { dis: editor.wps.length <= first })
       + (editor.endPt ? tbb('finishb', '⚑', 'Finish at B', { dis: editor.closed }) : '')
       + tbb('save', '✓', 'Save', { pri: true, dis: editor.wps.length < 2 }) + tbb('cancel', '✕', 'Cancel');
@@ -6027,8 +6149,8 @@ function renderToolbar() {
     h = tbb('approvedraw', '🧭', hasApproved ? 'Redraw trail' : 'Mark trail', { pri: !hasApproved, title: 'Drop points along the route you really took (blue). Snaps to trails unless you turn that off.' }) + snapB
       + tbb('trim', '✂', 'Trim / add', { on: view.detail.type === 'hikeEdit' })
       + (t.segments.some(x => x.src === 'garmin') ? tbb('stopped', '⌚', 'Stopped early', { title: 'Click the line where the watch stopped, then draw the rest' }) : '')
-      + (pend ? tbb('approve', '✓', 'Approve', { pri: hasApproved }) : '')
-      + tbb('hundo', '↶', 'Undo edit', { dis: !st.length }) + (t.orig ? tbb('horig', '⟲', 'Original line') : '')
+      + (pend ? tbb('approve', '✓', 'Complete', { pri: hasApproved }) : '')
+      + tbb('hundo', SVG.rundo, 'Undo edit', { dis: !st.length }) + (t.orig ? tbb('horig', '⟲', 'Original line') : '')
       + tbb('zoom', '⌖', 'Zoom to hike') + tbb('close', '✕', 'Done');
   }
   tb.innerHTML = h;
@@ -6042,6 +6164,8 @@ function tbAction(a) {
     case 'snapcancel': secCancel(); break;
     case 'snapdone': snapDone(); break;
     case 'undo': if (editor) undoPoint(); break;
+    case 'camp': if (editor) { if (editor.campPick) { editor.campPick = false; renderSide(); renderToolbar(); } else startCampPick(); } break;
+    case 'addday': if (editor) { editor.awaitDay = false; renderSide(); renderToolbar(); toast('Click the map to draw the next day.', 3000); } break;
     case 'redo': redoPoint(); break;
     case 'snap': toggleSnap(); break;
     case 'reverse': edReverse(); break;
@@ -6116,7 +6240,7 @@ function setMode(m, keepEditor) {
   if (map) { map.getCanvas().style.cursor = m === 'browse' ? '' : 'crosshair'; if (m === 'browse') map.doubleClickZoom.enable(); else map.doubleClickZoom.disable(); }
   // A small bar says what a map click will do, with a Cancel button. Nothing is created by clicking the map unless a tool is on.
   const bar = $('modebar');
-  if (m === 'pin') modeBar('Click the map to drop a pin');
+  if (m === 'pin') modeBar('Click where the pin goes (tip: right-click the map any time)');
   else if (m === 'split') modeBar('Click the hike line where the watch stopped');
   else if (bar) bar.remove();
   if (m === 'split') toast('Watch stopped early? Click the hike line at the spot where it stopped recording. Everything after that spot is set aside, and you draw the rest yourself.', 8000);
@@ -6262,7 +6386,7 @@ function setBorderStyle(patch, live) {
 const swHTML = (attrs, on) => `<label class="switch"><input type="checkbox" ${attrs} ${on ? 'checked' : ''}><i></i></label>`;
 function renderLayers() {
   const s = data.settings;
-  const toggles = [['trails', '🥾 Trails'], ['places', '⛰️ Peaks & Passes'], ['lakes', '💧 Lakes'], ['tracks', '⌚ My Hikes'], ['routes', '🧭 My Routes'], ['pins', '📍 Pins'], ['areas', '🟩 Areas'], ['labels', '🏷️ Labels'], ['contours', '〰️ Contours'], ['hillshade', '🌗 Hillshade'], ['unnamed', '❔ Unnamed Places'], ['hidden', '🙈 Hidden Items'], ['heat', '🔥 Heatmap'], ['recency', '🕒 Color by Last Visit']];
+  const toggles = [['trails', '🥾 Trails'], ['peaks', '⛰️ Peaks'], ['passes', '🔀 Passes'], ['places', '💦 Waterfalls & Viewpoints'], ['lakes', '💧 Lakes'], ['tracks', '⌚ My Hikes'], ['completed', '✅ My Completed Hikes'], ['routes', '🧭 My Routes'], ['pins', '📍 Pins'], ['areas', '🟩 Areas'], ['labels', '🏷️ Labels'], ['contours', '〰️ Contours'], ['hillshade', '🌗 Hillshade'], ['unnamed', '❔ Unnamed Places'], ['hidden', '🙈 Hidden Items'], ['heat', '🔥 Heatmap'], ['recency', '🕒 Color by Last Visit']];
   const idn = data.identified ? data.identified.features.length : null;
   const bRow = (b, extra) => {
     const st = bStyle(b.id), open = bSel === b.id;
@@ -6296,7 +6420,7 @@ function legendHTML() {
     <div class="small muted" style="margin:6px 0 10px">Change these colors in Settings → Status Colors.</div>
     <div class="small" style="line-height:1.9">
       <span style="color:#a0522d">┅</span> trail · <span style="color:${stColor('done')}">━</span> trail you completed · <span style="color:#8cc56f">━</span> partly done<br>
-      <span style="color:#1d4ed8">━</span> completed hike (GPS) · <span style="color:#7e22ce">┅</span> drawn hike · <span style="color:#1e6fe0">━</span> Approved Trail<br>
+      <span style="color:#1d4ed8">━</span> completed hike (GPS) · <span style="color:#7e22ce">┅</span> drawn hike · <span style="color:#1e6fe0">━</span> Completed Trail<br>
       <span style="color:${stColor('planned')}">┅</span> planned trip · <span style="color:#ea580c">┈</span> uploaded, waiting for review<br>
       ▲ peak · ◆ pass · ● waterfall · 💧 lake · ★ viewpoint · dashed outline = unnamed<br>lake and waterfall markers are white until you have seen or visited them, then blue<br>
       <span style="color:#16a34a">●</span> start · <span style="color:#dc2626">●</span> finish · ➤ direction of the hike or route you have open</div>`;
@@ -6416,9 +6540,9 @@ function onAction(act, el) {
     }
     case 'reviewHike': { const tt = findTrack(d.id); if (tt) { reviewReturn = tt.id; openDetail({ type: 'review', id: tt.id, step: 'places' }); } break; }
     case 'reviewAll': reviewNext(); break;
-    case 'quickApprove': { const tt = findTrack(d.id); if (!tt) break; tt.approved = true; const n = matchTrack(tt).length; reviewReturn = null; touch({ noRender: true }); toast(`Completed! ${n} place${n === 1 ? '' : 's'} credited.`, 4000); if (data.tracks.some(x => x.approved === false)) reviewNext(tt.id); else { view.detail = { type: 'track', id: tt.id }; viewStack = []; renderSide(); updateSources(); } break; }
+    case 'quickApprove': { const tt = findTrack(d.id); if (!tt) break; sure('Complete this hike as is?', { body: `“${esc(tt.name || 'This hike')}” becomes Completed and credits the places it found, without checking the path, places or details first. You can still edit it afterwards.`, ok: 'Complete', danger: false }).then(ok => { if (!ok || !findTrack(tt.id)) return; tt.approved = true; const n = matchTrack(tt).length; reviewReturn = null; touch({ noRender: true }); toast(`Completed! ${n} place${n === 1 ? '' : 's'} credited.`, 4000); if (data.tracks.some(x => x.approved === false)) reviewNext(tt.id); else { view.detail = { type: 'track', id: tt.id }; viewStack = []; renderSide(); updateSources(); } }); break; }
     case 'approveAll': { const up = data.tracks.filter(x => x.approved === false && !x.planned); if (!up.length) break;
-      sure(`Approve all ${up.length} uploads?`, { body: 'Each one becomes Completed and credits the trails, peaks and lakes on its line (the automatic matches, plus anything you already ticked). You can review any of them later from its page.', ok: 'Approve All', danger: false }).then(ok => {
+      sure(`Complete all ${up.length} uploads?`, { body: 'Each one becomes Completed and credits the trails, peaks and lakes on its line (the automatic matches, plus anything you already ticked). You can review any of them later from its page.', ok: 'Complete All', danger: false }).then(ok => {
         if (!ok) return; let n = 0; for (const t of up) { t.approved = true; n += matchTrack(t).length; } touch(); toast(`${up.length} hikes completed, ${n} places credited.`, 5000); }); break; }
     case 'hikeUndoR': if (t) hikeUndo(t); break;
     case 'hikeOrigR': if (t) hikeRevert(t); break;
@@ -6474,9 +6598,9 @@ function onAction(act, el) {
     case 'copyText': navigator.clipboard.writeText(el.dataset.t).then(() => toast('Copied.'), () => toast('Could not copy here.')); break;
     case 'infoAdd': { const inf = data.info[d.id] = infoOf(d.id); inf.fields.push({ k: '', v: '' }); touch(); setTimeout(() => { const i = document.querySelector(`[data-infok="${inf.fields.length - 1}"]`); if (i) i.focus(); }, 30); break; }
     case 'infoDel': { const inf = infoOf(d.id); inf.fields.splice(+el.dataset.i, 1); data.info[d.id] = inf; touch(); break; }
-    case 'pinType': if (p) { p.type = el.dataset.k; if (!p.icon) syncPins(); touch(); } break;
-    case 'pinStatus': if (p) { p.status = el.dataset.k; touch(); } break;
-    case 'pinEmoji': if (p) emojiPicker(p.icon || PIN_TYPES[p.type].icon).then(v => { if (v) { p.icon = v; touch(); } }); break;
+    case 'pinType': if (p) { p.type = el.dataset.k; pinTouch(p); } break;
+    case 'pinStatus': if (p) { p.status = el.dataset.k; pinTouch(p); } break;
+    case 'pinEmoji': if (p) emojiPicker(p.icon || PIN_TYPES[p.type].icon).then(v => { if (v) { p.icon = v; pinTouch(p); } }); break;
     case 'delVisit': delVisit(d.id, el.dataset.vid); touch(); break;
     case 'saveName': {
       const v = $('fName').value.trim();
@@ -6519,9 +6643,9 @@ function onAction(act, el) {
     case 'openReport': openDetail({ type: 'report', id: d.id }); break;
     case 'reportPrint': { const tt = findTrack(d.id); if (tt) printReport(tt); break; }
     case 'loadForecast': { const tt = findTrack(d.id); if (tt) loadForecast(tt); break; }
-    case 'rematch': { if (t.approved === false || t.planned) { toast(t.planned ? 'Planned trips do not count until they are done.' : 'Approve this hike first.'); break; } const n = matchIfCounted(t); touch(); toast(`Matched ${n} places.`); break; }
+    case 'rematch': { if (t.approved === false || t.planned) { toast(t.planned ? 'Planned trips do not count until they are done.' : 'Complete this hike first.'); break; } const n = matchIfCounted(t); touch(); toast(`Matched ${n} places.`); break; }
     case 'approveTrack': approveTrack(t); break;
-    case 'approveAll': { const pend = data.tracks.filter(x => x.approved === false); pend.forEach(approveTrack); toast(`Approved ${pend.length} hike${pend.length === 1 ? '' : 's'}.`); break; }
+    case 'approveAll': { const pend = data.tracks.filter(x => x.approved === false); pend.forEach(approveTrack); toast(`Completed ${pend.length} hike${pend.length === 1 ? '' : 's'}.`); break; }
     case 'rejectTrack': sure('Delete this imported hike?', { body: 'It is not counted anywhere. You can restore it from Deleted Items.' }).then(ok => { if (ok) { trashPut('track', t); touch({ noRender: true }); afterReviewLeave(); } }); break;
     case 'delTrack': sure('Delete this hike?', { body: 'The visits it logged go with it. You can restore it from Deleted Items.' }).then(ok => { if (ok) { trashPut('track', t); matchTrack({ id: t.id, segments: [] }); touch({ noRender: true }); goBack(); } }); break;
     case 'addCamp': { const pid = $('tCampPick').value; if (!pid) break; t.camps = [...(t.camps || []), pid]; touch(); break; }
@@ -6569,14 +6693,19 @@ function onAction(act, el) {
       // A planned trip becomes an uploaded hike waiting for review: its line is what you planned; review it like any upload
       t.planned = false; t.approved = false; if (!t.date) t.date = today(); delete t.order; t.fromPlan = true;
       touch({ noRender: true }); reviewReturn = t.id; view.detail = { type: 'review', id: t.id, step: 'path' }; viewStack = []; renderSide(); updateSources();
-      toast('Now confirm the path and the places, then approve it.', 6000);
+      toast('Now confirm the path and the places, then complete it.', 6000);
     } break;
     case 'savePin': {
       p.name = $('pName').value.trim(); p.type = $('pType').value; p.status = $('pStatus').value; p.icon = $('pIcon').value.trim(); p.date = $('pDate').value; p.note = $('pNote').value;
       touch(); toast('Pin saved.'); break;
     }
+    case 'pinSave': savePin(); break;
+    case 'pinCancel': cancelPinDraft(); break;
     case 'delPin': sure(`Delete “${pinName(p)}”?`, { body: 'You can restore it from Deleted Items.' }).then(ok => { if (ok) { trashPut('pin', p); selectedPinId = null; touch({ noRender: true }); goBack(); } }); break;
     case 'edUndo': undoPoint(); break;
+    case 'campPick': startCampPick(); break;
+    case 'campCancel': if (editor) { editor.campPick = false; renderSide(); renderToolbar(); } break;
+    case 'addDay': if (editor) { editor.awaitDay = false; renderSide(); renderToolbar(); toast('Click the map to draw the next day.', 3000); } break;
     case 'edRedo': redoPoint(); break;
     case 'edDaysN': if (editor) edSplitN(edDays() + (+el.dataset.d)); break;
     case 'edMerge': { if (!editor) break; const idx = editor.wps.map((w, k) => (w.brk && k > 0 && k < editor.wps.length - 1) ? k : -1).filter(k => k >= 0), k = idx[+el.dataset.i]; if (k != null) { editor.wps[k].brk = false; redrawEditor(); renderSide(); } break; }
@@ -6612,17 +6741,16 @@ $('side').addEventListener('click', e => {
   if (cl) {
     const d = view.detail;
     if (d.type === 'route') { findRoute(d.id).color = cl.dataset.color; touch(); }
-    if (d.type === 'pin') { findPin(d.id).color = cl.dataset.color; touch(); }
     return;
   }
   const ec = e.target.closest('[data-ecolor]'); if (ec) { editor.color = ec.dataset.ecolor; redrawEditor(); renderSide(); return; }
   const pn = view.detail && view.detail.type === 'pin' && findPin(view.detail.id);
-  const em = e.target.closest('[data-emo]'); if (em && pn) { pn.icon = em.dataset.emo; touch(); return; }
-  const emm = e.target.closest('[data-emo-more]'); if (emm && pn) { emojiPicker(pn.icon).then(v => { if (v) { pn.icon = v; touch(); } }); return; }
-  const swc = e.target.closest('[data-swatch]'); if (swc && pn && swc.dataset.swFor === 'pin') { pn.color = swc.dataset.swatch; touch(); return; }
+  const em = e.target.closest('[data-emo]'); if (em && pn) { pn.icon = em.dataset.emo; pinTouch(pn); return; }
+  const emm = e.target.closest('[data-emo-more]'); if (emm && pn) { emojiPicker(pn.icon).then(v => { if (v) { pn.icon = v; pinTouch(pn); } }); return; }
   const bk = e.target.closest('[data-brk]'); if (bk) { const w = editor.wps[+bk.dataset.brk]; w.brk = !w.brk; redrawEditor(); renderSide(); return; }
   const dg = e.target.closest('.dayg > summary'); if (dg && editor) { const k = +dg.parentElement.dataset.day; setTimeout(() => { editor.dayOpen = editor.dayOpen || {}; editor.dayOpen[k] = dg.parentElement.open; }, 0); }
   const dw = e.target.closest('[data-delwp]'); if (dw) { removePoint(+dw.dataset.delwp); return; }
+  const uc = e.target.closest('[data-uncamp]'); if (uc && editor) { const w = editor.wps[+uc.dataset.uncamp]; if (w) { w.brk = false; if (+uc.dataset.uncamp === editor.wps.length - 1) editor.awaitDay = false; redrawEditor(); renderSide(); renderToolbar(); } return; }
 });
 $('side').addEventListener('change', e => {
   if (e.target.id === 'hxDev' || e.target.id === 'hxSince') { view.hx = Object.assign(view.hx || {}, { [e.target.id === 'hxDev' ? 'dev' : 'since']: e.target.value, n: 40 }); renderSide(); return; }
@@ -6633,10 +6761,9 @@ $('side').addEventListener('change', e => {
   if (dv.type === 'pin') {
     const pn = findPin(dv.id);
     if (pn) {
-      if (id === 'pShape') pn.shape = e.target.value; if (id === 'pSize') pn.size = e.target.value; if (id === 'pLabel') pn.label = e.target.checked;
+      if (id === 'pLabel') pn.label = e.target.checked;
       if (id === 'pDate') pn.date = e.target.value; if (id === 'pNote') pn.note = e.target.value;
-      if (e.target.dataset.cpick === 'pin') { pn.color = e.target.value; touch(); return; }
-      if (['pShape', 'pSize', 'pLabel', 'pDate', 'pNote'].includes(id)) { touch({ noRender: true }); syncPins(); }
+      if (['pLabel', 'pDate', 'pNote'].includes(id)) { pinTouch(pn, true); syncPins(); }
     }
   }
   if (dv.type === 'area') { const ar = findArea(dv.id); if (ar && id === 'arTypeD') { ar.type = e.target.value; touch(); } if (ar && id === 'arNote') { ar.note = e.target.value; touch({ noRender: true }); } }
@@ -6656,6 +6783,7 @@ $('side').addEventListener('change', e => {
   // The big title: rename whatever is open
   if (id === 'titleEdit') saveTitle(e.target.value.trim());
   if (id === 'rangeOnlyCk') { data.settings.rangeOnly = e.target.checked; touch(); }
+  if (e.target.dataset.dayname !== undefined && editor) { (editor.dayNames = editor.dayNames || [])[+e.target.dataset.dayname] = e.target.value.trim(); }
   if (e.target.dataset.campname !== undefined && editor) { (editor.camps = editor.camps || [])[+e.target.dataset.campname] = e.target.value.trim(); }
   if (id === 'tetonsOnlyCk') { data.settings.tetonsOnly = e.target.checked; touch(); toast(e.target.checked ? 'Hikes outside the Tetons are hidden from the map, lists and stats.' : 'Showing hikes everywhere.'); }
   if (id === 'sTz') { data.settings.tz = e.target.value; touch(); toast('Hike times now show in ' + e.target.options[e.target.selectedIndex].text + '.'); }
@@ -6689,7 +6817,7 @@ function linkUpload(plan, up) {
   up.name = plan.name || up.name; up.trip = up.trip || plan.trip; up.notes = [plan.notes, up.notes].filter(Boolean).join('\n'); up.camps = [...new Set([...(up.camps || []), ...(plan.camps || [])])]; up.nights = up.nights || plan.nights; up.planId = plan.id;
   trashPut('track', plan, plan.name + ' (plan, linked to an upload)');
   touch({ noRender: true }); reviewReturn = up.id; view.detail = { type: 'review', id: up.id, step: 'path' }; viewStack = []; renderSide(); updateSources();
-  toast('Linked. The upload now has your plan\'s details. Review it and approve it to make it Completed.', 7000);
+  toast('Linked. The upload now has your plan\'s details. Review it and complete it to make it Completed.', 7000);
 }
 // Logo or title: close Stats, menus and dialogs, leave whatever page is open, and frame the whole range
 function goHome() {
@@ -6803,7 +6931,7 @@ function renderMenu() {
   $('menu').innerHTML = `<div class="menu-h"><img src="icon-192.png" alt="" class="logo sm"><div style="flex:1;min-width:0"><b>Teton Atlas</b><div class="sub" id="syncSub">${esc(syncOn() ? (sync.msg || syncIdle()) : 'Sync is off on this device')}</div></div><button class="vchip" data-menu="history" title="Version history">${APP_VERSION}</button></div>
     <div class="mh">Hikes</div>
     ${item('gpx', 'upload', 'Import GPX Hikes', 'From your watch or phone')}
-    ${pend ? item('pending', 'review', 'Review Pending Hikes', `${pend} waiting for your approval`, `<span class="mbadge">${pend}</span>`) : ''}
+    ${pend ? item('pending', 'review', 'Review Pending Hikes', `${pend} waiting to be completed`, `<span class="mbadge">${pend}</span>`) : ''}
     <div class="mh">Map</div>
     ${item('pdfMap', 'print', 'Print a Map (PDF)', 'Grid, scale, title; saved for later')}
     ${data.savedMaps.length ? item('savedMaps', 'image', 'Saved Maps', `${data.savedMaps.length} map${data.savedMaps.length === 1 ? '' : 's'}`) : ''}
@@ -7006,7 +7134,7 @@ function composePage(o, g, dpi, W, H, shot, P, center) {
   x.fillStyle = '#fff'; x.fillRect(0, 0, PW, PH);
   x.drawImage(shot, M, M, W, H);
   // your pins (they are HTML on the screen, so they are drawn here)
-  for (const it of P.pins) { const [px, py] = it.xy; if (px < 0 || py < 0 || px > W || py > H) continue; const t = PIN_TYPES[it.p.type] || PIN_TYPES.other; x.beginPath(); x.arc(M + px, M + py, 9 * u, 0, Math.PI * 2); x.fillStyle = it.p.color || t.color; x.fill(); x.lineWidth = 2 * u; x.strokeStyle = '#fff'; x.stroke(); x.font = `${11 * u}px sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(it.p.icon || t.icon, M + px, M + py + u); }
+  for (const it of P.pins) { const [px, py] = it.xy; if (px < 0 || py < 0 || px > W || py > H) continue; const t = PIN_TYPES[it.p.type] || PIN_TYPES.other; x.beginPath(); x.arc(M + px, M + py, 9 * u, 0, Math.PI * 2); x.fillStyle = pinStatus(it.p) === 'none' ? '#ffffff' : stColor(pinStatus(it.p)); x.fill(); x.lineWidth = 2 * u; x.strokeStyle = '#fff'; x.stroke(); x.font = `${11 * u}px sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(it.p.icon || t.icon, M + px, M + py + u); }
   // grid
   x.save(); x.beginPath(); x.rect(M, M, W, H); x.clip();
   for (const L of P.lines) { x.beginPath(); L.pts.forEach((q, i) => i ? x.lineTo(M + q[0], M + q[1]) : x.moveTo(M + q[0], M + q[1])); x.strokeStyle = L.k === 'utm' ? 'rgba(30,64,175,.55)' : 'rgba(0,0,0,.5)'; x.lineWidth = (L.k === 'utm' ? 0.8 : 1) * u; x.setLineDash(L.k === 'utm' ? [] : [6 * u, 4 * u]); x.stroke(); }
@@ -7140,7 +7268,7 @@ $('photoFile').addEventListener('change', async e => {
 });
 $('layers').addEventListener('change', e => {
   const el = e.target;
-  if (el.dataset.layer) { data.settings.layers = Object.assign({}, data.settings.layers, { [el.dataset.layer]: el.checked }); applyLayerVisibility(); if (el.dataset.layer === 'unnamed' || el.dataset.layer === 'hidden') updateSources(); touch({ noRender: true }); }
+  if (el.dataset.layer) { data.settings.layers = Object.assign({}, data.settings.layers, { [el.dataset.layer]: el.checked }); applyLayerVisibility(); if (['unnamed', 'hidden', 'peaks', 'passes', 'places', 'lakes', 'tracks', 'completed'].includes(el.dataset.layer)) updateSources(); touch({ noRender: true }); }
   if (el.id === 'heatMode') { data.settings.heatMode = el.value; updateSources(); touch({ noRender: true }); }
   if (el.dataset.filter) setFilter(el.dataset.filter, el.value);
   if (el.id === 'l3d') { set3D(el.checked); touch({ noRender: true }); }
@@ -7187,7 +7315,7 @@ $('jsonFile').addEventListener('change', async e => {
 });
 document.addEventListener('keydown', e => {
   const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
-  if (e.key === 'Escape') { stopPreview(); if (mode === 'pin' || mode === 'split') setMode('browse'); }
+  if (e.key === 'Escape') { stopPreview(); if (mode === 'pin' || mode === 'split') setMode('browse'); else if (pinDraft && !document.querySelector('.dlg')) cancelPinDraft(); }
   if (!typing && editor && (e.key === 'Backspace' || (e.key === 'z' && (e.metaKey || e.ctrlKey)))) { e.preventDefault(); undoPoint(); }
   if (!typing && (e.key === 's') && (e.metaKey || e.ctrlKey)) { e.preventDefault(); saveFile(); }
 });
@@ -7329,8 +7457,11 @@ async function syncOnce() {
     let rphotos = null;
     if (shas['photos.json'] && (shas['photos.json'] !== st.sha.photos || remote.photoSig !== photoSig())) rphotos = (await syncRead(shas['photos.json'])).photos || {};
     if (!st.pending && !(!st.sha.atlas && hasLocalContent())) {
+      // V20.3: an outline this device has but GitHub never got is kept and uploaded, not wiped by the other copy
+      const keepShapes = {}; for (const k of ['range', 'parkCustom']) if (data[k] && data[k].length && !(remote.data && remote.data[k] && remote.data[k].length)) keepShapes[k] = data[k];
       syncAdopt(remote, rphotos);                                             // nothing waiting here: take the other device's copy
       st.photoSig = remote.photoSig || photoSig();
+      if (Object.keys(keepShapes).length) { Object.assign(data, keepShapes); needPush = true; }
     } else {
       mergeData(Object.assign({}, remote.data, { photos: rphotos || {} }), true);    // both sides have changes: combine, then upload
       needPush = true;
@@ -7712,7 +7843,7 @@ function pageOffline() {
 }
 
 // ================= Map init =================
-const HIT = ['poi', 'route-line', 'track-hit', 'trail-hit', 'lake-fill', 'area-fill'];
+const HIT = ['mypins', 'poi', 'route-line', 'track-hit', 'trail-hit', 'lake-fill', 'area-fill'];
 function initMap() {
   maplibregl.addProtocol('teton-dem', demProtocol);
   maplibregl.addProtocol('teton-pm', pmProtocol);
@@ -7742,6 +7873,16 @@ function initMap() {
   });
   setTimeout(() => { if (!overlaysDone && map.isStyleLoaded()) startOverlays(); }, 3000);
   map.on('mousedown', stopPreview); map.on('wheel', stopPreview);
+  // V20.3: right-click the map (or press and hold on a phone) to place a pin
+  map.on('contextmenu', e => { if (!mapReady || editor || areaEd || hed || mode === 'split') return; e.preventDefault(); startPinDraft([e.lngLat.lng, e.lngLat.lat]); });
+  { let lp = null;
+    const stopLP = () => { if (lp) { clearTimeout(lp.tm); lp = null; } };
+    map.on('touchstart', e => { stopLP(); if (!e.originalEvent.touches || e.originalEvent.touches.length !== 1) return; const pt = e.point, ll = [e.lngLat.lng, e.lngLat.lat]; lp = { pt, tm: setTimeout(() => { lp = null; if (!editor && !areaEd && !hed && mode !== 'split') { if (navigator.vibrate) navigator.vibrate(15); startPinDraft(ll); } }, 600) }; });
+    map.on('touchmove', e => { if (lp && (Math.abs(e.point.x - lp.pt.x) > 8 || Math.abs(e.point.y - lp.pt.y) > 8)) stopLP(); });
+    map.on('touchend', stopLP); map.on('touchcancel', stopLP); map.on('movestart', e => { if (e.originalEvent && e.originalEvent.touches && e.originalEvent.touches.length > 1) stopLP(); });
+  }
+  map.on('zoom', sizePinDrag);
+  map.on('styleimagemissing', pinImageMissing);
   map.on('mousemove', e => {
     if (!mapReady || mode !== 'browse') return;
     const hit = map.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: HIT.filter(l => map.getLayer(l)) });
@@ -7750,12 +7891,8 @@ function initMap() {
   map.on('click', e => {
     if (!mapReady) return;
     const ll = [e.lngLat.lng, e.lngLat.lat];
-    if (mode === 'pin') {
-      const p = { id: uid(), lon: +ll[0].toFixed(6), lat: +ll[1].toFixed(6), name: '', type: 'other', status: 'been', note: '', date: today(), icon: '', color: '' };
-      data.pins.push(p); setMode('browse'); touch({ noRender: true }); openDetail({ type: 'pin', id: p.id });
-      elevations([ll]).then(el => { if (el[0] != null && !p.note) { p.note = `Elevation about ${fmtFt(el[0])} ft.`; touch({ noRender: true }); if (view.detail && view.detail.id === p.id) renderSide(); } });
-      return;
-    }
+    if (mode === 'pin') { startPinDraft(ll); return; }
+    if (pinDraft && view.detail && view.detail.id === pinDraft.id) { pinDraft.lon = +ll[0].toFixed(6); pinDraft.lat = +ll[1].toFixed(6); syncPins(); renderSide(); return; }
     if (areaEd) {
       const S = areaEd.sec;
       if (S && S.mode === 'snap' && S.stage === 'ready') { snapDone(ll); return; }
@@ -7765,7 +7902,7 @@ function initMap() {
       return;
     }
     if (hed) { hedMapClick(ll); return; }
-    if (editor) { addPoint(ll); return; }
+    if (editor) { if (editor.campPick) campPicked(ll); else if (editor.awaitDay) toast('Press ＋ Add Day to keep drawing, or save if you are done.', 3500); else addPoint(ll); return; }
     const box = [[e.point.x - 7, e.point.y - 7], [e.point.x + 7, e.point.y + 7]];
     if (mode === 'split') {
       const h = map.queryRenderedFeatures(box, { layers: ['track-hit'] }).filter(f => f.properties.src === 'garmin').sort((a, b) => (b.properties.sel ? 1 : 0) - (a.properties.sel ? 1 : 0));
@@ -7776,6 +7913,7 @@ function initMap() {
       if (!map.getLayer(l) || map.getLayoutProperty(l, 'visibility') === 'none') continue;
       const h = map.queryRenderedFeatures(box, { layers: [l] }); if (!h.length) continue;
       const pr = h[0].properties;
+      if (l === 'mypins') return openDetail({ type: 'pin', id: pr.id });
       if (l === 'route-line') return openDetail({ type: 'route', id: pr.rid });
       if (l === 'track-hit') return openDetail({ type: 'track', id: pr.tid });
       if (l === 'trail-hit') return openDetail({ type: 'feature', id: WAY2GROUP[pr.id] || pr.id, way: pr.id });
