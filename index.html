@@ -826,7 +826,7 @@ a.srow[data-open]:hover{background:var(--hover)}
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V20.1';
+const APP_VERSION = 'V20.2';
 // Rough outline of the Teton Range (Teton Pass to Conant Pass, Jackson Hole side and Teton Valley side). Editable from the Layers panel.
 // Borders you can restyle (Layers -> Borders). Add an entry here to make another outline styleable.
 const BORDERS = [
@@ -1103,6 +1103,8 @@ const VERSIONS = [
     'Brings V19.2 (see-through GPS line while drawing, trimmed parts dropped completely) together with V20 (phone layout, Change History).',
     'The approved route is now called the Approved Trail, and its drawing page is titled Draw Your Approved Trail.',
     'While you draw on a hike, the yellow-and-black hover highlight fades with the GPS line too, so the trails underneath show. The GPS line opacity slider now starts at 50%.'] },
+  { name: 'Teton Atlas V20.2', date: '2026-11-25', notes: [
+    'Sync fix: a Teton Range outline (or GTNP border) edited on one device now reaches your other devices even when they have changes of their own waiting. Before, a device that already had an outline kept its own and uploaded it over yours.'] },
 ];
 
 // ================= State =================
@@ -2239,6 +2241,8 @@ function hxSnap() {
   return m;
 }
 function hxRebase() { HX.base = hxSnap(); }
+// True when this device changed a single shape (range, parkCustom...) and that change has not been uploaded yet
+function hxLocalUnsent(c) { return HX.entries.some(e => e.dev === DEVICE.id && !e.up && e.d && e.d.some(d => d.c === c)); }
 function hxSoon() { clearTimeout(hxSoon.tm); hxSoon.tm = setTimeout(hxFlush, 1200); }
 function hxFieldDiff(b, a) {
   const fb = {}, fa = {};
@@ -2522,7 +2526,7 @@ async function saveFile() {
   dirty = false; updateSaveState();
   toast(`Downloaded ${fname}. Replace your copy with it to keep your changes.`, 7000);
 }
-function mergeData(inc) {
+function mergeData(inc, fromSync) {
   inc = normalize(inc);
   let n = 0;
   for (const key of ['tracks', 'pins', 'routes', 'areas', 'peakLists']) {
@@ -2536,8 +2540,13 @@ function mergeData(inc) {
   }
   for (const [id, h] of Object.entries(inc.hidden || {})) if (!data.hidden[id]) { data.hidden[id] = h; n++; }
   { const have = new Set(data.trash.map(x => x.id)); for (const x of inc.trash || []) if (!have.has(x.id)) { data.trash.push(x); n++; } }
-  if (!data.range && inc.range) data.range = inc.range;
-  if (!data.parkCustom && inc.parkCustom) data.parkCustom = inc.parkCustom;
+  // V20.1: the Teton Range outline and the edited GTNP border are single shapes. When syncing, take the other device's
+  // shape unless this device changed its own since its last upload (that edit then wins and is uploaded).
+  // Before, a device that already had an outline always kept its own and uploaded it, overwriting edits made elsewhere.
+  for (const k of ['range', 'parkCustom']) {
+    if (!inc[k] || JSON.stringify(inc[k]) === JSON.stringify(data[k])) continue;
+    if (!data[k] || (fromSync && !hxLocalUnsent(k))) { data[k] = inc[k]; n++; }
+  }
   for (const [id, nm] of Object.entries(inc.names)) if (!data.names[id]) { data.names[id] = nm; n++; }
   for (const id of Object.keys(inc.wish)) data.wish[id] = true;
   for (const [id, list] of Object.entries(inc.photos || {})) { const cur = data.photos[id] = data.photos[id] || []; for (const p of list) if (!cur.includes(p)) { cur.push(p); n++; } }
@@ -7323,7 +7332,7 @@ async function syncOnce() {
       syncAdopt(remote, rphotos);                                             // nothing waiting here: take the other device's copy
       st.photoSig = remote.photoSig || photoSig();
     } else {
-      mergeData(Object.assign({}, remote.data, { photos: rphotos || {} }));    // both sides have changes: combine, then upload
+      mergeData(Object.assign({}, remote.data, { photos: rphotos || {} }), true);    // both sides have changes: combine, then upload
       needPush = true;
     }
     st.sha.atlas = shas['atlas.json']; if (shas['photos.json']) st.sha.photos = shas['photos.json'];
