@@ -103,12 +103,19 @@ label.f{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
 body.collapsed #side{transform:translateX(-100%)}
 body.collapsed #map{left:0}
 body.collapsed #collapseBtn{left:0}
+@media (min-width:801px){#collapseBtn{z-index:9}}   /* V20.4: the panel tab stays usable over Stats */
 body.collapsed #collapseBtn svg{transform:rotate(180deg)}
 body.collapsed #toolbar,body.collapsed #toast{left:50%}
 #menu .sub{display:block;font-size:11.5px;color:var(--muted);font-weight:400;margin-top:1px}
 .photos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
 .ph{position:relative}
 .ph img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;display:block}
+.ph-add{aspect-ratio:1;border:1.5px dashed var(--line);border-radius:10px;background:transparent;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-weight:600;font-size:12.5px;padding:0}
+.ph-add b{font-size:24px;font-weight:400;line-height:1}.ph-add:hover{border-color:var(--ink);color:var(--ink)}
+.donebar{display:flex;align-items:center;gap:10px;background:var(--okbg,#e7f6ea);color:var(--okink,#14532d);border-radius:14px;padding:10px 12px;margin:4px 0 12px}
+.donebar>span{font-size:22px}
+.trackfoot{display:grid;gap:10px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.trackfoot .linkdanger{background:none;border:0;color:#d9534f;font-weight:600;padding:6px;justify-self:center}
 .banner{margin:0 16px 8px;background:#fff4e5;color:#7a3e00;border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center;font-size:13px}
 .banner .btn{flex:none}
 .pbar{height:6px;background:var(--soft);border-radius:4px;overflow:hidden;margin-top:5px}
@@ -472,6 +479,9 @@ html[data-theme=light] .linkrow button.on,:root:not([data-theme=dark]) .linkrow 
 .swatches button.on{box-shadow:0 0 0 2px var(--ink)}
 .cpick{display:inline-flex;align-items:center;gap:6px;cursor:pointer;position:relative;padding:2px 10px 2px 2px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:12px;font-weight:650}
 .cpick:hover{background:var(--hover)}
+.lscp{position:relative;width:28px;height:28px;border-radius:50%;box-shadow:0 0 0 1px var(--line);background-image:conic-gradient(red,yellow,lime,cyan,blue,magenta,red)!important;cursor:pointer}
+.lscp input{position:absolute;inset:0;opacity:0;width:100%;height:100%;padding:0;cursor:pointer}
+.lsbox select{width:100%;margin:6px 0 2px}
 .cpick.on{border-color:var(--ink)}
 .cring{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6);background:conic-gradient(#ef4444,#f59e0b,#eab308,#22c55e,#06b6d4,#3b82f6,#8b5cf6,#ec4899,#ef4444)}
 .cring[style*="--c"]{background:var(--c);box-shadow:inset 0 0 0 2px rgba(255,255,255,.7)}
@@ -512,7 +522,12 @@ html[data-theme=dark] .maplibregl-ctrl-attrib-button{filter:invert(1)}
 .switch input:checked+i{background:#16a34a}
 .switch input:checked+i:before{transform:translateX(16px)}
 .lgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:4px 0 8px}
-.lgrid label{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:var(--soft);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent}
+.lgrid label{display:flex;align-items:center;gap:5px;padding:9px 10px;border-radius:12px;background:var(--soft);font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid transparent;white-space:nowrap;min-width:0;letter-spacing:-.015em}
+.lgrid label{position:relative;color:var(--muted)}
+.lgrid label input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+.lgrid label:has(input:checked){color:var(--ink)}
+.lgrid label:not(:has(input:checked)){filter:grayscale(1);opacity:.75}
+.lgrid label:has(input:focus-visible){outline:2px solid var(--green)}
 .lgrid label:has(input:checked){background:var(--card);border-color:var(--line);box-shadow:var(--shadow)}
 .lgrid input{width:auto;margin:0;accent-color:#16a34a}
 .legend-st{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;font-size:12.5px}
@@ -544,7 +559,8 @@ body.collapsed #dash{left:0}
 .dgrid{display:grid;gap:10px;margin-bottom:12px}
 .dgrid.six{grid-template-columns:repeat(6,1fr)}.dgrid.four{grid-template-columns:repeat(4,1fr)}
 .dtile{background:var(--card);border-radius:16px;padding:14px;box-shadow:var(--shadow)}
-.dtile b{display:block;font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.dtile{container-type:inline-size;min-width:0}
+.dtile b{display:block;font-size:min(26px,19cqi);font-weight:800;letter-spacing:-.02em;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dtile span{font-size:12px;color:var(--muted);font-weight:600}
 .dtile em{display:block;font-style:normal;font-size:11px;color:var(--muted)}
 .small-t .dtile b{font-size:19px}
@@ -847,7 +863,7 @@ a.srow[data-open]:hover{background:var(--hover)}
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V20.3';
+const APP_VERSION = 'V20.4';
 // Rough outline of the Teton Range (Teton Pass to Conant Pass, Jackson Hole side and Teton Valley side). Editable from the Layers panel.
 // Borders you can restyle (Layers -> Borders). Add an entry here to make another outline styleable.
 const BORDERS = [
@@ -912,7 +928,6 @@ const M_PER_MI = 1609.344, FT_PER_M = 3.28084;
 const PIN_DEFAULTS = {
   summit: { label: 'Peak', icon: '⛰️', color: '#d62828' },
   lake: { label: 'Lake', icon: '💧', color: '#1e88e5' },
-  view: { label: 'Viewpoint', icon: '🌄', color: '#8e24aa' },
   camp: { label: 'Campsite', icon: '⛺', color: '#2e7d32' },
   trailhead: { label: 'Trailhead', icon: '🥾', color: '#6d4c41' },
   water: { label: 'Water Source', icon: '🚰', color: '#0097a7' },
@@ -1136,6 +1151,15 @@ const VERSIONS = [
     "Approve is now Complete everywhere: Completed Trail, Complete Now (asks first), Complete All, Mark as Completed. The review's two skip buttons say what they do: Skip to Places, or Complete Now.",
     'Layers: Peaks and Passes have their own switches (plus Waterfalls & Viewpoints). My Hikes shows your GPX uploads and plans; My Completed Hikes shows completed hikes.',
     "Change History shows just your device's name. The note about start and end times following path edits is gone."] },
+  { name: 'Teton Atlas V20.4', date: '2026-11-25', notes: [
+    'Stats: Trails now counts the miles you actually covered on each trail (going out and back on the same trail counts once). Before, touching any part of a trail counted its whole length.',
+    'Stats: Days Out counts every day of a multi-day trip. Hours on Trail leaves out nights in camp (estimated from distance and climbing when the watch times were estimated). Most Visited counts a place once per hike. Big numbers shrink to fit their card (1.2M).',
+    'Show on Map → Change How They Look: thickness or size, opacity, and color (GPS lines and Completed Trails) for trails, hikes, routes, peaks, passes, waterfalls, lakes, areas, pins, contours and the heatmap.',
+    'Campsites: a Campsites switch in Show on Map (off by default), and campsites stay out of the Explore list unless you pick the Campsites chip.',
+    'Marking a campsite turns snap off; Add Day turns it back on. While drawing, each day of the Completed Trail is its own color, days sit side by side where they overlap, and arrows show which way each part goes.',
+    'After you complete a hike: a Completed banner with a Done button that closes the panel, and the bottom bar goes back to normal.',
+    'Activity type defaults to Backpacking (was Backpacking trip). Tidier Photos section (no count when empty, no Photos From date button); Save Details is full width, Delete This Hike sits below it.',
+    'Viewpoints are gone from the app. Show on Map: Waterfalls, Completed Hikes. The menu always opens at the top with sections folded. The panel tab works over Stats.'] },
 ];
 
 // ================= State =================
@@ -1162,7 +1186,7 @@ function normalize(d) {
   if (d.parkCustom && !Array.isArray(d.parkCustom)) d.parkCustom = null;
   for (const list of Object.values(d.visits)) for (const v of list) { if (!v.status) v.status = 'been'; if (!v.vid) v.vid = uid(); }
   for (const p of d.pins) {
-    if (!(p.type in PIN_DEFAULTS) && !((d.settings && d.settings.pinTypes) || []).some(t => t.id === p.type)) p.type = ({ peak: 'summit', viewpoint: 'view' })[p.type] || 'other';
+    if (!(p.type in PIN_DEFAULTS) && !((d.settings && d.settings.pinTypes) || []).some(t => t.id === p.type)) p.type = ({ peak: 'summit' })[p.type] || 'other';
     if (!p.status) p.status = 'been';
   }
   for (const a of d.areas) { if (!a.id) a.id = uid(); if (!Array.isArray(a.ring)) a.ring = []; if (!AREA_TYPES[a.type]) a.type = 'other'; if (a.note == null) a.note = ''; if (a.name == null) a.name = ''; }
@@ -1180,6 +1204,7 @@ function normalize(d) {
     for (const s of t.segments || []) s.pts = s.pts || [];
     if (t.approved === undefined) t.approved = true; // hikes from before V5 were already counted
     if (!Array.isArray(t.camps)) t.camps = [];
+    if (!t.kind || t.kind === 'Backpacking trip') t.kind = 'Backpacking';   // V20.4: everything defaults to Backpacking
     if (!t.nights) t.nights = 0;
   }
   for (const [id, v] of Object.entries(d.yds)) if (!Array.isArray(v)) d.yds[id] = v ? [{ name: '', yds: String(v) }] : [];
@@ -1555,7 +1580,6 @@ function buildFeatures(els) {
       if (t.natural === 'peak' || t.natural === 'volcano') out.push({ id, kind: 'peak', name, ele, coord });
       else if (t.natural === 'saddle' || t.mountain_pass === 'yes') out.push({ id, kind: 'pass', name, ele, coord });
       else if (t.waterway === 'waterfall') out.push({ id, kind: 'waterfall', name, ele, coord });
-      else if (t.tourism === 'viewpoint') out.push({ id, kind: 'viewpoint', name, ele, coord });
     } else if (el.type === 'way' && t.highway) {
       const c = geom(el.geometry);
       if (c.length > 1) out.push({ id, kind: 'trail', name, hw: t.highway, sac: t.sac_scale || null, coords: c });
@@ -1586,7 +1610,7 @@ function overpassQuery(s, w, n, e) {
   const wf = '["water"!~"^(river|stream|canal|ditch|wastewater|stream_pool)$"]';
   return `[out:json][timeout:240];(` +
     `way["highway"~"^(path|footway|track|bridleway|steps)$"]["footway"!~"^(sidewalk|crossing)$"]["access"!~"^(private|no)$"]${bb};` +
-    `node["natural"~"^(peak|volcano|saddle)$"]${bb};node["mountain_pass"="yes"]${bb};node["waterway"="waterfall"]${bb};node["tourism"="viewpoint"]${bb};` +
+    `node["natural"~"^(peak|volcano|saddle)$"]${bb};node["mountain_pass"="yes"]${bb};node["waterway"="waterfall"]${bb};` +
     `way["natural"="water"]${wf}${bb};relation["natural"="water"]${wf}${bb};way["landuse"="reservoir"]${bb};relation["landuse"="reservoir"]${bb};way["water"~"^(lake|pond|reservoir|tarn|lagoon|oxbow)$"]${bb};relation["water"~"^(lake|pond|reservoir|tarn|lagoon|oxbow)$"]${bb};` +
     `);out geom;`;
 }
@@ -1641,7 +1665,7 @@ function indexFeatures() {
   FEAT = {}; FEATS = []; PGRID = new Map(); RAW = new Map();
   for (const f of ((data.osm && data.osm.features) || []).concat((data.identified && data.identified.features) || [])) {
     RAW.set(f.id, f);
-    if (data.hidden[f.id]) continue;
+    if (data.hidden[f.id] || f.kind === 'viewpoint') continue;   // V20.4: no viewpoints in the app
     if (f.kind === 'lake' && !f.polys && f.ring) f.polys = [f.ring]; // V1/V2 cached format
     if (f.kind === 'lake') {
       f.bb = bboxOf(f.polys.flat()); f.center = ringCentroid(f.polys.slice().sort((a, b) => ringAcres(b) - ringAcres(a))[0]);
@@ -1822,7 +1846,7 @@ const trackShown = t => !(tetonsOnly() && hikeOutside(t));
 const TRACKS = () => data.tracks.filter(trackShown);
 function hikeType(t) { if (t.planned) return t.date ? 'planned' : 'potential'; return t.approved === false ? 'uploaded' : 'completed'; }
 const HIKE_TYPES = { uploaded: { label: 'Uploaded', icon: '⬆️', color: '#ea580c' }, completed: { label: 'Completed', icon: '✅', color: '#15803d' }, planned: { label: 'Planned', icon: '🗓️', color: '#2563eb' }, potential: { label: 'Potential', icon: '💭', color: '#a21caf' } };
-// Status used for colors everywhere: Completed (an completed hike credited it) > Been There (marked by you) > Planned > Potential > Seen > Not Yet
+// Status used for colors everywhere: Completed (a completed hike credited it) > Been There (marked by you) > Planned > Potential > Seen > Not Yet
 let plannedCache = { key: '', ids: new Set(), pot: new Set() };
 function planSets() {
   const key = data.editedAt + ':' + FEATS.length;
@@ -2086,9 +2110,8 @@ function shrinkImage(file) {
 }
 function photosHTML(id) {
   const list = data.photos[id] || [];
-  return `<h2 class="sec">Photos <span class="small muted">${list.length}</span></h2>
-    <div class="photos">${list.map((src, i) => `<div class="ph">${photoImg(src)}<button class="ph-x" data-act="delPhoto" data-idx="${i}" title="Remove photo">×</button></div>`).join('')}</div>
-    <div class="row"><button class="btn" data-act="addPhoto">📷 Add Photos</button>${(() => { const t = findTrack(id); return t && t.date && !t.planned ? `<button class="btn" data-act="addDayPhotos" title="Pick photos from your library; only the ones taken on ${esc(fmtDate(t.date))} are added">🗓️ Photos From ${esc(fmtDate(t.date).replace(/, \d{4}$/, ''))}</button>` : ''; })()}</div>`;
+  return `<h2 class="sec">Photos${list.length ? ` <span class="small muted">${list.length}</span>` : ''}</h2>
+    <div class="photos">${list.map((src, i) => `<div class="ph">${photoImg(src)}<button class="ph-x" data-act="delPhoto" data-idx="${i}" title="Remove photo">×</button></div>`).join('')}<button class="ph-add" data-act="addPhoto" title="Add photos"><b>＋</b><span>Add Photos</span></button></div>`;
 }
 
 // ================= Removing and restoring =================
@@ -2598,7 +2621,7 @@ function layerOn(k) {
   const L = data.settings.layers || {};
   if (L[k] === undefined && (k === 'peaks' || k === 'passes') && L.places !== undefined) return L.places;    // V20.3: split from the old Peaks & Passes switch
   if (L[k] === undefined && k === 'completed' && L.tracks !== undefined) return L.tracks;
-  return L[k] !== undefined ? L[k] : k === 'hillshade' ? true : !['heat', 'recency'].includes(k);
+  return L[k] !== undefined ? L[k] : k === 'hillshade' ? true : !['heat', 'recency', 'camps'].includes(k);
 }
 // Recency buckets for "last visited": y1 = within a year, y3 = 1 to 3 years, old = over 3 years, none = never been
 const RC_COLORS = ['match', ['get', 'rc'], 'y1', '#2bb24c', 'y3', '#fbc02d', 'old', '#f57c00', 'rgba(0,0,0,0)'];   // never visited: no highlight
@@ -2773,11 +2796,62 @@ function restyleIcons() {
   for (const n of map.listImages()) if (n.startsWith('upin|')) map.removeImage(n);
   addIcons(); applyStatusPaint(); updateSources();
 }
+// ===== V20.4: how each map layer looks (Layers → Show on Map → Change How They Look). Saved in settings.lstyle (synced). =====
+// w = thickness or size (×), o = opacity (×), c = color where the color is not set by status.
+const LST = {
+  trails: { label: 'Trails', kind: 'line', line: ['trail-line', 'trail-planned', 'trail-done'], cas: ['trail-case'] },
+  tracks: { label: 'My Hikes (GPS lines)', kind: 'line', line: ['track-garmin', 'track-manual', 'track-planned', 'track-pending', 'track-ignored'], cas: ['track-case'], color: { layers: ['track-garmin'], def: '#1d4ed8' } },
+  completed: { label: 'Completed Trails', kind: 'line', line: ['track-approved'], cas: ['track-approved-case'], color: { layers: ['track-approved'], def: '#1e6fe0' } },
+  routes: { label: 'My Routes', kind: 'line', line: ['route-line'], cas: ['route-case'] },
+  peaks: { label: 'Peaks', kind: 'icon', m: 'peak' }, passes: { label: 'Passes', kind: 'icon', m: 'pass' }, places: { label: 'Waterfalls', kind: 'icon', m: 'waterfall' },
+  lakes: { label: 'Lakes', kind: 'fill', fill: ['lake-fill'], line: ['lake-line'], m: 'lake' },
+  areas: { label: 'Areas', kind: 'fill', fill: ['area-fill'], line: ['area-line'] },
+  pins: { label: 'Pins and Campsites', kind: 'pin' },
+  contours: { label: 'Contours', kind: 'line', line: ['o-contour'], noW: true },
+  heat: { label: 'Heatmap', kind: 'heat', noW: true }
+};
+const lsOf = k => Object.assign({ w: 1, o: 1, c: '' }, ((data.settings.lstyle || {})[k]) || {});
+const LBASE = {};
+function lsBase(id, prop, dflt) { const key = id + '|' + prop; if (!(key in LBASE)) { let v = null; try { v = map.getPaintProperty(id, prop); } catch (e) { /* no layer */ } LBASE[key] = v == null ? dflt : v; } return LBASE[key]; }
+// Multiply a paint value by k, also when it changes with zoom (only the outputs of a zoom curve may be scaled)
+function lsScale(v, k) {
+  if (k === 1) return v;
+  if (typeof v === 'number') return +(v * k).toFixed(3);
+  if (Array.isArray(v) && (v[0] === 'interpolate' || v[0] === 'interpolate-hcl') && JSON.stringify(v[2]).includes('zoom')) return v.map((x, i) => i > 3 && i % 2 === 0 ? lsScale(x, k) : x);
+  if (Array.isArray(v) && v[0] === 'step' && JSON.stringify(v[1]).includes('zoom')) return v.map((x, i) => i === 2 || (i > 2 && i % 2 === 0) ? lsScale(x, k) : x);
+  return ['*', v, k];
+}
+const lsOpMul = id => { for (const [k, d] of Object.entries(LST)) if ((d.line || []).includes(id) || (d.cas || []).includes(id)) return lsOf(k).o; return 1; };
+function applyLayerStyles() {
+  if (!map || !map.getLayer('poi')) return;
+  const set = (id, prop, v) => { if (map.getLayer(id)) try { map.setPaintProperty(id, prop, v); } catch (e) { console.warn('style', id, prop, e); } };
+  for (const [k, d] of Object.entries(LST)) {
+    const st = lsOf(k);
+    if (d.kind === 'line' || d.kind === 'fill') {
+      for (const id of [...(d.line || []), ...(d.cas || [])]) {
+        if (!map.getLayer(id)) continue;
+        if (!d.noW) set(id, 'line-width', lsScale(lsBase(id, 'line-width', 1), st.w));
+        if (!id.startsWith('track-')) set(id, 'line-opacity', lsScale(lsBase(id, 'line-opacity', 1), st.o));   // hikes: applyGpsOp below
+      }
+      for (const id of (d.fill || []).filter(x => map.getLayer(x))) set(id, 'fill-opacity', lsScale(lsBase(id, 'fill-opacity', 1), st.o));
+      if (d.color) for (const id of d.color.layers) set(id, 'line-color', st.c || d.color.def);
+    }
+    if (d.kind === 'heat' && map.getLayer('heat-layer')) set('heat-layer', 'heatmap-opacity', lsScale(lsBase('heat-layer', 'heatmap-opacity', 1), st.o));
+  }
+  // markers: one size and opacity per kind
+  const m = (f, dflt) => ['match', ['get', 'kind'], 'peak', f('peaks'), 'pass', f('passes'), 'waterfall', f('places'), 'lake', f('lakes'), dflt];
+  set('poi', 'icon-opacity', m(k => lsOf(k).o, 1));
+  set('poi-label', 'text-opacity', m(k => lsOf(k).o, 1));
+  set('mypins', 'icon-opacity', lsOf('pins').o); set('mypins-label', 'text-opacity', lsOf('pins').o);
+  applyMarkerStyle(); applyGpsOp();
+}
 function applyMarkerStyle() {
   if (!map || !map.getLayer('poi')) return;
   const k = MK().size;
-  map.setLayoutProperty('poi', 'icon-size', ['interpolate', ['linear'], ['zoom'], 9, +(0.8 * k).toFixed(3), 14, +(1.25 * k).toFixed(3)]);
-  if (map.getLayer('mypins')) map.setLayoutProperty('mypins', 'icon-size', ['interpolate', ['linear'], ['zoom'], 9, +(0.8 * k).toFixed(3), 14, +(1.25 * k).toFixed(3)]);
+  const per = z => ['match', ['get', 'kind'], 'peak', +(z * k * lsOf('peaks').w).toFixed(3), 'pass', +(z * k * lsOf('passes').w).toFixed(3), 'waterfall', +(z * k * lsOf('places').w).toFixed(3), 'lake', +(z * k * lsOf('lakes').w).toFixed(3), +(z * k).toFixed(3)];
+  map.setLayoutProperty('poi', 'icon-size', ['interpolate', ['linear'], ['zoom'], 9, per(0.8), 14, per(1.25)]);
+  const pw = k * lsOf('pins').w;
+  if (map.getLayer('mypins')) map.setLayoutProperty('mypins', 'icon-size', ['interpolate', ['linear'], ['zoom'], 9, +(0.8 * pw).toFixed(3), 14, +(1.25 * pw).toFixed(3)]);
   sizePinDrag();
 }
 // Status colors on lakes, areas and trails (set again whenever you change a status color)
@@ -2846,9 +2920,10 @@ function addOverlays() {
   map.addLayer({ id: 'sel-fill', type: 'fill', source: 'sel', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': '#aef07f', 'fill-opacity': 0.35 } });
   map.addLayer({ id: 'sel-case', type: 'line', source: 'sel', filter: ['!=', ['geometry-type'], 'Point'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 10, 'line-opacity': 0.95 } });
   map.addLayer({ id: 'sel-line', type: 'line', source: 'sel', filter: ['!=', ['geometry-type'], 'Point'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#16a34a', 'line-width': 5.5 } });
-  map.addLayer({ id: 'edit-case', type: 'line', source: 'edit', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 8 } });
-  map.addLayer({ id: 'edit-line', type: 'line', source: 'edit', filter: ['!', ['get', 'off']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': 4.5 } });
-  map.addLayer({ id: 'edit-off', type: 'line', source: 'edit', filter: ['get', 'off'], paint: { 'line-color': ['get', 'color'], 'line-width': 4.5, 'line-dasharray': [1.5, 1.2] } });
+  map.addLayer({ id: 'edit-case', type: 'line', source: 'edit', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 8, 'line-offset': ['coalesce', ['get', 'sh'], 0] } });
+  map.addLayer({ id: 'edit-line', type: 'line', source: 'edit', filter: ['!', ['get', 'off']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': 4.5, 'line-offset': ['coalesce', ['get', 'sh'], 0] } });
+  map.addLayer({ id: 'edit-off', type: 'line', source: 'edit', filter: ['get', 'off'], paint: { 'line-color': ['get', 'color'], 'line-width': 4.5, 'line-dasharray': [1.5, 1.2], 'line-offset': ['coalesce', ['get', 'sh'], 0] } });
+  map.addLayer({ id: 'edit-dir', type: 'symbol', source: 'edit', layout: { 'symbol-placement': 'line', 'symbol-spacing': 80, 'icon-image': 'dir-arrow', 'icon-size': 0.55, 'icon-allow-overlap': true, 'icon-offset': [0, 0] } });   // V20.4: which way each part goes
   map.addLayer({ id: 'areaedit-fill', type: 'fill', source: 'areaedit', filter: ['==', ['get', 'k'], 'fill'], paint: { 'fill-color': '#7cb342', 'fill-opacity': 0.3 } });
   map.addLayer({ id: 'areaedit-line', type: 'line', source: 'areaedit', filter: ['==', ['get', 'k'], 'line'], paint: { 'line-color': '#33691e', 'line-width': 3 } });
   map.addLayer({ id: 'areaedit-sec', type: 'line', source: 'areaedit', filter: ['==', ['get', 'k'], 'sec'], paint: { 'line-color': '#e11d48', 'line-width': 3.5, 'line-dasharray': [2, 1.2] } });
@@ -2897,6 +2972,7 @@ function applyLayerVisibility() {
   const rec = layerOn('recency');
   if (map.getLayer('poi-rec')) map.setLayoutProperty('poi-rec', 'visibility', rec ? 'visible' : 'none');
   applyStatusPaint();
+  applyLayerStyles();
   syncPins();
 }
 // Range boundary as GeoJSON: the park outline when loaded, else the BBOX rectangle (edit BBOX at the top to change it)
@@ -3110,7 +3186,7 @@ function renderMarkers() {
   $('markers').innerHTML = `<div class="row" style="align-items:center;margin-top:0"><h3 class="sec" style="margin:0;flex:1">Markers</h3><button class="btn sm" data-mk="reset" ${mkActive() ? '' : 'disabled'}>Reset Filters</button></div>
     <div class="small muted" id="mkCount" style="margin:4px 0 8px">Showing ${c.shownO + c.shownM} of ${c.orig + c.mine} · ${c.shownO} from the map, ${c.shownM} yours</div>
     <div class="seg2">${[['all', 'All'], ['orig', 'From the Map'], ['mine', 'My Pins']].map(([k, l]) => `<button class="${m.src === k ? 'on' : ''}" data-mk="src" data-v="${k}">${l}</button>`).join('')}</div>
-    ${sec('kinds', 'What to Show', `<div class="lgrid">${['peak', 'pass', 'waterfall', 'lake', 'viewpoint'].map(k => `<label><input type="checkbox" data-mkkind="${k}" ${m.kinds[k] === false ? '' : 'checked'}> ${KIND_INFO[k].icon} ${({ peak: 'Peaks', pass: 'Passes', waterfall: 'Waterfalls', lake: 'Lakes', viewpoint: 'Viewpoints' })[k]} <span class="muted small">${c.by[k] || 0}</span></label>`).join('')}<label><input type="checkbox" data-mkkind="pin" ${m.kinds.pin === false ? '' : 'checked'}> 📍 My Pins <span class="muted small">${c.mine}</span></label></div>`)}
+    ${sec('kinds', 'What to Show', `<div class="lgrid">${['peak', 'pass', 'waterfall', 'lake'].map(k => `<label><input type="checkbox" data-mkkind="${k}" ${m.kinds[k] === false ? '' : 'checked'}> ${KIND_INFO[k].icon} ${({ peak: 'Peaks', pass: 'Passes', waterfall: 'Waterfalls', lake: 'Lakes', viewpoint: 'Viewpoints' })[k]} <span class="muted small">${c.by[k] || 0}</span></label>`).join('')}<label><input type="checkbox" data-mkkind="pin" ${m.kinds.pin === false ? '' : 'checked'}> 📍 My Pins <span class="muted small">${c.mine}</span></label></div>`)}
     ${sec('pins', 'My Pin Types', types.map(([k, t]) => `<div class="pinrow"><input type="checkbox" data-mkpin="${k}" ${m.pinTypes[k] === false ? '' : 'checked'} title="Show on the map" style="width:auto">
         <button class="emo" data-pt-emoji="${k}" title="${esc(emojiName(t.icon))}: tap to change">${t.icon}</button>
         <input type="text" data-pt-label="${k}" value="${esc(t.label)}" aria-label="Type name">
@@ -3189,7 +3265,7 @@ function pinImageMissing(e) {
   const [, st, emo] = e.id.split('|'), c = pinIconCanvas(st, emo);
   map.addImage(e.id, { width: PIN_PX, height: PIN_PX, data: c.getContext('2d').getImageData(0, 0, PIN_PX, PIN_PX).data }, { pixelRatio: 2 });
 }
-const pinScale = () => { const z = map ? map.getZoom() : 12, k = MK().size || 1; return (z <= 9 ? 0.8 : z >= 14 ? 1.25 : 0.8 + (z - 9) * 0.09) * k; };
+const pinScale = () => { const z = map ? map.getZoom() : 12, k = (MK().size || 1) * lsOf('pins').w; return (z <= 9 ? 0.8 : z >= 14 ? 1.25 : 0.8 + (z - 9) * 0.09) * k; };
 let pinDragM = null;
 function syncPins() {
   if (!map) return;
@@ -3197,6 +3273,7 @@ function syncPins() {
   if (show) for (const p of data.pins) {
     if (live && live.id === p.id) continue;                       // drawn by the draggable marker instead
     if (!inFilterPin(p) || !pinShown(p)) continue;
+    if (p.type === 'camp' && !layerOn('camps')) continue;   // V20.4: campsites only when Show on Map → Campsites is on
     F.push({ type: 'Feature', properties: { id: p.id, img: pinIconId(p), label: p.name || '', always: !!p.label }, geometry: { type: 'Point', coordinates: [p.lon, p.lat] } });
   }
   const src = map.getSource('mypins'); if (src) src.setData(fc(F));
@@ -3404,7 +3481,8 @@ function applyGpsOp() {
   if (!mapReady) return;
   const tid = editor && editor.kind === 'extend' && editor.trackId, op = gpsOp();
   // The hover highlight (yellow glow + black line) has no tid, so while drawing on a hike it fades as a whole.
-  for (const [id, base] of GPS_OP_LAYERS) if (map.getLayer(id)) map.setPaintProperty(id, 'line-opacity', !tid ? base : id.startsWith('hl-') ? +(base * op).toFixed(3) : ['case', ['==', ['get', 'tid'], tid], +(base * op).toFixed(3), base]);
+  for (const [id, b0] of GPS_OP_LAYERS) { const base = +(b0 * lsOpMul(id)).toFixed(3); if (map.getLayer(id)) map.setPaintProperty(id, 'line-opacity', !tid ? base : id.startsWith('hl-') ? +(base * op).toFixed(3) : ['case', ['==', ['get', 'tid'], tid], +(base * op).toFixed(3), base]); }
+  for (const id of ['track-approved', 'track-approved-case']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-opacity', +(lsBase(id, 'line-opacity', 1) * lsOpMul(id)).toFixed(3));
 }
 function snapPoint(c) {
   if (!editor.snap) return c;
@@ -3521,7 +3599,7 @@ function editorLine() { return editor.legs.length ? joinLegs(editor.legs) : edit
 function redrawEditor() {
   if (!editor || !mapReady) return;
   { let dd = 0; const dayOf = editor.legs.map((l, i) => { if (i > 0 && editor.wps[i] && editor.wps[i].brk) dd++; return dd; });
-    map.getSource('edit').setData(fc(editor.legs.map((l, i) => l && ({ type: 'Feature', properties: { color: editor.kind === 'route' ? (dd > 0 ? DAY_COLORS[dayOf[i] % DAY_COLORS.length] : editor.color) : '#1e6fe0', off: l.off }, geometry: { type: 'LineString', coordinates: l.pts } })).filter(Boolean))); }
+    map.getSource('edit').setData(fc(editor.legs.map((l, i) => l && ({ type: 'Feature', properties: { color: editor.kind === 'route' ? (dd > 0 ? DAY_COLORS[dayOf[i] % DAY_COLORS.length] : editor.color) : DAY_COLORS[dayOf[i] % DAY_COLORS.length], off: l.off, sh: editor.kind !== 'route' && dd > 0 ? (dayOf[i] % 2 ? 3 : -3) : 0 }, geometry: { type: 'LineString', coordinates: l.pts } })).filter(Boolean))); }
   for (const m of editor.markers) m.remove();
   editor.markers = editor.wps.map((w, i) => {
     const el = document.createElement('div');
@@ -4458,7 +4536,7 @@ function cleanPanelHTML() {
   const e = areaEd, m = cutMatches(), by = {}; for (const f of m) by[f.kind] = (by[f.kind] || 0) + 1;
   const miles = m.filter(f => f.kind === 'trail').reduce((a, f) => a + f.len, 0) / M_PER_MI;
   return `<div class="seg2" style="margin-top:4px"><button data-act="cutSide" data-v="in" class="${e.cut.outside ? '' : 'on'}">Inside the Shape</button><button data-act="cutSide" data-v="out" class="${e.cut.outside ? 'on' : ''}">Outside the Shape</button></div>
-    <div class="lgrid">${Object.entries({ trail: 'Trails', lake: 'Lakes', peak: 'Peaks', pass: 'Passes', waterfall: 'Waterfalls', viewpoint: 'Viewpoints' }).map(([k, l]) => `<label><input type="checkbox" data-cutkind="${k}" ${e.cut.kinds[k] ? 'checked' : ''}> ${l} <span class="muted small">${by[k] || 0}</span></label>`).join('')}</div>
+    <div class="lgrid">${Object.entries({ trail: 'Trails', lake: 'Lakes', peak: 'Peaks', pass: 'Passes', waterfall: 'Waterfalls' }).map(([k, l]) => `<label><input type="checkbox" data-cutkind="${k}" ${e.cut.kinds[k] ? 'checked' : ''}> ${l} <span class="muted small">${by[k] || 0}</span></label>`).join('')}</div>
     <label class="toggle"><input type="checkbox" id="cutTouch" ${e.cut.touch ? 'checked' : ''}> Also things that only partly overlap the edge</label>
     <div class="notice info">${m.length ? `<b>${m.length}</b> item${m.length === 1 ? '' : 's'} ${e.cut.outside ? 'outside' : 'inside'} (highlighted)${miles ? ` · ${miles.toFixed(1)} mi of trail` : ''}.` : 'Nothing matches yet.'} Hidden items stop counting and go to Deleted Items, where one tap brings them back. Your own pins, hikes, routes and areas are never touched.</div>
     <button class="btn danger big" data-act="cutApply" ${m.length ? '' : 'disabled'}>Hide ${m.length} Item${m.length === 1 ? '' : 's'}</button>`;
@@ -4938,6 +5016,7 @@ function goBack() {
   renderSide(); updateSources();
 }
 function renderSide() {
+  if (view.justDone && !(view.detail && view.detail.type === 'track' && view.detail.id === view.justDone.id)) view.justDone = null;
   if (pinDraft && !(view.detail && view.detail.type === 'pin' && view.detail.id === pinDraft.id)) { pinDraft = null; syncPins(); }
   renderSideInner(); renderToolbar(); renderBrand(); if ($('dash') && !$('dash').hidden) renderDash(); }
 function renderBrand() {
@@ -4986,7 +5065,7 @@ function cardHTML(item) {
 }
 function lastVisit(id) { let d = ''; for (const fid of idsOf(id)) for (const v of data.visits[fid] || []) if (v.status === 'been' && (v.date || '') > d) d = v.date; return d; }
 function visitCount(id) { return visitsFor(id).filter(v => v.status === 'been').length; }
-const EX_CHIPS = [['all', 'All'], ['fav', '★ Favorites'], ['peak', '⛰️ Peaks'], ['lake', '💧 Lakes'], ['trail', '🥾 Trails'], ['pass', '🏔️ Passes'], ['waterfall', '🌊 Waterfalls'], ['viewpoint', '🌄 Viewpoints'], ['area', '🟩 Areas'], ['pin', '📍 Pins'], ['saved', '💭 Potential'], ['unnamed', '❔ Unnamed']];
+const EX_CHIPS = [['all', 'All'], ['fav', '★ Favorites'], ['peak', '⛰️ Peaks'], ['lake', '💧 Lakes'], ['trail', '🥾 Trails'], ['pass', '🏔️ Passes'], ['waterfall', '🌊 Waterfalls'], ['area', '🟩 Areas'], ['pin', '📍 Pins'], ['camp', '⛺ Campsites'], ['saved', '💭 Potential'], ['unnamed', '❔ Unnamed']];
 const EX_SORTS = [['relevant', 'Most relevant', 'Favorites, then recently visited, then A–Z'], ['name', 'A–Z'], ['ele', 'Highest / longest'], ['recent', 'Recently visited'], ['visits', 'Most visited'], ['near', 'Nearest to the map center'], ['todo', 'Not done first'], ['done', 'Completed first']];
 function featureItems() {
   const items = [], showUn = view.explore && view.explore.chip === 'unnamed';
@@ -5008,7 +5087,7 @@ function featureItems() {
   }
   for (const p of data.pins) {
     const t = PIN_TYPES[p.type] || PIN_TYPES.other;
-    items.push({ kind: p.type === 'view' ? 'viewpoint' : 'pin', k2: 'pin', title: pinName(p), icon: p.icon || t.icon, color: pinStatus(p) === 'none' ? '#90a4ae' : stColor(pinStatus(p)), sub: 'Your pin · ' + t.label + (p.date ? ' · ' + fmtDate(p.date) : ''), st: pinStatus(p), ele: 0, rc: rcFromDate(p.status === 'been' ? p.date : ''), photo: !!data.photos[p.id], open: { type: 'pin', id: p.id } });
+    items.push({ kind: p.type === 'camp' ? 'camp' : 'pin', k2: 'pin', title: pinName(p), icon: p.icon || t.icon, color: pinStatus(p) === 'none' ? '#90a4ae' : stColor(pinStatus(p)), sub: 'Your pin · ' + t.label + (p.date ? ' · ' + fmtDate(p.date) : ''), st: pinStatus(p), ele: 0, rc: rcFromDate(p.status === 'been' ? p.date : ''), photo: !!data.photos[p.id], open: { type: 'pin', id: p.id } });
   }
   return items;
 }
@@ -5030,6 +5109,7 @@ function pageExplore() {
   else if (ex.chip === 'fav') items = items.filter(i => data.fav[i.open.id]);
   else if (ex.chip === 'unnamed') items = items.filter(i => i.kind === 'unnamed');
   else if (ex.chip !== 'all') items = items.filter(i => i.kind === ex.chip);
+  if (ex.chip !== 'camp') items = items.filter(i => i.kind !== 'camp');   // V20.4: campsites stay out of the list unless you pick Campsites
   if (ex.st !== 'any') items = items.filter(i => (i.st || 'none') === ex.st);
   if (ex.recent !== 'any') items = items.filter(i => i.rc === ex.recent);
   if (ex.minEle !== 'any') items = items.filter(i => (i.ele || 0) * FT_PER_M >= +ex.minEle);
@@ -5231,12 +5311,25 @@ const ib = txt => `<span class="ib nocase" data-info="${esc(txt)}" title="${esc(
 function completion() {
   const o = dashOpts(), ro = rangeOnly();
   const keep = f => (!ro || inRangeF(f)) && (!!nameOf(f) || (f.ident ? o.ident : f.kind === 'lake' ? o.unLakes : f.kind === 'peak' ? o.unPeaks : o.unOther));
-  const cats = [['peak', 'Peaks', '⛰️'], ['lake', 'Lakes', '💧'], ['trail', 'Trails', '🥾'], ['pass', 'Passes', '🏔️'], ['waterfall', 'Waterfalls', '🌊'], ['viewpoint', 'Viewpoints', '🌄'], ['area', 'Your Areas', '🟩']];
+  const cats = [['peak', 'Peaks', '⛰️'], ['lake', 'Lakes', '💧'], ['trail', 'Trails', '🥾'], ['pass', 'Passes', '🏔️'], ['waterfall', 'Waterfalls', '🌊'], ['area', 'Your Areas', '🟩']];
   const out = [];
   for (const [k, label, icon] of cats) {
     let items;
     if (k === 'trail') items = Object.values(GROUPS).filter(g => g.ways.some(w => !ro || inRangeF(w))).map(g => ({ id: g.id, w: g.len / M_PER_MI }));
     else if (k === 'area') items = data.areas.map(a => ({ id: a.id, w: 1 }));
+    if (k === 'trail') {   // V20.4: count the miles you actually covered on each trail section (a trail you touched no longer counts in full)
+      const by = { done: 0, been: 0, planned: 0, wish: 0, seen: 0, none: 0 }; let total = 0;
+      for (const g of Object.values(GROUPS)) for (const w of g.ways) {
+        if (ro && !inRangeF(w)) continue;
+        let ct = 0, cl = 0; for (const v of data.visits[w.id] || []) { if (v.status !== 'been' || !inFilter(v.date)) continue; if (v.src === 'track') ct = Math.max(ct, v.cov || 0); else cl = 1; }
+        const L = w.len / M_PER_MI, dn = L * Math.min(1, ct), bn = Math.max(0, L * cl - dn), rest = L - dn - bn;
+        let st = placeStatus(g.id); if (st === 'done' || st === 'been') st = 'none';
+        by.done += dn; by.been += bn; by[st] += rest; total += L;
+      }
+      const den = ST_KEYS.filter(x => o.den[x]).reduce((a, x) => a + by[x], 0) + (o.den.none ? 0 : 0), num = by.done + (o.beenDone ? by.been : 0);
+      out.push({ k, label, icon, by, den: Math.max(den, num), num, unit: 'mi', total });
+      continue;
+    }
     else items = FEATS.filter(f => f.kind === k && keep(f)).map(f => ({ id: f.id, w: 1 }));
     if (k === 'peak' || k === 'lake') for (const p of data.pins) if (p.type === (k === 'peak' ? 'summit' : 'lake') && (!ro || pointInRing(p.lon, p.lat, closeRing(rangeRing())))) items.push({ id: p.id, w: 1, pin: p });
     const by = { done: 0, been: 0, planned: 0, wish: 0, seen: 0, none: 0 };
@@ -5279,43 +5372,65 @@ function lineChartSVG(pts, fmt, label) {
     <line class="xh" x1="0" x2="0" y1="${pad.t}" y2="${H - pad.b}" style="display:none"/><circle class="dot" r="4" style="display:none"/>
   </svg>`;
 }
+// V20.4: Days Out counts every calendar day of a multi-day trip (a 1-night trip is 2 days); the same day twice counts once
+function daysOut(list) {
+  const S = new Set();
+  for (const t of list) { if (!t.date) continue; const n = Math.max(t.nights || 0, t.endDate && t.endDate > t.date ? Math.round((Date.parse(t.endDate) - Date.parse(t.date)) / 864e5) : 0);
+    for (let i = 0; i <= n; i++) { const d = new Date(t.date + 'T12:00:00'); d.setDate(d.getDate() + i); S.add(d.toISOString().slice(0, 10)); } }
+  return S.size;
+}
+// V20.4: hours actually on the move. Real watch times: add up the time between points, leaving out stops over 20 minutes (nights in camp).
+// Times the app had to estimate on a multi-day trip: the usual estimate from distance and climbing. Day hikes: start to end.
+function hikeHours(t) {
+  const segs = statSegs(t), pts = segs.flatMap(sg => sg.pts).filter(p => p[3] != null);
+  if (!t.ptEst && pts.length > 1) { let sec = 0; for (let i = 1; i < pts.length; i++) { const dt = pts[i][3] - pts[i - 1][3]; if (dt > 0 && dt <= 1200) sec += dt; } if (sec > 0) return { h: sec / 3600, est: false }; }
+  if ((t.nights || 0) > 0 || !(t.start && t.end && t.end > t.start)) { const st = trackStatsSafe(t); if (!st.len) return { h: 0, est: true }; return { h: st.len / M_PER_MI / (+data.settings.pace || 2) + st.gain * FT_PER_M / 2000, est: true }; }
+  return { h: (t.end - t.start) / 36e5, est: false };
+}
 function hikeRecords(done) {
   const st = done.map(t => ({ t, s: trackStatsSafe(t) }));
   const best = (f) => st.slice().sort((a, b) => f(b) - f(a))[0];
   let hi = null; for (const t of done) for (const q of trackLine(t)) if (q[2] != null && (!hi || q[2] > hi.e)) hi = { e: q[2], t };
-  const visitsN = {}; for (const [id, l] of Object.entries(data.visits)) { const f = FEAT[id]; if (!f || f.kind === 'trail' || !nameOf(f)) continue; const n = l.filter(v => v.status === 'been').length; if (n) visitsN[id] = n; }
+  // one visit per hike or per day, so a hike that passes a lake twice counts once
+  const visitsN = {}; for (const [id, l] of Object.entries(data.visits)) { const f = FEAT[id]; if (!f || f.kind === 'trail' || !nameOf(f)) continue; const n = new Set(l.filter(v => v.status === 'been' && inFilter(v.date)).map(v => v.trackId || v.date)).size; if (n) visitsN[id] = n; }
   const most = Object.entries(visitsN).sort((a, b) => b[1] - a[1])[0];
-  const dur = done.filter(t => t.start && t.end && t.end > t.start).reduce((a, t) => a + (t.end - t.start), 0);
-  return { long: best(x => x.s.len), climb: best(x => x.s.gain), hi, most, dur, first: done.slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''))[0] };
+  let dur = 0, durEst = false; for (const t of done) { const x = hikeHours(t); dur += x.h * 36e5; if (x.est && x.h) durEst = true; }
+  return { long: best(x => x.s.len), climb: best(x => x.s.gain), hi, most, dur, durEst, first: done.slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''))[0] };
+}
+// V20.4: a KPI that would not fit its card is shortened (1,234,567 → 1.23M; the full number shows on hover)
+function fitKPI(v) {
+  const t = String(v), n = +t.replace(/,/g, '');
+  if (t.length <= 7 || !isFinite(n)) return t;
+  return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: n >= 1e6 ? 2 : 1 }).format(n);
 }
 function renderDash() {
   const el = $('dash'); if (!el || el.hidden) return;
   const o = dashOpts(), yr = filter.year;
   const done = TRACKS().filter(t => hikeType(t) === 'completed' && inFilter(t.date)), byT = k => TRACKS().filter(t => hikeType(t) === k);
   let miles = 0, gain = 0, nights = 0; for (const t of done) { const st = trackStatsSafe(t); miles += st.len; gain += st.gain; nights += t.nights || 0; }
-  const days = new Set(done.map(t => t.date)).size, rec = hikeRecords(done), comp = completion();
+  const days = daysOut(done), rec = hikeRecords(done), comp = completion();
   const totDen = comp.filter(c => c.k !== 'trail' && c.k !== 'area').reduce((a, c) => a + c.den, 0), totNum = comp.filter(c => c.k !== 'trail' && c.k !== 'area').reduce((a, c) => a + c.num, 0);
   const swims = new Set(); for (const [id, l] of Object.entries(data.visits)) if (l.some(v => v.swim && inFilter(v.date))) swims.add(id);
   const Y = yearData(), years = Object.keys(Y).sort();
   const months = Array.from({ length: 12 }, (_, i) => ({ label: new Date(2000, i, 1).toLocaleString([], { month: 'long' }), short: new Date(2000, i, 1).toLocaleString([], { month: 'narrow' }), v: 0 }));
   for (const t of done) if (t.date) months[+t.date.slice(5, 7) - 1].v += trackStatsSafe(t).len / M_PER_MI;
   const cum = []; let acc = 0; for (const t of done.slice().filter(x => x.date).sort((a, b) => a.date.localeCompare(b.date))) { acc += trackStatsSafe(t).len / M_PER_MI; cum.push({ t: Date.parse(t.date + 'T12:00:00'), v: acc, label: fmtDate(t.date) + ' · ' + t.name }); }
-  const tile = (v, l, sub) => `<div class="dtile"><b>${v}</b><span>${l}</span>${sub ? `<em>${sub}</em>` : ''}</div>`;
+  const tile = (v, l, sub) => `<div class="dtile"><b title="${esc(String(v))}">${fitKPI(v)}</b><span>${l}</span>${sub ? `<em>${sub}</em>` : ''}</div>`;
   const htile = k => { const l = byT(k), m = l.reduce((a, t) => a + trackStatsSafe(t).len, 0); return `<button class="htile" data-act="dashHikes" data-k="${k}" style="--c:${HIKE_TYPES[k].color}"><span>${HIKE_TYPES[k].icon}</span><b>${l.length}</b><em>${HIKE_TYPES[k].label}</em><small>${fmtMi(m)} mi</small></button>`; };
   const ycount = years.filter(k => !yr || yr === 'all' || k === yr);
   el.innerHTML = `<div class="dash-in">
     <div class="dash-h"><div><div class="dash-t">Stats</div><div class="small muted">${yr === 'all' ? 'All time' : yr}${rangeOnly() ? ' · inside the Teton Range outline' : ' · everything downloaded'}</div></div>
       <div class="dash-ctl"><label class="tswitch" title="Hide hikes entirely outside the Teton Range outline from every statistic, list and the map">${swHTML('id="dashTetons"', tetonsOnly())}<span>Tetons Only</span></label>${filterSelects().replace('class="row"', 'class="fsels"').replace(/style="flex:1"/g, 'class="fsel"')}<button class="btn sm" data-act="dashPrint" title="Print or save as PDF">🖨 Print</button><button class="x big" data-act="dashClose" title="Close">✕</button></div></div>
-    <div class="dgrid six">${tile(done.length, 'Completed Hikes')}${tile((miles / M_PER_MI).toFixed(1), 'Miles')}${tile(fmtFt(gain), 'Feet Climbed')}${tile(days, 'Days Out')}${tile(nights, 'Nights Out')}${tile(rec.dur ? Math.round(rec.dur / 36e5) : '—', 'Hours on Trail', rec.dur ? 'from recorded times' : '')}</div>
+    <div class="dgrid six">${tile(done.length, 'Completed Hikes')}${tile((miles / M_PER_MI).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }), 'Miles')}${tile(fmtFt(gain), 'Feet Climbed')}${tile(days, 'Days Out')}${tile(nights, 'Nights Out')}${tile(rec.dur ? Math.round(rec.dur / 36e5).toLocaleString() : '—', 'Hours on Trail', rec.dur ? (rec.durEst ? 'nights left out; some estimated' : 'moving time, nights left out') : '')}</div>
 
     <section class="dcard"><div class="dcard-h"><h2>How Much of the Tetons You've Done</h2><span class="bigpct">${totDen ? (totNum / totDen * 100).toFixed(1) : '—'}<small>%</small></span></div>
-      <div class="small muted" style="margin:-4px 0 10px">${totNum.toLocaleString()} of ${totDen.toLocaleString()} peaks, lakes, passes, waterfalls and viewpoints completed.</div>
+      <div class="small muted" style="margin:-4px 0 10px">${totNum.toLocaleString()} of ${totDen.toLocaleString()} peaks, lakes, passes and waterfalls completed.</div>
       <div class="denrow one">
         <details class="msel"><summary class="denck on">Total: ${ST_KEYS.filter(k => o.den[k]).length === ST_KEYS.length ? 'All' : ST_KEYS.filter(k => o.den[k]).length + ' of 6'} ▾${ib('Which statuses make up the total each percentage is out of. Uncheck Not Yet to see how much of what you have planned or marked you have done.')}</summary>
           <div class="msel-p">${ST_KEYS.map(k => `<label><input type="checkbox" data-den="${k}" ${o.den[k] ? 'checked' : ''}><i style="background:${stColor(k)}"></i><span><b>${STATUS[k].label}</b><span class="small muted">${STATUS[k].sub}</span></span></label>`).join('')}</div></details>
-        <label class="denck ${o.beenDone ? 'on' : ''}"><input type="checkbox" data-dopt="beenDone" ${o.beenDone ? 'checked' : ''}>Been There = Done${ib('Places you marked by hand, without an completed hike, count as completed too.')}</label>
+        <label class="denck ${o.beenDone ? 'on' : ''}"><input type="checkbox" data-dopt="beenDone" ${o.beenDone ? 'checked' : ''}>Been There = Done${ib('Places you marked by hand, without a completed hike, count as completed too.')}</label>
         <details class="msel"><summary class="denck ${o.unLakes || o.unPeaks || o.ident || o.unOther ? 'on' : ''}">Unnamed: ${[o.unLakes && 'Lakes', o.unPeaks && 'Peaks', o.ident && 'Terrain', o.unOther && 'Other'].filter(Boolean).join(', ') || 'None'} ▾${ib('Places with no name on the map are left out of the totals unless you include them here.')}</summary>
-          <div class="msel-p">${[['unLakes', 'Unnamed lakes', 'Lakes and ponds with no name'], ['unPeaks', 'Unnamed peaks', 'Peaks on the map with no name'], ['ident', 'Peaks found in the terrain', 'High points the app found in the terrain data'], ['unOther', 'Other unnamed places', 'Passes, waterfalls and viewpoints with no name']].map(([k, l, sub]) => `<label><input type="checkbox" data-dopt="${k}" ${o[k] ? 'checked' : ''}><span><b>${l}</b><span class="small muted">${sub}</span></span></label>`).join('')}</div></details>
+          <div class="msel-p">${[['unLakes', 'Unnamed lakes', 'Lakes and ponds with no name'], ['unPeaks', 'Unnamed peaks', 'Peaks on the map with no name'], ['ident', 'Peaks found in the terrain', 'High points the app found in the terrain data'], ['unOther', 'Other unnamed places', 'Passes and waterfalls with no name']].map(([k, l, sub]) => `<label><input type="checkbox" data-dopt="${k}" ${o[k] ? 'checked' : ''}><span><b>${l}</b><span class="small muted">${sub}</span></span></label>`).join('')}</div></details>
 
         <label class="denck ${rangeOnly() ? 'on' : ''}"><input type="checkbox" data-dopt="range" ${rangeOnly() ? 'checked' : ''}>Inside Range${ib('Count only places inside your Teton Range outline (Layers → Borders → Teton Range).')}</label></div>
       <div class="comps">${comp.map(compRowHTML).join('')}</div>
@@ -5353,7 +5468,7 @@ function renderDash() {
     </div>
 
     <section class="dcard"><div class="dcard-h"><h2>Peak Checklist</h2><input id="ckQ" placeholder="Search peaks" value="${esc(view.ckQ || '')}" style="width:180px;padding:6px 10px;font-size:13px"></div>
-      <div class="small muted" style="margin:-4px 0 8px">Peaks tick themselves off when an completed hike reaches them. Tap one to open it.</div>
+      <div class="small muted" style="margin:-4px 0 8px">Peaks tick themselves off when a completed hike reaches them. Tap one to open it.</div>
       <div class="chk" id="ckList">${peakChecklistHTML()}</div></section>
 
     <section class="dcard"><div class="dcard-h"><h2>App Data</h2></div><div class="dgrid six small-t">
@@ -5786,7 +5901,7 @@ function pageReview(d) {
   if (step === 'places') {
     const cands = reviewCandidates(t), rv = reviewOf(t);
     for (const id of rv.add) if (!cands.some(c => c.id === id)) cands.push({ id, kind: FEAT[id] ? FEAT[id].kind : isGroup(id) ? 'trail' : findArea(id) ? 'area' : 'peak', auto: false, added: true });
-    const groups = [['trail', '🥾 Trails', 'Hiked'], ['peak', '⛰️ Peaks', 'Reached the top'], ['lake', '💧 Lakes', 'Visited'], ['pass', '🏔️ Passes', 'Crossed'], ['waterfall', '🌊 Waterfalls', 'Visited'], ['viewpoint', '🌄 Viewpoints', 'Visited'], ['area', '🟩 Areas', 'Visited']];
+    const groups = [['trail', '🥾 Trails', 'Hiked'], ['peak', '⛰️ Peaks', 'Reached the top'], ['lake', '💧 Lakes', 'Visited'], ['pass', '🏔️ Passes', 'Crossed'], ['waterfall', '🌊 Waterfalls', 'Visited'], ['area', '🟩 Areas', 'Visited']];
     const row = c => { const on = reviewIncluded(t, c), f = FEAT[c.id], cov = c.kind === 'trail' && c.cov != null ? ` · ${Math.round(c.cov * 100)}% of this section` : '';
       return `<div class="revrow ${on ? 'on' : ''}" data-hl="${esc(c.id)}"><label><input type="checkbox" data-rev="${esc(c.id)}" data-auto="${c.auto ? 1 : 0}" ${on ? 'checked' : ''}><span><b>${esc(reviewName(c))}</b><span class="small muted">${c.auto ? 'On your line' : c.added ? 'Added by you' : `Passed within ${fmtFt(c.near)} ft · not credited unless you tick it`}${f && f.ele ? ' · ' + fmtFt(f.ele) + ' ft' : ''}${cov}</span></span></label>
         ${c.kind === 'lake' ? `<button class="btn sm ${rv.swim[c.id] ? 'primary' : ''}" data-act="revSwim" data-id="${esc(c.id)}" title="Did you jump in?">🏊 ${rv.swim[c.id] ? 'Jumped In' : 'Jumped In?'}</button>` : ''}
@@ -5809,7 +5924,7 @@ function pageReview(d) {
   return head + `
     <div class="sumcard">
       <div class="small muted" style="margin-bottom:6px">${type === 'uploaded' ? 'Completing makes this a Completed hike and credits:' : 'This hike credits:'}</div>
-      ${line('trail', '🥾 Trails')}${line('peak', '⛰️ Peaks')}${line('lake', '💧 Lakes')}${swims ? `<div class="kv1"><span>🏊 Jumped in</span><b>${swims}</b><span></span></div>` : ''}${line('pass', '🏔️ Passes')}${line('waterfall', '🌊 Waterfalls')}${line('viewpoint', '🌄 Viewpoints')}${line('area', '🟩 Areas')}
+      ${line('trail', '🥾 Trails')}${line('peak', '⛰️ Peaks')}${line('lake', '💧 Lakes')}${swims ? `<div class="kv1"><span>🏊 Jumped in</span><b>${swims}</b><span></span></div>` : ''}${line('pass', '🏔️ Passes')}${line('waterfall', '🌊 Waterfalls')}${line('area', '🟩 Areas')}
       ${inc.length ? '' : '<div class="small">Nothing ticked. You can still complete it; it counts for miles and climbing only.</div>'}
       <div class="kv1"><span>📏 Distance</span><b>${fmtMi(st.len)} mi</b><span class="small muted">${fmtFt(st.gain)} ft up</span></div>
     </div>
@@ -5820,7 +5935,7 @@ function pageReview(d) {
 function trackDetailsHTML(t) {
   return `<h2 class="sec">Details</h2>
     <div class="row"><div style="flex:1"><label class="f">${t.planned ? 'Date' : 'Start Date'}</label><input type="date" id="tDate" value="${esc(t.date)}"></div>${t.planned ? '' : `<div style="flex:1"><label class="f">End Date</label><input type="date" id="tEndDate" value="${esc(t.endDate || t.date || '')}" min="${esc(t.date || '')}"></div>`}</div>
-    <div class="row"><div style="flex:1"><label class="f">Activity Type</label><select id="tKind"><option value="">—</option>${['Day hike', 'Backpacking trip', 'Scramble or climb', 'Trail run', 'Ski or snowshoe', 'Other'].map(k => `<option ${t.kind === k ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
+    <div class="row"><div style="flex:1"><label class="f">Activity Type</label><select id="tKind">${['Backpacking', 'Day hike', 'Scramble or climb', 'Trail run', 'Ski or snowshoe', 'Other'].map(k => `<option ${(t.kind || 'Backpacking') === k ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
       <div style="flex:1"><label class="f">Rating</label><select id="tRating"><option value="0">—</option>${[1, 2, 3, 4, 5].map(n => `<option value="${n}" ${t.rating === n ? 'selected' : ''}>${'★'.repeat(n)}</option>`).join('')}</select></div></div>
     ${t.planned ? '' : `<div class="row"><div style="flex:1"><label class="f">Start Time</label><input type="time" id="tStartT" value="${clockOf(t.start)}" data-o="${clockOf(t.start)}"></div><div style="flex:1"><label class="f">End Time</label><input type="time" id="tEndT" value="${clockOf(t.end)}" data-o="${clockOf(t.end)}"></div></div>`}
     <label class="f">Trip</label><input id="tTrip" value="${esc(t.trip || '')}" placeholder="e.g. Teton Crest 2026">
@@ -5887,7 +6002,8 @@ function pageTrack(d) {
       <div class="small muted" style="margin-top:6px">${type === 'planned' ? 'Planned trips have a date. Done it? Mark it completed, or link the GPX you recorded.' : 'Potential trips have no date yet. They count toward what you have left to do.'}</div>
       <div class="row"><button class="btn primary" data-act="planDone">✓ Mark Completed</button>${uploads.length ? `<select id="linkPick" style="flex:1;min-width:150px"><option value="">Link an uploaded GPX…</option>${uploads.map(u => `<option value="${u.id}">${esc(u.name)} · ${fmtDate(u.date)}</option>`).join('')}</select>` : ''}</div>
     </div>` : '';
-  return `${backBtn()}
+  const justDone = view.justDone && view.justDone.id === t.id ? view.justDone : null;
+  return `${backBtn()}${justDone ? `<div class="donebar"><span>✅</span><div style="flex:1"><b>Completed!</b><div class="small">${justDone.n} place${justDone.n === 1 ? '' : 's'} credited. Everything below can still be changed.</div></div><button class="btn primary" data-act="doneClose">Done</button></div>` : ''}
     <div class="row" style="margin:6px 0 0;gap:8px"><span class="stpill" style="background:${HT.color}1f;color:${HT.color}">${HT.icon} ${HT.label}</span><span class="small muted">${t.date ? fmtDate(t.date) : 'No date yet'}${t.planned ? '' : ' · ' + tripLabel(t)}${t.kind ? ' · ' + esc(t.kind) : ''}${t.trip ? ' · ' + esc(t.trip) : ''}${t.rating ? ' · ' + '★'.repeat(t.rating) : ''}</span></div>
     ${titleInputHTML(t.name, 'Hike name')}
     ${planBox}
@@ -5910,8 +6026,8 @@ function pageTrack(d) {
     ${t.planned ? (() => { const smp = trackSamples(t), ids = smp.length > 1 ? [...new Set(matchHits(smp).map(h => WAY2GROUP[h.id] || h.id))] : []; return ids.map(id => { const g = GROUPS[id], f = FEAT[id]; if (!g && !f) return ''; const k = g ? 'trail' : f.kind; return cardHTML({ title: g ? g.name : (nameOf(f) || unnamedLabel(f)), icon: kindInfo(k).icon, sub: kindInfo(k).label + (f && f.ele ? ' · ' + fmtFt(f.ele) + ' ft' : ''), st: placeStatus(id), open: { type: 'feature', id } }); }).join('') || '<div class="empty small">No mapped places on this line yet.</div>'; })()
       : places.map(id => { const g = GROUPS[id], f = FEAT[id], a = !g && !f ? findArea(id) : null; if (!g && !f && !a) return ''; const k = g ? 'trail' : a ? 'area' : f.kind; const swam = (data.visits[id] || []).some(v => v.trackId === t.id && v.swim); return cardHTML({ title: g ? g.name : a ? a.name : (nameOf(f) || unnamedLabel(f)), icon: a ? '🟩' : kindInfo(k).icon, sub: (a ? 'Area' : kindInfo(k).label) + (f && f.ele ? ' · ' + fmtFt(f.ele) + ' ft' : '') + (swam ? ' · 🏊 jumped in' : ''), st: 'done', open: a ? { type: 'area', id } : { type: 'feature', id } }); }).join('') || '<div class="empty small">No mapped places credited.' + (FEATS.length ? '' : ' Download map data first.') + '</div>'}
     ${trackDetailsHTML(t)}
-    <div class="row"><button class="btn primary" data-act="saveTrack">Save Details</button></div>
-    <div class="row" style="margin-top:18px"><button class="btn danger" data-act="delTrack">Delete Hike</button></div>`;
+    <div class="trackfoot"><button class="btn primary big" data-act="saveTrack">Save Details</button>
+      <button class="linkdanger" data-act="delTrack">Delete This Hike</button></div>`;
 }
 function setSwim(id, vid, on) { for (const fid of idsOf(id)) for (const v of data.visits[fid] || []) if (v.vid === vid) { if (on) v.swim = true; else delete v.swim; } }
 function saveTitle(v) {
@@ -6006,7 +6122,11 @@ function editorPointsHTML(e) {
     : n >= 1 ? `<button class="btn wide" data-act="campPick">⛺ Mark Campsite</button>` : '';
   return `<h3 class="sec">Days <span class="small muted">${k} day${k === 1 ? '' : 's'}${k > 1 || e.awaitDay ? ` · ${e.awaitDay ? k : k - 1} night${(e.awaitDay ? k : k - 1) === 1 ? '' : 's'}` : ''}</span></h3>${out}${act}`;
 }
-function startCampPick() { if (!editor || !editor.wps.length) return; editor.campPick = true; renderSide(); renderToolbar(); toast('Click the map where you camped.', 4000); }
+// V20.4: snapping turns off while you pick the campsite (camps are usually off the trail) and back on when the next day starts
+function setEdSnap(on) { if (!editor) return; editor.snap = on; const ck = $('edSnap'); if (ck) ck.checked = on; }
+function startCampPick() { if (!editor || !editor.wps.length) return; editor.campPick = true; editor.snapBefore = editor.snap; setEdSnap(false); renderSide(); renderToolbar(); toast('Snap is off. Click the map where you camped.', 4000); }
+function cancelCampPick() { if (!editor) return; editor.campPick = false; setEdSnap(editor.snapBefore !== false); renderSide(); renderToolbar(); }
+function addDayNow() { if (!editor) return; editor.awaitDay = false; setEdSnap(true); renderSide(); renderToolbar(); toast('Snap is back on. Click the map to draw the next day.', 3000); }
 function campPicked(ll) {
   const e = editor; e.campPick = false;
   addPoint(ll); const w = e.wps[e.wps.length - 1]; if (w && e.wps.length > 1) { w.brk = true; e.awaitDay = true; }
@@ -6088,7 +6208,7 @@ function pageHelp() {
   <ol class="small" style="padding-left:18px;line-height:1.7">
   <li><b>Colors:</b> places are colored by status: Completed, Been There, Planned, Potential, Seen, Not Yet (Layers → Legend; change them in Settings → Status Colors).</li>
   <li><b>Any place:</b> tap it to see its info, rename it (tap the big name), add your own fields and photos.</li>
-  <li><b>Pins and viewpoints:</b> Pin on the bottom bar, then tap the map. Pick a type (Viewpoint, Campsite…), emoji and color. Markers → My Pin Types lets you add, rename or delete types.</li>
+  <li><b>Pins:</b> right-click the map (press and hold on a phone), or Pin on the bottom bar then tap the map. Pick a status (it sets the color) and a type. Save Pin keeps it. Markers → My Pin Types lets you add, rename or delete types.</li>
   <li><b>Areas and clean-up:</b> Area on the bottom bar. Draw a shape, then save it as an area or hide the trails and places inside (or outside) it. Nothing is lost: Menu → Deleted Items.</li>
   <li><b>The Teton Range:</b> Layers → Borders → Teton Range, or Menu → Teton Range Outline. "Only show what's inside" tidies the map without removing anything.</li>
   <li><b>Print:</b> Menu → Print a Map: frame it, pick paper, scale and grid, and get a PDF. It is kept under Saved Maps.</li>
@@ -6109,7 +6229,7 @@ function toolbarContext() {
   if (editor) return editor.kind === 'route' ? 'route' : 'draw';
   if (areaEd && areaEd.sec && areaEd.sec.mode === 'snap') return 'snapsec';
   const d = view.detail;
-  if (d && (d.type === 'track' || d.type === 'hikeEdit' || d.type === 'review')) { const t = findTrack(d.id); if (t && !t.planned) return 'hike'; }
+  if (d && (d.type === 'track' || d.type === 'hikeEdit' || d.type === 'review')) { const t = findTrack(d.id); if (t && !t.planned && (d.type !== 'track' || t.approved === false)) return 'hike'; }   // V20.4: a completed hike gets the normal bar
   return 'browse';
 }
 const tbb = (act, ic, label, o) => { o = o || {}; return `<button data-tb="${act}" class="${o.on ? 'on' : ''}${o.pri ? ' pri' : ''}${o.snap ? ' snapon' : ''}" ${o.dis ? 'disabled' : ''} title="${esc(o.title || label)}"><i>${ic}</i><em>${label}</em></button>`; };
@@ -6164,8 +6284,8 @@ function tbAction(a) {
     case 'snapcancel': secCancel(); break;
     case 'snapdone': snapDone(); break;
     case 'undo': if (editor) undoPoint(); break;
-    case 'camp': if (editor) { if (editor.campPick) { editor.campPick = false; renderSide(); renderToolbar(); } else startCampPick(); } break;
-    case 'addday': if (editor) { editor.awaitDay = false; renderSide(); renderToolbar(); toast('Click the map to draw the next day.', 3000); } break;
+    case 'camp': if (editor) { if (editor.campPick) cancelCampPick(); else startCampPick(); } break;
+    case 'addday': addDayNow(); break;
     case 'redo': redoPoint(); break;
     case 'snap': toggleSnap(); break;
     case 'reverse': edReverse(); break;
@@ -6386,7 +6506,7 @@ function setBorderStyle(patch, live) {
 const swHTML = (attrs, on) => `<label class="switch"><input type="checkbox" ${attrs} ${on ? 'checked' : ''}><i></i></label>`;
 function renderLayers() {
   const s = data.settings;
-  const toggles = [['trails', '🥾 Trails'], ['peaks', '⛰️ Peaks'], ['passes', '🔀 Passes'], ['places', '💦 Waterfalls & Viewpoints'], ['lakes', '💧 Lakes'], ['tracks', '⌚ My Hikes'], ['completed', '✅ My Completed Hikes'], ['routes', '🧭 My Routes'], ['pins', '📍 Pins'], ['areas', '🟩 Areas'], ['labels', '🏷️ Labels'], ['contours', '〰️ Contours'], ['hillshade', '🌗 Hillshade'], ['unnamed', '❔ Unnamed Places'], ['hidden', '🙈 Hidden Items'], ['heat', '🔥 Heatmap'], ['recency', '🕒 Color by Last Visit']];
+  const toggles = [['trails', '🥾 Trails'], ['peaks', '⛰️ Peaks'], ['passes', '🔀 Passes'], ['places', '🌊 Waterfalls'], ['lakes', '💧 Lakes'], ['tracks', '⌚ My Hikes'], ['completed', '✅ Completed Hikes'], ['routes', '🧭 My Routes'], ['pins', '📍 Pins'], ['camps', '⛺ Campsites'], ['areas', '🟩 Areas'], ['labels', '🏷️ Labels'], ['contours', '〰️ Contours'], ['hillshade', '🌗 Hillshade'], ['unnamed', '❔ Unnamed'], ['hidden', '🙈 Hidden Items'], ['heat', '🔥 Heatmap'], ['recency', '🕒 Last Visit']];
   const idn = data.identified ? data.identified.features.length : null;
   const bRow = (b, extra) => {
     const st = bStyle(b.id), open = bSel === b.id;
@@ -6403,7 +6523,8 @@ function renderLayers() {
     <div class="bases">${Object.entries(BASES).map(([k, b]) => `<button data-base="${k}" class="${(s.base || 'outdoor') === k ? 'on' : ''}"><i style="background:${b.sw}">${baseThumb(k, b)}</i>${b.label}</button>`).join('')}</div>
     ${layersSec('show', 'Show on Map', `<div class="lgrid">${toggles.map(([k, l]) => `<label><input type="checkbox" data-layer="${k}" ${layerOn(k) ? 'checked' : ''}> ${l}</label>`).join('')}</div>
       <div class="small muted" style="margin:2px 0 6px">Unnamed: lakes and peaks with no name get a dashed marker. ${idn === null ? 'Unnamed peaks from the terrain have not been scanned yet.' : `${idn} unnamed peak${idn === 1 ? '' : 's'} identified from the terrain.`}</div>
-      <div class="row"><button class="btn sm" data-act="scanPeaks">🔎 ${idn === null ? 'Find Unnamed Peaks' : 'Scan Again'}</button></div>`, false)}
+      <div class="row"><button class="btn sm" data-act="scanPeaks">🔎 ${idn === null ? 'Find Unnamed Peaks' : 'Scan Again'}</button></div>
+      ${lsHTML()}`, false)}
     ${layersSec('borders', 'Borders', BORDERS.map(b => bRow(b, b.id === 'range' ? rangeExtra : parkExtra)).join('') + (data.parkOutline && data.parkOutline.length ? '' : '<div class="small muted">The park outline is not loaded yet. <button class="btn sm" data-act="parkOutline">Load It</button></div>'), false)}
     ${layersSec('heat', 'Heatmap & Filters', `<select id="heatMode"><option value="both">Heatmap: hikes + places</option><option value="tracks">Heatmap: hikes only</option><option value="places">Heatmap: places only</option></select>${filterSelects()}`, false)}
     ${layersSec('3d', '3D', `<label class="toggle"><input type="checkbox" id="l3d" ${s.terrain ? 'checked' : ''}> 3D Terrain</label>
@@ -6414,6 +6535,25 @@ function renderLayers() {
     ${layersSec('legend', 'Legend', legendHTML(), false)}`;
   $('heatMode').value = s.heatMode || 'both';
 }
+function lsHTML() {
+  const k = view.lsSel || 'trails', d = LST[k], st = lsOf(k), changed = JSON.stringify((data.settings.lstyle || {})[k] || {}) !== '{}';
+  const wl = d.kind === 'icon' || d.kind === 'pin' ? 'Size' : 'Thickness';
+  return `<details class="sub2 lsbox" ${view.lsOpen ? 'open' : ''} data-lsdet><summary>🎨 Change How They Look</summary>
+    <select id="lsSel">${Object.entries(LST).map(([kk, dd]) => `<option value="${kk}" ${kk === k ? 'selected' : ''}>${dd.label}</option>`).join('')}</select>
+    ${d.noW ? '' : `<label class="f">${wl}: <b id="lsWV">${Math.round(st.w * 100)}%</b></label><input type="range" data-ls="w" min="0.4" max="3" step="0.1" value="${st.w}" style="padding:0">`}
+    <label class="f">Opacity: <b id="lsOV">${Math.round(st.o * 100)}%</b></label><input type="range" data-ls="o" min="0.1" max="1" step="0.05" value="${st.o}" style="padding:0">
+    ${d.color ? `<label class="f">Color</label><div class="swatches">${[d.color.def, '#d62828', '#ff6d00', '#8e24aa', '#00897b', '#111111', '#ffffff'].map(c => `<button data-lscolor="${c}" class="${(st.c || d.color.def) === c ? 'on' : ''}" style="background:${c}"></button>`).join('')}<label class="lscp" title="Any color" style="background:${esc(st.c || d.color.def)}"><input type="color" data-ls="c" value="${esc(st.c || d.color.def)}"></label></div>`
+      : `<div class="small muted" style="margin-top:6px">${d.kind === 'icon' || d.kind === 'pin' || k === 'lakes' || k === 'areas' || k === 'trails' ? 'Colors come from status (Settings → Status Colors).' : k === 'routes' ? 'Each route keeps its own color (open the route to change it).' : ''}</div>`}
+    <div class="row"><button class="btn sm" data-lsreset ${changed ? '' : 'disabled'}>Reset ${esc(d.label)}</button></div>
+  </details>`;
+}
+function setLs(k, patch, quiet) {
+  const all = Object.assign({}, data.settings.lstyle), cur = Object.assign({}, all[k], patch);
+  for (const f of Object.keys(cur)) if (cur[f] === '' || (f !== 'c' && +cur[f] === 1)) delete cur[f];
+  if (Object.keys(cur).length) all[k] = cur; else delete all[k];
+  data.settings.lstyle = all; applyLayerStyles(); syncPins(); sizePinDrag();
+  if (!quiet) { touch({ noRender: true }); renderLayers(); }
+}
 function legendHTML() {
   return `<div class="lg-t small" style="font-weight:700;margin:2px 0 6px">Place Status</div>
     <div class="legend-st">${ST_KEYS.map(k => `<i style="background:${stColor(k)}"></i><span><b>${STATUS[k].label}</b> <span class="muted">· ${STATUS[k].sub}</span></span>`).join('')}</div>
@@ -6422,7 +6562,7 @@ function legendHTML() {
       <span style="color:#a0522d">┅</span> trail · <span style="color:${stColor('done')}">━</span> trail you completed · <span style="color:#8cc56f">━</span> partly done<br>
       <span style="color:#1d4ed8">━</span> completed hike (GPS) · <span style="color:#7e22ce">┅</span> drawn hike · <span style="color:#1e6fe0">━</span> Completed Trail<br>
       <span style="color:${stColor('planned')}">┅</span> planned trip · <span style="color:#ea580c">┈</span> uploaded, waiting for review<br>
-      ▲ peak · ◆ pass · ● waterfall · 💧 lake · ★ viewpoint · dashed outline = unnamed<br>lake and waterfall markers are white until you have seen or visited them, then blue<br>
+      ▲ peak · ◆ pass · ● waterfall · 💧 lake · dashed outline = unnamed<br>lake and waterfall markers are white until you have seen or visited them, then blue<br>
       <span style="color:#16a34a">●</span> start · <span style="color:#dc2626">●</span> finish · ➤ direction of the hike or route you have open</div>`;
 }
 
@@ -6535,12 +6675,13 @@ function onAction(act, el) {
       const tt = findTrack(d.id); if (!tt) break; const wasUp = tt.approved === false;
       tt.approved = true; const n = matchTrack(tt).length; touch({ noRender: true }); reviewReturn = null;
       toast(wasUp ? `Completed! ${n} place${n === 1 ? '' : 's'} credited.` : 'Credits saved.', 5000);
-      if (wasUp && data.tracks.some(x => x.approved === false)) reviewNext(tt.id); else { view.detail = { type: 'track', id: tt.id }; viewStack = []; renderSide(); updateSources(); }
+      if (wasUp && data.tracks.some(x => x.approved === false)) reviewNext(tt.id); else { view.detail = { type: 'track', id: tt.id }; viewStack = []; if (wasUp) view.justDone = { id: tt.id, n }; renderSide(); updateSources(); }
       break;
     }
+    case 'doneClose': view.justDone = null; view.detail = null; viewStack = []; renderSide(); updateSources(); setCollapsed(true); break;
     case 'reviewHike': { const tt = findTrack(d.id); if (tt) { reviewReturn = tt.id; openDetail({ type: 'review', id: tt.id, step: 'places' }); } break; }
     case 'reviewAll': reviewNext(); break;
-    case 'quickApprove': { const tt = findTrack(d.id); if (!tt) break; sure('Complete this hike as is?', { body: `“${esc(tt.name || 'This hike')}” becomes Completed and credits the places it found, without checking the path, places or details first. You can still edit it afterwards.`, ok: 'Complete', danger: false }).then(ok => { if (!ok || !findTrack(tt.id)) return; tt.approved = true; const n = matchTrack(tt).length; reviewReturn = null; touch({ noRender: true }); toast(`Completed! ${n} place${n === 1 ? '' : 's'} credited.`, 4000); if (data.tracks.some(x => x.approved === false)) reviewNext(tt.id); else { view.detail = { type: 'track', id: tt.id }; viewStack = []; renderSide(); updateSources(); } }); break; }
+    case 'quickApprove': { const tt = findTrack(d.id); if (!tt) break; sure('Complete this hike as is?', { body: `“${esc(tt.name || 'This hike')}” becomes Completed and credits the places it found, without checking the path, places or details first. You can still edit it afterwards.`, ok: 'Complete', danger: false }).then(ok => { if (!ok || !findTrack(tt.id)) return; tt.approved = true; const n = matchTrack(tt).length; reviewReturn = null; touch({ noRender: true }); toast(`Completed! ${n} place${n === 1 ? '' : 's'} credited.`, 4000); if (data.tracks.some(x => x.approved === false)) reviewNext(tt.id); else { view.detail = { type: 'track', id: tt.id }; viewStack = []; view.justDone = { id: tt.id, n }; renderSide(); updateSources(); } }); break; }
     case 'approveAll': { const up = data.tracks.filter(x => x.approved === false && !x.planned); if (!up.length) break;
       sure(`Complete all ${up.length} uploads?`, { body: 'Each one becomes Completed and credits the trails, peaks and lakes on its line (the automatic matches, plus anything you already ticked). You can review any of them later from its page.', ok: 'Complete All', danger: false }).then(ok => {
         if (!ok) return; let n = 0; for (const t of up) { t.approved = true; n += matchTrack(t).length; } touch(); toast(`${up.length} hikes completed, ${n} places credited.`, 5000); }); break; }
@@ -6704,8 +6845,8 @@ function onAction(act, el) {
     case 'delPin': sure(`Delete “${pinName(p)}”?`, { body: 'You can restore it from Deleted Items.' }).then(ok => { if (ok) { trashPut('pin', p); selectedPinId = null; touch({ noRender: true }); goBack(); } }); break;
     case 'edUndo': undoPoint(); break;
     case 'campPick': startCampPick(); break;
-    case 'campCancel': if (editor) { editor.campPick = false; renderSide(); renderToolbar(); } break;
-    case 'addDay': if (editor) { editor.awaitDay = false; renderSide(); renderToolbar(); toast('Click the map to draw the next day.', 3000); } break;
+    case 'campCancel': cancelCampPick(); break;
+    case 'addDay': addDayNow(); break;
     case 'edRedo': redoPoint(); break;
     case 'edDaysN': if (editor) edSplitN(edDays() + (+el.dataset.d)); break;
     case 'edMerge': { if (!editor) break; const idx = editor.wps.map((w, k) => (w.brk && k > 0 && k < editor.wps.length - 1) ? k : -1).filter(k => k >= 0), k = idx[+el.dataset.i]; if (k != null) { editor.wps[k].brk = false; redrawEditor(); renderSide(); } break; }
@@ -6896,7 +7037,8 @@ document.addEventListener('click', e => { if (!e.target.isConnected || e.target.
 function togglePop(id) {
   const el = $(id), open = el.hidden;
   for (const k of ['menu', 'layers', 'markers']) $(k).hidden = true;
-  if (open) { el.hidden = false; ({ menu: renderMenu, layers: renderLayers, markers: renderMarkers })[id](); }
+  if (open && id === 'menu') view.legacyOpen = false;   // V20.4: the menu always opens fresh: sections folded, scrolled to the top
+  if (open) { el.hidden = false; ({ menu: renderMenu, layers: renderLayers, markers: renderMarkers })[id](); if (id === 'menu') { el.scrollTop = 0; el.querySelectorAll('details[open]').forEach(d => d.open = false); el.querySelectorAll('*').forEach(x => { if (x.scrollTop) x.scrollTop = 0; }); } }
   popButtons();
 }
 function popButtons() {
@@ -7099,7 +7241,7 @@ async function makePrintMap(o, bounds) {
     shot = await grabCanvas();
     const b = map.getBounds(); center = map.getCenter();
     proj = { w: el.clientWidth, h: el.clientHeight, b: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], p: q => { const pt = map.project(q); return [pt.x * W / el.clientWidth, pt.y * H / el.clientHeight]; },
-      pins: data.pins.filter(p => layerOn('pins') && pinShown(p) && inFilterPin(p)).map(p => ({ p, xy: null })), zoom: map.getZoom() };
+      pins: data.pins.filter(p => layerOn('pins') && pinShown(p) && inFilterPin(p) && (p.type !== 'camp' || layerOn('camps'))).map(p => ({ p, xy: null })), zoom: map.getZoom() };
     for (const it of proj.pins) it.xy = proj.p([it.p.lon, it.p.lat]);
     proj.lines = printGridLines(o, proj);
   } finally {
@@ -7268,7 +7410,7 @@ $('photoFile').addEventListener('change', async e => {
 });
 $('layers').addEventListener('change', e => {
   const el = e.target;
-  if (el.dataset.layer) { data.settings.layers = Object.assign({}, data.settings.layers, { [el.dataset.layer]: el.checked }); applyLayerVisibility(); if (['unnamed', 'hidden', 'peaks', 'passes', 'places', 'lakes', 'tracks', 'completed'].includes(el.dataset.layer)) updateSources(); touch({ noRender: true }); }
+  if (el.dataset.layer) { data.settings.layers = Object.assign({}, data.settings.layers, { [el.dataset.layer]: el.checked }); applyLayerVisibility(); if (['unnamed', 'hidden', 'peaks', 'passes', 'places', 'lakes', 'tracks', 'completed', 'camps'].includes(el.dataset.layer)) updateSources(); touch({ noRender: true }); }
   if (el.id === 'heatMode') { data.settings.heatMode = el.value; updateSources(); touch({ noRender: true }); }
   if (el.dataset.filter) setFilter(el.dataset.filter, el.value);
   if (el.id === 'l3d') { set3D(el.checked); touch({ noRender: true }); }
@@ -7281,6 +7423,8 @@ $('layers').addEventListener('input', e => {
   if (e.target.id === 'pitch') { $('pitchV').textContent = e.target.value + '°'; map.setPitch(+e.target.value); }
   if (e.target.id === 'bearing') { $('bearV').textContent = e.target.value + '°'; map.setBearing(+e.target.value); }
   if (e.target.dataset.cpick === 'border') setBorderStyle({ color: e.target.value }, true);
+  const lk = e.target.dataset && e.target.dataset.ls;
+  if (lk) { const key = view.lsSel || 'trails'; setLs(key, { [lk]: lk === 'c' ? e.target.value : +e.target.value }, true); if (lk === 'w') $('lsWV').textContent = Math.round(e.target.value * 100) + '%'; if (lk === 'o') $('lsOV').textContent = Math.round(e.target.value * 100) + '%'; return; }
   const k = e.target.dataset && e.target.dataset.bs; if (!k) return;
   const v = +e.target.value;
   setBorderStyle({ [k]: v }, true);
@@ -7288,11 +7432,13 @@ $('layers').addEventListener('input', e => {
   if (k === 'opacity') $('bsOV').textContent = Math.round(v * 100) + '%';
   if (k === 'fill') $('bsFV').textContent = Math.round(v * 100) + '%';
 });
-$('layers').addEventListener('toggle', e => { const k = e.target.dataset && e.target.dataset.lsec; if (k) layersOpen[k] = e.target.open; }, true);
+$('layers').addEventListener('toggle', e => { const k = e.target.dataset && e.target.dataset.lsec; if (k) layersOpen[k] = e.target.open; if (e.target.dataset && e.target.dataset.lsdet !== undefined) view.lsOpen = e.target.open; }, true);
 $('layers').addEventListener('click', e => {
   const act = e.target.closest('[data-act]'); if (act) { e.preventDefault(); onAction(act.dataset.act, act); if (!$('layers').hidden) renderLayers(); return; }
   const b = e.target.closest('[data-base]'); if (b) { setBase(b.dataset.base); renderLayers(); touch({ noRender: true }); return; }
   const sel = e.target.closest('[data-bsel]'); if (sel) { bSel = bSel === sel.dataset.bsel ? null : sel.dataset.bsel; layersOpen.borders = true; renderLayers(); return; }
+  const lc = e.target.closest('[data-lscolor]'); if (lc) { setLs(view.lsSel || 'trails', { c: lc.dataset.lscolor }); return; }
+  if (e.target.closest('[data-lsreset]')) { const all = Object.assign({}, data.settings.lstyle); delete all[view.lsSel || 'trails']; data.settings.lstyle = all; applyLayerStyles(); syncPins(); sizePinDrag(); touch({ noRender: true }); renderLayers(); return; }
   const col = e.target.closest('[data-swatch]'); if (col && col.dataset.swFor === 'border') { setBorderStyle({ color: col.dataset.swatch }); renderLayers(); return; }
   const ds = e.target.closest('[data-bdash]'); if (ds) { setBorderStyle({ dash: ds.dataset.bdash }); renderLayers(); return; }
   if (e.target.closest('[data-breset]')) { const o = Object.assign({}, data.settings.borders); delete o[bSel]; data.settings.borders = o; applyBorderStyle(bSel); touch({ noRender: true }); renderLayers(); return; }
@@ -7302,7 +7448,11 @@ $('layers').addEventListener('click', e => {
     fitTo(ring, 14);
   }
 });
-$('layers').addEventListener('change', e => { if (e.target.dataset && e.target.dataset.bs) touch({ noRender: true }); });
+$('layers').addEventListener('change', e => {
+  if (e.target.id === 'lsSel') { view.lsSel = e.target.value; renderLayers(); return; }
+  if (e.target.dataset && e.target.dataset.ls) { touch({ noRender: true }); if (e.target.dataset.ls === 'c') renderLayers(); return; }
+  if (e.target.dataset && e.target.dataset.bs) touch({ noRender: true });
+});
 $('gpxFile').addEventListener('change', async e => { const files = [...e.target.files]; e.target.value = ''; if (files.length) await importGPXFiles(files); });
 $('oldFile').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
