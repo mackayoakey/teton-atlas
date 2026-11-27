@@ -863,7 +863,7 @@ a.srow[data-open]:hover{background:var(--hover)}
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V20.7';
+const APP_VERSION = 'V20.8';
 // Rough outline of the Teton Range (Teton Pass to Conant Pass, Jackson Hole side and Teton Valley side). Editable from the Layers panel.
 // Borders you can restyle (Layers -> Borders). Add an entry here to make another outline styleable.
 const BORDERS = [
@@ -1163,6 +1163,7 @@ const VERSIONS = [
   { name: 'Teton Atlas V20.5', date: '2026-11-25', notes: ['While you review or edit an upload, the map shows only that hike: no past hikes, routes or heatmap.', 'Hide a Trail Section: click two points on a trail and the stretch between them is hidden (no showing, snapping or counting); a line you are drawing re-snaps around it. Undo or restore from Deleted Items.', 'Upload several GPX files (or a file with several recordings) as one trip.'] },
   { name: 'Teton Atlas V20.6', date: '2026-11-26', notes: ['Trail Data: regions and updates. Add regions (Palisades & Snake River Range, Big Holes, Gros Ventre, Wyoming Range, Wind Rivers, southern Yellowstone, or the map view), check every region for new trails, and see what was added, changed or removed and where.', 'No more green trails: only sections you completed show, in the completed blue; seen or partly walked stays a normal trail.', 'Hikes you drew are blue too; completed lines are thinner.', 'While drawing, Mark a Place Seen or Completed on the day you were there.', 'Mark Been There / Seen It on a place page lets you pick the hike or hikes it was on.'] },
   { name: 'Teton Atlas V20.7', date: '2026-11-26', notes: ['Complete step: tap Trails, Lakes, Passes… to see every item; tap one to see it on the map, × to drop it from the hike.', 'Every place page has Which Hikes: Add or Remove, a multi-select list of your hikes.'] },
+  { name: 'Teton Atlas V20.8', date: '2026-11-26', notes: ['Snapping follows roads as well as trails (for hikes that start on a road). Trails win when both go the same way. Turn it off under Follow trails → …and roads. Run Trail Data → Check All Regions once to download the roads.', 'Trails outside your Teton Range outline now draw on the map even with Only Show What\'s Inside on (it showed the trail name but not the line). Lists and stats still keep to the range.'] },
 ];
 
 // ================= State =================
@@ -1172,7 +1173,7 @@ let data = normalize(JSON.parse(document.getElementById('embedded-data').textCon
 let dirty = false, fileHandle = null, map = null, mapReady = false;
 let mode = 'browse', view = { tab: 'explore' }, viewStack = [];
 let filter = { year: 'all', season: 'all' };
-let FEAT = {}, FEATS = [], GROUPS = {}, WAY2GROUP = {}, PGRID = new Map(), GRAPH = null;
+let FEAT = {}, FEATS = [], GROUPS = {}, WAY2GROUP = {}, PGRID = new Map(), GRAPH = null, ROADS = [];   // V20.8: ROADS are only for snapping
 let pinMarkers = new Map(), selectedPinId = null;
 let editor = null; // route / hike editor state
 let hoverPt = null;
@@ -1585,7 +1586,7 @@ function buildFeatures(els) {
       else if (t.waterway === 'waterfall') out.push({ id, kind: 'waterfall', name, ele, coord });
     } else if (el.type === 'way' && t.highway) {
       const c = geom(el.geometry);
-      if (c.length > 1) out.push({ id, kind: 'trail', name, hw: t.highway, sac: t.sac_scale || null, coords: c });
+      if (c.length > 1) out.push(SNAP_ROAD_RE.test(t.highway) ? { id, kind: 'road', name, hw: t.highway, coords: c } : { id, kind: 'trail', name, hw: t.highway, sac: t.sac_scale || null, coords: c });
     } else if (el.type === 'way' && isLakeTags(t)) {
       const c = geom(el.geometry);
       if (c.length > 3) { const r = stitchRings([c]); if (r.length) out.push({ id, kind: 'lake', name, polys: r }); }
@@ -1608,11 +1609,16 @@ async function overpass(q) {
   }
   throw lastErr;
 }
+// V20.8: roads come along for snapping only (a hike that starts on a road). They are not trails: not drawn by the app,
+// not listed, not counted. The base map already draws roads.
+const ROAD_HW = 'residential|unclassified|tertiary|secondary|primary|trunk|service|living_street|road|tertiary_link|secondary_link|primary_link';
+const SNAP_ROAD_RE = new RegExp('^(' + ROAD_HW + ')$');
 function overpassQuery(s, w, n, e) {
   const bb = `(${s.toFixed(4)},${w.toFixed(4)},${n.toFixed(4)},${e.toFixed(4)})`;
   const wf = '["water"!~"^(river|stream|canal|ditch|wastewater|stream_pool)$"]';
   return `[out:json][timeout:240];(` +
     `way["highway"~"^(path|footway|track|bridleway|steps)$"]["footway"!~"^(sidewalk|crossing)$"]["access"!~"^(private|no)$"]${bb};` +
+    `way["highway"~"^(${ROAD_HW})$"]["service"!~"^(driveway|parking_aisle|drive-through)$"]["access"!~"^(private|no)$"]${bb};` +
     `node["natural"~"^(peak|volcano|saddle)$"]${bb};node["mountain_pass"="yes"]${bb};node["waterway"="waterfall"]${bb};` +
     `way["natural"="water"]${wf}${bb};relation["natural"="water"]${wf}${bb};way["landuse"="reservoir"]${bb};relation["landuse"="reservoir"]${bb};way["water"~"^(lake|pond|reservoir|tarn|lagoon|oxbow)$"]${bb};relation["water"~"^(lake|pond|reservoir|tarn|lagoon|oxbow)$"]${bb};` +
     `);out geom;`;
@@ -1682,6 +1688,7 @@ async function fetchRegions(list, opts) {
   const regOf = f => (list.find(r => byReg.get(r.id).has(f.id)) || list[0]);
   for (const f of fresh) {
     const o = old.get(f.id), r = regOf(f);
+    if (f.kind === 'road') { if (!o) rep.roads = (rep.roads || 0) + 1; old.set(f.id, f); continue; }   // V20.8: roads only for snapping; not reported
     const b = rep.byRegion[r.name] = rep.byRegion[r.name] || { trails: 0, mi: 0, peaks: 0, lakes: 0, other: 0, changed: 0, gone: 0 };
     if (r.id !== 'teton') f.rg = r.id; else if (o && o.rg) f.rg = o.rg;
     if (!o) {
@@ -1694,14 +1701,14 @@ async function fetchRegions(list, opts) {
   for (const r of list) for (const [id, f] of [...old]) {
     if (freshIds.has(id) || f.ident || !featAllIn(f, r)) continue;
     if (data.visits[id]) { rep.goneKept++; continue; }
-    old.delete(id); rep.gone++; (rep.byRegion[r.name] = rep.byRegion[r.name] || { trails: 0, mi: 0, peaks: 0, lakes: 0, other: 0, changed: 0, gone: 0 }).gone++;
+    old.delete(id); if (f.kind === 'road') continue; rep.gone++; (rep.byRegion[r.name] = rep.byRegion[r.name] || { trails: 0, mi: 0, peaks: 0, lakes: 0, other: 0, changed: 0, gone: 0 }).gone++;
   }
   data.osm = { fetchedAt: Date.now(), features: [...old.values()] };
   indexFeatures(); migrateV17();
   hxFlush(); HX.tag = { label: 'Map data update (hikes re-checked against the new trails)' };
   for (const t of data.tracks) if (!t.planned && t.approved !== false) matchTrack(t);
   await idbPut('osm', data.osm);
-  const here = await regionsHere(); for (const r of list) { here.add(r.id); r.at = Date.now(); const reg = regions().find(x => x.id === r.id); if (reg) reg.at = r.at; else regions().push(r); }
+  const here = await regionsHere(); for (const r of list) { here.add(r.id); r.at = Date.now(); r.roads = true; const reg = regions().find(x => x.id === r.id); if (reg) { reg.at = r.at; reg.roads = true; } else regions().push(r); }
   await idbPut('regionsHere', [...here]);
   rep.mi = rep.added.filter(a => a.kind === 'trail').reduce((a, x) => a + x.len, 0) / 1609.34;
   if (opts.check || !opts.first) { data.settings.trailCheck = { at: rep.at, regions: rep.regions, trails: rep.added.filter(a => a.kind === 'trail').length, mi: +rep.mi.toFixed(1), other: rep.added.filter(a => a.kind !== 'trail').length, changed: rep.changed, gone: rep.gone }; }
@@ -1727,7 +1734,8 @@ async function checkTrailUpdates() {
   try {
     const rep = await fetchRegions(list, { check: true });
     const nt = rep.added.filter(a => a.kind === 'trail').length;
-    toast(nt || rep.changed || rep.gone ? `Trail data updated: ${nt} new trail${nt === 1 ? '' : 's'} (${fmtMi(rep.mi * 1609.34)} mi), ${rep.changed} changed, ${rep.gone} removed.` : 'Trail data is up to date. Nothing new in your regions.', 9000, { label: 'Details', run: () => openDetail({ type: 'trailReport' }) });
+    const rd = rep.roads ? ` Added ${rep.roads.toLocaleString()} road${rep.roads === 1 ? '' : 's'} for snapping.` : '';
+    toast((nt || rep.changed || rep.gone ? `Trail data updated: ${nt} new trail${nt === 1 ? '' : 's'} (${fmtMi(rep.mi * 1609.34)} mi), ${rep.changed} changed, ${rep.gone} removed.` : 'Trail data is up to date. Nothing new in your regions.') + rd, 9000, { label: 'Details', run: () => openDetail({ type: 'trailReport' }) });
     renderSide();
   } catch (e) { toast('Update check failed: ' + e.message + '. Try again later; the public trail server may be busy.', 8000); }
 }
@@ -1752,6 +1760,7 @@ function pageRegions() {
   return `${backBtn()}<div class="d-title">Trail Data</div>
     <div class="d-sub">Trails, peaks, lakes, passes and waterfalls come from OpenStreetMap, downloaded by region. The whole world (or the whole US) is far too big to keep on a phone, so add the regions you hike in. Each region is checked for updates together.</div>
     <div class="notice info">${ck ? `Last check ${when(ck.at)}: ${ck.trails} new trail${ck.trails === 1 ? '' : 's'} (${ck.mi} mi), ${ck.other} new places, ${ck.changed} changed, ${ck.gone} removed.` : 'Not checked for updates yet.'} <a href="#" data-act="trailReport">See the details</a></div>
+    ${FEATS.length && !ROADS.length ? '<div class="notice warn">Snapping can follow roads now (for hikes that start on a road). Tap <b>Check All Regions</b> once to download the roads in your regions.</div>' : ''}
     <button class="btn primary big" data-act="trailCheck">🔄 Check All Regions for Trail Updates</button>
     <label class="f">Remind me to check</label><select id="trailEvery">${[[0, 'Never'], [30, 'Every month'], [90, 'Every 3 months'], [180, 'Every 6 months']].map(([v, l]) => `<option value="${v}" ${(data.settings.trailEvery ?? 30) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
     <h2 class="sec">Your Regions <span class="small muted">${list.length}</span></h2>
@@ -1833,10 +1842,11 @@ function cutWay(f, cuts) {
   return keep.map(([a, b]) => Object.assign({}, f, { id: a < 0.5 ? f.id : f.id + '~' + Math.round(a), src: f.id, coords: wayPart(c, cum, a, b) }));
 }
 function indexFeatures() {
-  FEAT = {}; FEATS = []; PGRID = new Map(); RAW = new Map();
+  FEAT = {}; FEATS = []; PGRID = new Map(); RAW = new Map(); ROADS = [];
   const CUTS = {}; for (const [id, h] of Object.entries(data.hidden)) if (h.way) (CUTS[h.way] = CUTS[h.way] || []).push([id, h]);
   const src = ((data.osm && data.osm.features) || []).concat((data.identified && data.identified.features) || []);
   for (const f0 of src) {
+    if (f0.kind === 'road') { ROADS.push(f0); continue; }
     RAW.set(f0.id, f0);
     const parts = f0.kind === 'trail' && CUTS[f0.id] && !data.hidden[f0.id] ? cutWay(f0, CUTS[f0.id]) : [f0];
   for (const f of parts) {
@@ -1903,15 +1913,17 @@ function chainGroup(g) {
 function buildGraph() {
   const idx = new Map(), lon = [], lat = [], adj = [];
   const node = p => { const k = p[0] + ',' + p[1]; let i = idx.get(k); if (i === undefined) { i = lon.length; idx.set(k, i); lon.push(p[0]); lat.push(p[1]); adj.push([]); } return i; };
-  for (const f of FEATS) {
-    if (f.kind !== 'trail') continue;
+  const add = (f, k) => {
     let prev = node(f.coords[0]);
     for (let i = 1; i < f.coords.length; i++) {
       const cur = node(f.coords[i]);
-      if (cur !== prev) { const w = dist(lat[prev], lon[prev], lat[cur], lon[cur]); adj[prev].push(cur, w); adj[cur].push(prev, w); }
+      if (cur !== prev) { const w = dist(lat[prev], lon[prev], lat[cur], lon[cur]) * k; adj[prev].push(cur, w); adj[cur].push(prev, w); }
       prev = cur;
     }
-  }
+  };
+  for (const f of FEATS) if (f.kind === 'trail') add(f, 1);
+  // Roads join the network a little "longer" (×1.25), so a route keeps to the trail when both go the same way
+  if (data.settings.snapRoads !== false) for (const f of ROADS) add(f, 1.25);
   const grid = new Map();
   for (let i = 0; i < lon.length; i++) { const k = Math.floor(lat[i] / 0.002) + ',' + Math.floor(lon[i] / 0.002); let c = grid.get(k); if (!c) grid.set(k, c = []); c.push(i); }
   GRAPH = { lon, lat, adj, grid };
@@ -3340,7 +3352,7 @@ function setBase(k) {
 // What to draw: unnamed places only when "Unnamed & identified" is on, and only places inside the Teton Range when "Only show the range" is on
 const rangeHides = f => data.settings.rangeView && !f.rg && !inRangeF(f);   // V20.6: trails from regions you added always show
 function featVisible(f) {
-  if (rangeHides(f)) return false;
+  if (f.kind !== 'trail' && rangeHides(f)) return false;   // V20.8: trails always draw (the base map's own trail lines are turned off where we have data); lists and stats still keep to the range
   if (!nameOf(f) && f.kind !== 'trail' && !layerOn('unnamed')) return false;
   return true;
 }
@@ -6444,6 +6456,7 @@ function pageEditor() {
     ${e.kind !== 'extend' ? `<label class="f">Name</label><input id="edName" value="${esc(e.name)}">` : ''}
     ${e.kind === 'track' ? `<label class="f">Date hiked</label><input type="date" id="edDate" value="${esc(e.date)}">` : ''}
     <label class="toggle"><input type="checkbox" id="edSnap" ${e.snap ? 'checked' : ''}> Follow trails${GRAPH && GRAPH.lon.length ? '' : ' (download map data to enable)'}</label>
+    <label class="toggle" style="margin-left:22px"><input type="checkbox" id="edRoads" ${data.settings.snapRoads !== false ? 'checked' : ''} ${e.snap ? '' : 'disabled'}> …and roads${data.settings.snapRoads !== false && !ROADS.length && FEATS.length ? ' <span class="small muted">(no roads yet: ☰ → Trail Data → Update)</span>' : ''}</label>
     ${GRAPH && GRAPH.lon.length ? `<button class="btn wide" data-act="cutStart" style="margin:2px 0 4px" title="Click two points on a trail to hide the stretch between them">✂️ Hide a Trail Section</button><div class="small muted" style="margin:0 0 8px">Snapped onto a trail that is wrong or not there? Click two points on it to hide that stretch; your line goes around it.</div>` : ''}
     ${e.kind === 'track' || e.mode === 'approve' ? editorMarksHTML(e) : ''}
     ${e.kind === 'extend' && e.trackId ? `<label class="f" for="gpsOp">GPS line opacity: <b id="gpsOpV">${Math.round(gpsOp() * 100)}%</b></label><input type="range" id="gpsOp" min="0.15" max="1" step="0.05" value="${gpsOp()}" style="padding:0" aria-label="GPS line opacity"><div class="small muted" style="margin:-2px 0 6px">Lower it to see the mapped trails under your recorded line.</div>` : ''}
@@ -7367,8 +7380,9 @@ $('side').addEventListener('change', e => {
   if (id === 'exEle') { view.explore.minEle = e.target.value; renderSide(); }
   if (id === 'exPhoto') { view.explore.photo = e.target.checked; renderSide(); }
   if (id === 'gpsOp') { data.settings.gpsOp = +e.target.value; touch({ noRender: true }); }
+  if (id === 'edRoads') { data.settings.snapRoads = e.target.checked; buildGraph(); touch({ noRender: true }); toast(e.target.checked ? 'Snapping follows trails and roads.' : 'Snapping follows trails only.'); }
   if (id === 'trailEvery') { data.settings.trailEvery = +e.target.value; touch({ noRender: true }); toast(+e.target.value ? 'Saved. You will get a reminder when trail data is due for a check.' : 'No reminders.'); }
-  if (id === 'edSnap') { editor.snap = e.target.checked; data.settings.snap = editor.snap; touch({ noRender: true }); renderToolbar(); }
+  if (id === 'edSnap') { editor.snap = e.target.checked; data.settings.snap = editor.snap; touch({ noRender: true }); renderToolbar(); const rk = $('edRoads'); if (rk) rk.disabled = !editor.snap; }
   if (id === 'edName' && editor) editor.name = e.target.value;
   if (id === 'arName' && areaEd) areaEd.name = e.target.value;
   if (id === 'arType' && areaEd) areaEd.type = e.target.value;
