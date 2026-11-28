@@ -137,7 +137,10 @@ body.collapsed #toolbar,body.collapsed #toast{left:50%}
 #side header{display:flex;align-items:center;gap:10px;padding:16px 20px 8px}
 #side header svg{flex:none}
 #side header h1{font-size:20px;margin:0;letter-spacing:-.01em}
-.hm{width:26px;height:26px;border-radius:50%;background:#2e7d32;color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);cursor:grab}.hm.b{background:#c62828}.sumgrp>summary{list-style:none;cursor:pointer}.sumgrp>summary::-webkit-details-marker{display:none}.sumgrp .chev{display:inline-block;margin-left:6px;transition:transform .15s;font-style:normal}.sumgrp[open] .chev{transform:rotate(90deg)}.sumlist{padding:2px 0 8px 22px}.sumitem{display:flex;align-items:center;gap:6px;border-top:1px solid var(--line)}.sumname{flex:1;display:flex;flex-direction:column;align-items:flex-start;text-align:left;background:none;border:0;color:inherit;padding:7px 2px;cursor:pointer;font:inherit}.sumname:hover b{text-decoration:underline}.hkpick{display:flex;gap:10px;align-items:flex-start;padding:7px 2px;cursor:pointer}.hkpick input{margin-top:3px;width:auto;flex:none}.hkpick>span{flex:1;text-align:left}.hkpick span{display:flex;flex-direction:column}.hkpick[hidden]{display:none}.hm.a{background:#c62828}.hm.sel{outline:3px solid #ffeb3b}
+.hm{width:26px;height:26px;border-radius:50%;background:#2e7d32;color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);cursor:grab}.hm.b{background:#c62828}.sumgrp>summary{list-style:none;cursor:pointer}.sumgrp>summary::-webkit-details-marker{display:none}.sumgrp .chev{display:inline-block;margin-left:6px;transition:transform .15s;font-style:normal}.sumgrp[open] .chev{transform:rotate(90deg)}.sumlist{padding:2px 0 8px 22px}.sumitem{display:flex;align-items:center;gap:6px;border-top:1px solid var(--line)}.sumname{flex:1;display:flex;flex-direction:column;align-items:flex-start;text-align:left;background:none;border:0;color:inherit;padding:7px 2px;cursor:pointer;font:inherit}.sumname:hover b{text-decoration:underline}.segc{display:flex;background:var(--chip,rgba(127,127,127,.12));border-radius:10px;padding:3px;gap:3px;margin:2px 0 6px}.segc button{flex:1;border:0;background:none;color:inherit;font:inherit;font-weight:600;font-size:13.5px;padding:7px 4px;border-radius:8px;cursor:pointer}.segc button.on{background:var(--card,#fff);box-shadow:0 1px 3px rgba(0,0,0,.2)}.lnkbtn{display:block;background:none;border:0;color:var(--muted);font:inherit;font-size:13px;padding:4px 0 10px;cursor:pointer;text-align:left}.lnkbtn:hover{color:inherit;text-decoration:underline}
+.brandpct{order:9;margin-left:4px;border:0;background:var(--soft);border-radius:12px;padding:5px 10px;display:flex;flex-direction:column;align-items:center;line-height:1.05;cursor:pointer;flex:none}.brandpct b{font-size:17px;font-weight:800;letter-spacing:-.02em}.brandpct span{font-size:10px;color:var(--muted);font-weight:600;white-space:nowrap}#side header h1{white-space:nowrap}.brandpct:hover{background:var(--hover)}
+.extmk{display:flex;align-items:center;gap:6px;pointer-events:auto}.extmk i{width:18px;height:18px;border-radius:50%;background:#e11d48;border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.45);flex:none}.extmk span{background:rgba(255,255,255,.95);color:#111;font-weight:700;font-size:12.5px;padding:3px 8px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.25);white-space:nowrap}.extmk button{border:0;background:rgba(255,255,255,.95);color:#555;border-radius:50%;width:22px;height:22px;font-size:11px;padding:0;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.hkpick{display:flex;gap:10px;align-items:flex-start;padding:7px 2px;cursor:pointer}.hkpick input{margin-top:3px;width:auto;flex:none}.hkpick>span{flex:1;text-align:left}.hkpick span{display:flex;flex-direction:column}.hkpick[hidden]{display:none}.hm.a{background:#c62828}.hm.sel{outline:3px solid #ffeb3b}
 .chip-v{font-size:11px;background:var(--soft);border-radius:999px;padding:2px 8px;color:var(--muted)}
 .search{padding:6px 20px 10px;position:relative}
 .search input{border-radius:999px;padding:10px 16px 10px 38px;background:var(--soft);border-color:transparent}
@@ -512,6 +515,7 @@ html[data-theme=dark] .maplibregl-ctrl-attrib-button{filter:invert(1)}
 .lrow:last-child{border-bottom:0}
 .lrow .lname{flex:1;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;min-width:0}
 .lrow .lsw{width:30px;height:0;border-top-width:3px;border-top-style:dashed;flex:none}
+.lgrp{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:12px 0 0}.lgrp:first-child{margin-top:2px}.lrow .lnm{display:flex;flex-direction:column;min-width:0}.lrow .lsub{font-weight:400;font-size:12px}.lrow .lsi{width:30px;text-align:center;font-style:normal;font-size:15px}.lrow.open .lchev{transform:rotate(90deg)}.lsctl{margin:0 0 8px 52px}.lsctl input[type=range]{padding:0;width:100%}.lsctl .f{display:flex;justify-content:space-between}
 .lrow .lchev{color:var(--muted);transition:transform .15s;font-size:16px}
 .lrow.open .lchev{transform:rotate(90deg)}
 .bstyle{background:var(--soft);border-radius:12px;padding:4px 12px 10px;margin:0 0 8px}
@@ -812,12 +816,13 @@ a.srow[data-open]:hover{background:var(--hover)}
   <header>
     <img src="icon-192.png" width="38" height="38" alt="" class="logo" data-home="1" title="Back to the map of the Tetons">
     <div class="brand"><h1 data-home="1" title="Back to the map of the Tetons">Teton Atlas</h1><div class="brand-sub" id="brandSub"></div></div>
+    <button id="brandPct" class="brandpct" data-act="openStats" hidden><b>0%</b><span>Tetons</span></button>
     <button id="netPill" class="netpill" hidden></button>
   </header>
   <div id="syncBanner" class="banner" hidden></div>
   <div class="search">
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-    <input id="q" placeholder="Search peaks, lakes, trails, hikes" autocomplete="off"><button id="qClear" title="Clear search" hidden>✕</button>
+    <input id="q" placeholder="Search the Tetons, or anywhere in ID · MT · WY · UT" autocomplete="off"><button id="qClear" title="Clear search" hidden>✕</button>
   </div>
   <nav class="tabs">
     <button data-tab="explore" class="on"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M3 20l6-12 4 7 3-4 5 9z"/></svg>Explore</button>
@@ -863,7 +868,7 @@ a.srow[data-open]:hover{background:var(--hover)}
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V20.13';
+const APP_VERSION = 'V20.14';
 // Rough outline of the Teton Range (Teton Pass to Conant Pass, Jackson Hole side and Teton Valley side). Editable from the Layers panel.
 // Borders you can restyle (Layers -> Borders). Add an entry here to make another outline styleable.
 const BORDERS = [
@@ -964,7 +969,7 @@ const AREA_TYPES = {
 };
 const COLORS = ['#9333ea', '#ff6d00', '#d62828', '#1e88e5', '#00897b', '#2e7d32', '#6d4c41', '#111111'];
 // V20.9: planned routes default to violet (old routes saved with the old orange default switch too), so they never read as done
-const ROUTE_DEF = '#9333ea', routeColor = r => (!r.color || r.color === '#ff6d00') ? ROUTE_DEF : r.color;
+const ROUTE_DEF = '#9333ea', routeColor = r => ROUTE_DEF;   // V20.14: routes have no color of their own (days get day colors when open); change all routes in Show on Map → Routes
 const DAY_COLORS = ['#9be15d', '#72d6e0', '#7b6cf6', '#f6a76c', '#f06292', '#ffd54f', '#4db6ac'];
 const KIND_INFO = {
   peak: { label: 'Peak', icon: '⛰️' }, pass: { label: 'Pass', icon: '🏔️' }, waterfall: { label: 'Waterfall', icon: '🌊' },
@@ -1171,6 +1176,7 @@ const VERSIONS = [
   { name: 'Teton Atlas V20.11', date: '2026-11-27', notes: ['Smart snapping crosses small gaps in the map data: a trail or fork that stops a few metres short of another trail or a trailhead road (common in OpenStreetMap) is now joined to it, so snapping follows it instead of drawing off-trail. Hidden trail sections stay gaps.'] },
   { name: 'Teton Atlas V20.12', date: '2026-11-27', notes: ['Snapping downloads its own data: click where this device has no trail-and-road data yet (outside your regions, or a region downloaded before roads) and it fetches trails and roads around the click, then re-snaps. No need to run Check All Regions first.'] },
   { name: 'Teton Atlas V20.13', date: '2026-11-27', notes: ['No more doubled trails: wherever the app has its own trail data, the background map\'s copy of the trails (and their names) is hidden, so each trail is drawn once and can be clicked and snapped to.', 'Trails and roads load automatically wherever you zoom in (Trail Data → Load trails automatically), in small 0.1° areas, so the edges of regions (like the Palisades trailhead) are filled in. These areas are included in update checks.'] },
+  { name: 'Teton Atlas V20.14', date: '2026-11-27', notes: ['Search finds places anywhere in Idaho, Montana, Wyoming and Utah (lakes, peaks, trailheads, trails, towns) in their own section under your Teton results; pick one to fly there with a temporary marker. Nothing is added to your lists.', 'Explore lists and stats are the Tetons only; trails and places loaded elsewhere stay on the map and in search.', 'Show on Map rebuilt: grouped switches (Trails: Not Yet, Seen, Potential, Planned, Completed; Your Lines; Places; Map), and tap any row to change its color, thickness and opacity right there. Last Visit coloring dropped; hidden items show while Deleted Items is open.', 'Route and hike drawing: one Snap to control (Trails + Roads, Trails Only, Off), no color swatches (routes use day colors), smaller Hide section link.', 'Mark the Trail I Took keeps your view.', 'Header: completed hikes and an overall % of the Tetons (tap for Stats).'] },
 ];
 
 // ================= State =================
@@ -2986,8 +2992,14 @@ function extractEmbedded(html) {
 }
 
 // ================= Map =================
+const TR_KEYS = ['trNone', 'trSeen', 'trWish', 'trPlanned', 'trDone'];
 function layerOn(k) {
   const L = data.settings.layers || {};
+  // V20.14: each trail type has its own switch (they start from the old single Trails switch); the trail click area shows if any is on
+  if (TR_KEYS.includes(k)) return L[k] !== undefined ? L[k] : L.trails !== false;
+  if (k === 'trails') return TR_KEYS.some(x => layerOn(x));
+  if (k === 'recency') return false;   // V20.14: "Last Visit" coloring dropped from Show on Map
+  if (k === 'hidden') return !!(view.detail && view.detail.type === 'trash');   // hidden items show while Deleted Items is open
   if (L[k] === undefined && (k === 'peaks' || k === 'passes') && L.places !== undefined) return L.places;    // V20.3: split from the old Peaks & Passes switch
   if (L[k] === undefined && k === 'completed' && L.tracks !== undefined) return L.tracks;
   return L[k] !== undefined ? L[k] : k === 'hillshade' ? true : !['heat', 'recency', 'camps'].includes(k);
@@ -3176,7 +3188,7 @@ const LST = {
   'tr-done': { label: 'Trails: Completed', kind: 'line', line: ['trail-done'], cas: ['trail-done-case'], color: { layers: ['trail-done'], def: '#1e6fe0' } },
   tracks: { label: 'My Hikes (GPS lines)', kind: 'line', line: ['track-garmin', 'track-planned', 'track-pending', 'track-ignored'], cas: ['track-case'], color: { layers: ['track-garmin'], def: '#1d4ed8' } },
   completed: { label: 'Completed Trails (and hikes you drew)', kind: 'line', line: ['track-approved', 'track-manual'], cas: ['track-approved-case'], color: { layers: ['track-approved', 'track-manual'], def: '#1e6fe0' } },
-  routes: { label: 'My Routes', kind: 'line', line: ['route-line'], cas: ['route-case'] },
+  routes: { label: 'Routes', kind: 'line', line: ['route-line'], cas: ['route-case'], color: { layers: ['route-line'], def: '#9333ea', expr: ['get', 'color'] } },
   peaks: { label: 'Peaks', kind: 'icon', m: 'peak' }, passes: { label: 'Passes', kind: 'icon', m: 'pass' }, places: { label: 'Waterfalls', kind: 'icon', m: 'waterfall' },
   lakes: { label: 'Lakes', kind: 'fill', fill: ['lake-fill'], line: ['lake-line'], m: 'lake' },
   areas: { label: 'Areas', kind: 'fill', fill: ['area-fill'], line: ['area-line'] },
@@ -3335,7 +3347,7 @@ function addOverlays() {
   applyLayerVisibility(); applyMarkerStyle(); applyStatusPaint(); applyOutdoorPalette();
 }
 const LAYER_GROUPS = {
-  trails: ['trail-line-case', 'trail-seen-case', 'trail-wish-case', 'trail-planned-case', 'trail-done-case', 'trail-line', 'trail-seen', 'trail-wish', 'trail-planned', 'trail-done', 'trail-hit'], lakes: ['lake-fill', 'lake-line'], tracks: [],   // V20.3: hikes are filtered in updateSources (My Hikes = GPX uploads and plans, My Completed Hikes = completed)
+  trails: ['trail-hit'], trNone: ['trail-line-case', 'trail-line'], trSeen: ['trail-seen-case', 'trail-seen'], trWish: ['trail-wish-case', 'trail-wish'], trPlanned: ['trail-planned-case', 'trail-planned'], trDone: ['trail-done-case', 'trail-done'], lakes: ['lake-fill', 'lake-line'], tracks: [],   // V20.3: hikes are filtered in updateSources (My Hikes = GPX uploads and plans, My Completed Hikes = completed)
   hidden: ['hidden-line', 'hidden-pt'], routes: ['route-case', 'route-line', 'route-dir'], labels: ['trail-label', 'lake-label', 'poi-label', 'area-label', 'river-name'], heat: ['heat-layer'], areas: ['area-fill', 'area-line', 'area-label']
 };
 function applyLayerVisibility() {
@@ -4717,7 +4729,8 @@ function startApprove(t) {
   stopHed(true);
   const line = trackLine(t);
   startEditor('extend', { trackId: t.id, mode: 'approve' });
-  if (mapReady && line.length > 1) fitTo(line.map(q => [q[0], q[1]]), 15);
+  // V20.14: keep your view (you are usually zoomed in on the start); only bring the hike into view when none of it is on screen
+  if (mapReady && line.length > 1) { const b = map.getBounds(); if (!line.some(q => b.contains([q[0], q[1]]))) fitTo(line.map(q => [q[0], q[1]]), 15); }
   toast('Click along the trail you really took. Points follow trails' + (editor && editor.snap ? '' : ' (snapping is off)') + '. Use ⛺ Camp Here on the points where you slept. Press Save when done. Your GPS line still measures the hike.', 8000);
 }
 async function hedJoinFile(file) {
@@ -5525,15 +5538,18 @@ function focusTid() {
   const t = id && findTrack(id);
   return t && !t.planned && t.approved === false ? t.id : null;
 }
+let lastHiddenVis = false;
 function renderSide() {
+  if (mapReady && layerOn('hidden') !== lastHiddenVis) { lastHiddenVis = layerOn('hidden'); setTimeout(() => { applyLayerVisibility(); updateSources(); }, 0); }   // V20.14: hidden items show while Deleted Items is open
   if (mapReady && focusTid() !== lastFocus) setTimeout(() => { if (mapReady && focusTid() !== lastFocus) updateSources(); }, 0);
   if (view.justDone && !(view.detail && view.detail.type === 'track' && view.detail.id === view.justDone.id)) view.justDone = null;
   if (pinDraft && !(view.detail && view.detail.type === 'pin' && view.detail.id === pinDraft.id)) { pinDraft = null; syncPins(); }
   renderSideInner(); renderToolbar(); renderBrand(); if ($('dash') && !$('dash').hidden) renderDash(); }
 function renderBrand() {
   const done = TRACKS().filter(t => hikeType(t) === 'completed').length, up = data.tracks.filter(t => t.approved === false).length;
-  const pk = new Set(); for (const [id, l] of Object.entries(data.visits)) if (FEAT[id] && FEAT[id].kind === 'peak' && l.some(v => v.src === 'track' && v.status === 'been')) pk.add(id);
-  const el = $('brandSub'); if (el) el.textContent = `${done} completed hike${done === 1 ? '' : 's'} · ${pk.size} peak${pk.size === 1 ? '' : 's'}${up ? ` · ${up} to review` : ''}`;
+  const el = $('brandSub'); if (el) el.textContent = `${done} completed hike${done === 1 ? '' : 's'}${up ? ` · ${up} to review` : ''}`;
+  // V20.14: overall completion of the Teton Range, on the right (the average of the Trails, Peaks, Lakes, Passes and Waterfalls percentages on Stats)
+  const pe = $('brandPct'); if (pe) { const o = overallPct(); pe.hidden = o == null; if (o) { pe.querySelector('b').textContent = (o.pct < 10 && o.pct > 0 ? o.pct.toFixed(1) : Math.round(o.pct)) + '%'; pe.title = 'Overall: the average of ' + o.parts.map(p => `${p.label} ${p.pct.toFixed(p.pct < 10 && p.pct > 0 ? 1 : 0)}%`).join(', ') + '. Tap for Stats.'; } }
   const dot = $('pendDot'); if (dot) dot.hidden = !up;
 }
 function renderSideInner() {
@@ -5582,13 +5598,13 @@ function featureItems() {
   const items = [], showUn = view.explore && view.explore.chip === 'unnamed';
   for (const f of FEATS) {
     if (f.kind === 'trail') continue;
-    if (rangeHides(f)) continue;
+    if (f.rg || rangeHides(f)) continue;   // V20.14: lists are the Tetons only; places loaded elsewhere are on the map and in search
     const nm = nameOf(f); if (!nm && !showUn) continue;
     const st = placeStatus(f.id), ki = kindInfo(f.kind);
     items.push({ kind: nm ? f.kind : 'unnamed', k2: f.kind, title: nm || unnamedLabel(f), ident: !nm, icon: ki.icon, sub: (nm ? ki.label : (f.ident ? 'No name · found in the terrain' : 'No name on the map')) + (f.ele ? ' · ' + fmtFt(f.ele) + ' ft' : ''), st, wish: isWish(f.id), ele: f.ele || 0, rc: rcOf(f.id), photo: !!data.photos[f.id], open: { type: 'feature', id: f.id } });
   }
   for (const g of Object.values(GROUPS)) {
-    if (data.settings.rangeView && !g.ways.some(w => !rangeHides(w))) continue;
+    if (g.ways.every(w => w.rg) || (data.settings.rangeView && !g.ways.some(w => !rangeHides(w)))) continue;
     const cov = g.ways.reduce((a, w) => a + w.len * wayCoverage(w.id), 0) / g.len;
     items.push({ kind: 'trail', title: g.name, icon: '🥾', sub: `Trail · ${fmtMi(g.len)} mi${cov > 0.02 ? ` · ${Math.round(cov * 100)}% completed` : ''}`, st: placeStatus(g.id), wish: isWish(g.id), ele: 0, len: g.len, rc: rcOf(g.id), photo: !!data.photos[g.id], open: { type: 'feature', id: g.id } });
   }
@@ -5668,7 +5684,59 @@ function pageSearch(q) {
   for (const r of data.routes) if (r.name.toLowerCase().includes(q)) items.unshift({ title: r.name, icon: '🧭', color: routeColor(r), sub: 'Route · ' + fmtMi((r.stats || {}).len || 0) + ' mi', open: { type: 'route', id: r.id } });
   for (const t of TRACKS()) if (t.name.toLowerCase().includes(q) || (t.trip || '').toLowerCase().includes(q)) items.unshift({ title: t.name, icon: '🥾', sub: 'Hike · ' + fmtDate(t.date), open: { type: 'track', id: t.id } });
   items.sort((a, b) => (a.title.toLowerCase().startsWith(q) ? 0 : 1) - (b.title.toLowerCase().startsWith(q) ? 0 : 1));
-  return `<h3 class="sec">Results</h3>${items.slice(0, 80).map(cardHTML).join('') || '<div class="empty">No matches.' + (FEATS.length ? '' : ' Download map data first (menu, top right).') + '</div>'}`;
+  setTimeout(() => extSearch(q), 0);
+  return `<h3 class="sec">In the Tetons</h3>${items.slice(0, 80).map(cardHTML).join('') || '<div class="empty" style="padding:8px 0 4px">No matches in the Tetons.' + (FEATS.length ? '' : ' Download map data first (menu, top right).') + '</div>'}
+    <h3 class="sec">Elsewhere in Idaho · Montana · Wyoming · Utah</h3><div id="extRes">${extResHTML(q)}</div>`;
+}
+// V20.14: search the four states by name (lakes, peaks, trailheads, trails, towns...) without adding anything to your lists.
+// Photon (OpenStreetMap place search, made for search-as-you-type), limited to the four states' box and then to those states.
+// Picking a result flies there with a temporary marker; nothing is saved.
+const EXT_STATES = ['Idaho', 'Montana', 'Wyoming', 'Utah'], EXT_BOX = '-117.25,36.99,-104.03,49.01';
+const EXT = { cache: {}, q: '', t: null, ctl: null };
+const EXT_ICON = { water: '💧', lake: '💧', reservoir: '💧', pond: '💧', peak: '⛰️', volcano: '⛰️', saddle: '🔀', mountain_pass: '🔀', waterfall: '🌊', trailhead: '🚏', path: '🥾', footway: '🥾', track: '🥾', bridleway: '🥾', camp_site: '⛺', town: '🏘️', village: '🏘️', city: '🏙️', hamlet: '🏘️', river: '〰️', stream: '〰️', park: '🌲', nature_reserve: '🌲', protected_area: '🌲', national_park: '🌲', forest: '🌲', glacier: '🧊', ridge: '⛰️', valley: '🏞️', spring: '💧', hot_spring: '♨️', cave_entrance: '🕳️', viewpoint: '👀', parking: '🅿️' };
+const extKind = p => { const v = p.osm_value || '', k = p.osm_key || ''; if (k === 'highway' && /^(path|footway|track|bridleway)$/.test(v)) return 'Trail'; if (v === 'water' || v === 'lake' || v === 'reservoir' || v === 'pond') return 'Lake'; return (v || k || 'Place').replace(/_/g, ' ').replace(/^./, c => c.toUpperCase()); };
+function extResHTML(q) {
+  const r = EXT.cache[q];
+  if (q.length < 3) return '<div class="empty small" style="padding:6px 0">Type at least 3 letters.</div>';
+  if (!navigator.onLine) return '<div class="empty small" style="padding:6px 0">Searching the four states needs an internet connection.</div>';
+  if (!r) return '<div class="empty small" style="padding:6px 0">Searching…</div>';
+  if (r.err) return `<div class="empty small" style="padding:6px 0">Search isn't reachable right now (${esc(r.err)}). Try again in a moment.</div>`;
+  if (!r.list.length) return '<div class="empty small" style="padding:6px 0">Nothing found in the four states.</div>';
+  return r.list.map((p, i) => `<div class="card" data-act="extPick" data-q="${esc(q)}" data-i="${i}"><div class="ic">${EXT_ICON[p.osm_value] || '📍'}</div><div class="tx"><div class="t">${esc(p.name)}</div><div class="s">${esc([extKind(p), p.county, p.state].filter(Boolean).join(' · '))}</div></div></div>`).join('');
+}
+function extSearch(q) {
+  if (q.length < 3 || EXT.cache[q] || !navigator.onLine) { EXT.q = q; clearTimeout(EXT.t); const el = $('extRes'); if (el) el.innerHTML = extResHTML(q); return; }
+  EXT.q = q; clearTimeout(EXT.t);
+  EXT.t = setTimeout(async () => {
+    if (EXT.q !== q) return;
+    try { EXT.ctl && EXT.ctl.abort(); } catch (e) {}
+    EXT.ctl = new AbortController();
+    try {
+      const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=25&lang=en&bbox=${EXT_BOX}`, { signal: EXT.ctl.signal });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json(), seen = new Set(), ring = closeRing(rangeRing());
+      const list = (j.features || []).map(f => Object.assign({}, f.properties, { c: f.geometry && f.geometry.coordinates }))
+        .filter(p => p.name && p.c && EXT_STATES.includes(p.state) && !pointInRing(p.c[0], p.c[1], ring))
+        .filter(p => { const k = p.name + '|' + extKind(p) + '|' + (p.county || ''); if (seen.has(k)) return false; seen.add(k); return true; })
+        .slice(0, 12);
+      EXT.cache[q] = { list };
+    } catch (e) { if (e.name === 'AbortError') return; EXT.cache[q] = { err: e.message }; setTimeout(() => { if (EXT.cache[q] && EXT.cache[q].err) delete EXT.cache[q]; }, 15000); }
+    const el = $('extRes'); if (el && ($('q').value || '').trim().toLowerCase() === q) el.innerHTML = extResHTML(q);
+  }, 350);
+}
+let extMarker = null;
+function clearExtMarker() { if (extMarker) { extMarker.remove(); extMarker = null; } }
+function extPick(q, i) {
+  const p = (EXT.cache[q] || {}).list && EXT.cache[q].list[+i]; if (!p || !mapReady) return;
+  clearExtMarker();
+  const el = document.createElement('div'); el.className = 'extmk';
+  el.innerHTML = `<i></i><span>${esc(p.name)}</span><button title="Remove this marker">✕</button>`;
+  el.querySelector('button').onclick = ev => { ev.stopPropagation(); clearExtMarker(); };
+  extMarker = new maplibregl.Marker({ element: el, anchor: 'bottom-left', offset: [-9, 9] }).setLngLat(p.c).addTo(map);
+  const ext = p.extent;   // [west, north, east, south]
+  if (ext && Math.abs(ext[2] - ext[0]) > 0.003) map.fitBounds([[ext[0], ext[3]], [ext[2], ext[1]]], { padding: 60, maxZoom: 14, duration: 1200 });
+  else map.flyTo({ center: p.c, zoom: /trailhead|parking|camp_site|viewpoint|waterfall|spring/.test(p.osm_value || '') ? 15 : /town|village|city|hamlet/.test(p.osm_value || '') ? 12 : 13.5, duration: 1200 });
+  if (window.matchMedia('(max-width:800px)').matches) setCollapsed(true);
 }
 function pageRoutes() {
   const list = data.routes.slice().sort((a, b) => (b.created || '').localeCompare(a.created || ''));
@@ -5819,9 +5887,18 @@ function closeDash() { if ($('dash') && !$('dash').hidden) { $('dash').hidden = 
 function closeAllPops() { for (const k of ['menu', 'layers', 'markers']) $(k).hidden = true; }
 // A small (i) in the corner of a pill: hover or tap to read what it means
 const ib = txt => `<span class="ib nocase" data-info="${esc(txt)}" title="${esc(txt)}" role="button" tabindex="0">i</span>`;
+let OVR = { key: '', v: null };
+function overallPct() {
+  if (!FEATS.length) return null;
+  const key = [data.editedAt, FEATS.length, Object.keys(data.visits).length, JSON.stringify(data.settings.dash || {}), rangeOnly()].join('|');
+  if (OVR.key === key) return OVR.v;
+  const parts = completion().filter(c => c.k !== 'area' && c.den > 0).map(c => ({ label: c.label, pct: c.num / c.den * 100 }));
+  OVR = { key, v: parts.length ? { pct: parts.reduce((a, p) => a + p.pct, 0) / parts.length, parts } : null };
+  return OVR.v;
+}
 function completion() {
   const o = dashOpts(), ro = rangeOnly();
-  const keep = f => (!ro || inRangeF(f)) && (!!nameOf(f) || (f.ident ? o.ident : f.kind === 'lake' ? o.unLakes : f.kind === 'peak' ? o.unPeaks : o.unOther));
+  const keep = f => !f.rg && (!ro || inRangeF(f)) && (!!nameOf(f) || (f.ident ? o.ident : f.kind === 'lake' ? o.unLakes : f.kind === 'peak' ? o.unPeaks : o.unOther));
   const cats = [['peak', 'Peaks', '⛰️'], ['lake', 'Lakes', '💧'], ['trail', 'Trails', '🥾'], ['pass', 'Passes', '🏔️'], ['waterfall', 'Waterfalls', '🌊'], ['area', 'Your Areas', '🟩']];
   const out = [];
   for (const [k, label, icon] of cats) {
@@ -5831,7 +5908,7 @@ function completion() {
     if (k === 'trail') {   // V20.4: count the miles you actually covered on each trail section (a trail you touched no longer counts in full)
       const by = { done: 0, been: 0, planned: 0, wish: 0, seen: 0, none: 0 }; let total = 0;
       for (const g of Object.values(GROUPS)) for (const w of g.ways) {
-        if (ro && !inRangeF(w)) continue;
+        if (w.rg || (ro && !inRangeF(w))) continue;
         let ct = 0, cl = 0; for (const v of data.visits[w.id] || []) { if (v.status !== 'been' || !inFilter(v.date)) continue; if (v.src === 'track') ct = Math.max(ct, v.cov || 0); else cl = 1; }
         const L = w.len / M_PER_MI, dn = L * Math.min(1, ct), bn = Math.max(0, L * cl - dn), rest = L - dn - bn;
         let st = placeStatus(g.id); if (st === 'done' || st === 'been') st = 'none';
@@ -6383,7 +6460,6 @@ function pageRoute(d) {
     ${segs.map((s, i) => { const camp = segs.length > 1 && i < segs.length - 1 ? (r.wps.filter(w => w.brk)[i] || {}).camp : null; return segHTML(segs.length > 1 ? ((r.dayNames || [])[i] || 'Day ' + (i + 1)) : 'Full route', DAY_COLORS[i % DAY_COLORS.length], s) + (segs.length > 1 ? `<div class="row" style="margin:-2px 0 6px 17px"><button class="btn sm" data-act="gpxDay" data-i="${i}">GPX for Day ${i + 1}</button></div>` : '') + (segs.length > 1 && i < segs.length - 1 ? `<div class="camprow"><span>⛺</span><b>Night ${i + 1}</b><span class="small muted">${esc(camp || 'Camp (name it in Edit Route)')}</span></div>` : ''); }).join('')}
     <div class="small muted">Lowest ${fmtFt(c.min)} ft · highest ${fmtFt(c.max)} ft · loss ${fmtFt(c.loss)} ft. Time assumes ${data.settings.pace} mph plus 1 hour per 2,000 ft of climbing (change in Settings).</div>
     <h2 class="sec">Details</h2>
-    <label class="f">Color</label><div class="swatches">${COLORS.map(cl => `<button data-color="${cl}" class="${routeColor(r) === cl ? 'on' : ''}" style="background:${cl}"></button>`).join('')}</div>
     <label class="f">Notes</label><textarea id="rNotes" rows="3" placeholder="Permits, water, camps…">${esc(r.notes || '')}</textarea>
     <div class="row"><button class="btn primary" data-act="saveRoute">Save details</button></div>`;
 }
@@ -6651,12 +6727,10 @@ function pageEditor() {
     <div class="d-title">${title}</div><div class="d-sub">${help}</div>
     ${e.kind !== 'extend' ? `<label class="f">Name</label><input id="edName" value="${esc(e.name)}">` : ''}
     ${e.kind === 'track' ? `<label class="f">Date hiked</label><input type="date" id="edDate" value="${esc(e.date)}">` : ''}
-    <label class="toggle"><input type="checkbox" id="edSnap" ${e.snap ? 'checked' : ''}> Follow trails${GRAPH && GRAPH.lon.length ? '' : ' (download map data to enable)'}</label>
-    <label class="toggle" style="margin-left:22px"><input type="checkbox" id="edRoads" ${data.settings.snapRoads !== false ? 'checked' : ''} ${e.snap ? '' : 'disabled'}> …and roads${data.settings.snapRoads !== false && !ROADS.length && FEATS.length ? ' <span class="small muted">(no roads yet: ☰ → Trail Data → Update)</span>' : ''}</label>
-    ${GRAPH && GRAPH.lon.length ? `<button class="btn wide" data-act="cutStart" style="margin:2px 0 4px" title="Click two points on a trail to hide the stretch between them">✂️ Hide a Trail Section</button><div class="small muted" style="margin:0 0 8px">Snapped onto a trail that is wrong or not there? Click two points on it to hide that stretch; your line goes around it.</div>` : ''}
+    ${GRAPH && GRAPH.lon.length ? `<label class="f">Snap to</label><div class="segc" role="group" aria-label="Snap to">${[['both', 'Trails + Roads'], ['trails', 'Trails Only'], ['off', 'Off']].map(([k, l]) => `<button data-act="edSnapMode" data-k="${k}" class="${snapMode(e) === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <button class="lnkbtn" data-act="cutStart" title="Click two points on a trail to hide the stretch between them">✂️ Snapped onto a wrong trail? Hide that section</button>` : ''}
     ${e.kind === 'track' || e.mode === 'approve' ? editorMarksHTML(e) : ''}
     ${e.kind === 'extend' && e.trackId ? `<label class="f" for="gpsOp">GPS line opacity: <b id="gpsOpV">${Math.round(gpsOp() * 100)}%</b></label><input type="range" id="gpsOp" min="0.15" max="1" step="0.05" value="${gpsOp()}" style="padding:0" aria-label="GPS line opacity"><div class="small muted" style="margin:-2px 0 6px">Lower it to see the mapped trails under your recorded line.</div>` : ''}
-    ${e.kind === 'route' ? `<div class="swatches" style="margin:6px 0">${COLORS.map(cl => `<button data-ecolor="${cl}" class="${e.color === cl ? 'on' : ''}" style="background:${cl}"></button>`).join('')}</div>` : ''}
     ${e.endPt ? `<div class="row" style="align-items:center"><span class="small" style="flex:1">${e.closed ? 'The section ends at B.' : 'End the section at the red B marker.'}</span><button class="btn" data-act="edFinishB" ${e.closed ? 'disabled' : ''}>Finish at B</button></div>` : ''}
     <div id="edProfile">${editorStatsHTML()}</div>
     <div id="edCredit">${creditHTML()}</div>
@@ -6697,6 +6771,7 @@ function editorPointsHTML(e) {
 // V20.6: while drawing a hike (or marking the trail you took), click a place and mark it Completed or Seen at that point.
 // The line still credits what it passes automatically; these are added on top when you save (review.add / review.seen),
 // dated to the day you were on when you marked it.
+const snapMode = e => !e.snap ? 'off' : data.settings.snapRoads !== false ? 'both' : 'trails';
 function editorMarksHTML(e) {
   const m = e.marks || [];
   return `<button class="btn wide ${e.markPick ? 'primary' : ''}" data-act="markPick" style="margin:0 0 4px">${e.markPick ? '📍 Click a place on the map… (tap to stop)' : '📍 Mark a Place Seen or Completed'}</button>
@@ -7134,10 +7209,7 @@ function renderLayers() {
       <div class="small muted">"Only show" hides things outside from view without removing them. "Hide everything outside" moves them to Deleted Items.</div></div>`;
   $('layers').innerHTML = `<h3 class="sec" style="margin-top:0">Map Type</h3>
     <div class="bases">${Object.entries(BASES).map(([k, b]) => `<button data-base="${k}" class="${(s.base || 'outdoor') === k ? 'on' : ''}"><i style="background:${b.sw}">${baseThumb(k, b)}</i>${b.label}</button>`).join('')}</div>
-    ${layersSec('show', 'Show on Map', `<div class="lgrid">${toggles.map(([k, l]) => `<label><input type="checkbox" data-layer="${k}" ${layerOn(k) ? 'checked' : ''}> ${l}</label>`).join('')}</div>
-      <div class="small muted" style="margin:2px 0 6px">Unnamed: lakes and peaks with no name get a dashed marker. ${idn === null ? 'Unnamed peaks from the terrain have not been scanned yet.' : `${idn} unnamed peak${idn === 1 ? '' : 's'} identified from the terrain.`}</div>
-      <div class="row"><button class="btn sm" data-act="scanPeaks">🔎 ${idn === null ? 'Find Unnamed Peaks' : 'Scan Again'}</button></div>
-      ${lsHTML()}`, false)}
+    ${layersSec('show', 'Show on Map', showRowsHTML(), false)}
     ${layersSec('borders', 'Borders', BORDERS.map(b => bRow(b, b.id === 'range' ? rangeExtra : parkExtra)).join('') + (data.parkOutline && data.parkOutline.length ? '' : '<div class="small muted">The park outline is not loaded yet. <button class="btn sm" data-act="parkOutline">Load It</button></div>'), false)}
     ${layersSec('heat', 'Heatmap & Filters', `<select id="heatMode"><option value="both">Heatmap: hikes + places</option><option value="tracks">Heatmap: hikes only</option><option value="places">Heatmap: places only</option></select>${filterSelects()}`, false)}
     ${layersSec('3d', '3D', `<label class="toggle"><input type="checkbox" id="l3d" ${s.terrain ? 'checked' : ''}> 3D Terrain</label>
@@ -7148,17 +7220,43 @@ function renderLayers() {
     ${layersSec('legend', 'Legend', legendHTML(), false)}`;
   $('heatMode').value = s.heatMode || 'both';
 }
-function lsHTML() {
-  const k = LST[view.lsSel] ? view.lsSel : 'tr-wish', d = LST[k], st = lsOf(k), changed = JSON.stringify((data.settings.lstyle || {})[k] || {}) !== '{}';
+// V20.14: Show on Map is one grouped list. Each row: a switch, a preview, the name; tap the row to open its look
+// (color, thickness or size, opacity) right there. Style keys are the LST keys; layer keys are the visibility switches.
+const SHOW_ROWS = [
+  ['Trails', [['trNone', 'Not Yet', 'tr-none'], ['trSeen', 'Seen', 'tr-seen'], ['trWish', 'Potential', 'tr-wish', 'On a route, a potential trip or saved'], ['trPlanned', 'Planned', 'tr-planned', 'On a trip with a date'], ['trDone', 'Completed', 'tr-done']]],
+  ['Your Lines', [['completed', 'Completed Hikes', 'completed', 'Your completed hikes and the trails you marked'], ['tracks', 'Uploads and Planned Hikes', 'tracks', 'GPS lines waiting for review, and planned trips'], ['routes', 'Routes', 'routes']]],
+  ['Places', [['peaks', 'Peaks', 'peaks'], ['passes', 'Passes', 'passes'], ['places', 'Waterfalls', 'places'], ['lakes', 'Lakes', 'lakes'], ['camps', 'Campsites', 'pins'], ['pins', 'Pins', 'pins'], ['areas', 'Your Areas', 'areas'], ['unnamed', 'Unnamed Peaks and Lakes', null, 'Dashed markers for places with no name']]],
+  ['Map', [['labels', 'Names', null], ['contours', 'Contour Lines', 'contours'], ['hillshade', 'Hillshade', null], ['heat', 'Heatmap', 'heat', 'Where you have been most']]]
+];
+const ICON_PREV = { peaks: '⛰️', passes: '🔀', places: '🌊', lakes: '💧', pins: '📍', heat: '🔥' };
+function lsPreview(sk) {
+  const d = LST[sk]; if (!d) return '';
+  if (d.kind === 'line') {
+    const st = lsOf(sk), c = st.c || (d.color && d.color.def) || '#a0522d', solid = ['tr-done', 'completed'].includes(sk);
+    return `<i class="lsw" style="border-top-color:${c};border-top-style:${solid ? 'solid' : 'dashed'};border-top-width:${Math.max(1.5, 3 * st.w).toFixed(1)}px;opacity:${st.o}"></i>`;
+  }
+  if (sk === 'areas') return `<i class="lsw" style="border:2px solid #558b2f;background:rgba(124,179,66,.3);height:10px;width:22px;border-radius:3px"></i>`;
+  return `<i class="lsw lsi" style="border:0;height:auto;opacity:${lsOf(sk).o}">${ICON_PREV[sk] || '•'}</i>`;
+}
+function lsControlsHTML(k) {
+  const d = LST[k], st = lsOf(k), changed = JSON.stringify((data.settings.lstyle || {})[k] || {}) !== '{}';
   const wl = d.kind === 'icon' || d.kind === 'pin' ? 'Size' : 'Thickness';
-  return `<details class="sub2 lsbox" ${view.lsOpen ? 'open' : ''} data-lsdet><summary>🎨 Change How They Look</summary>
-    <select id="lsSel">${Object.entries(LST).map(([kk, dd]) => `<option value="${kk}" ${kk === k ? 'selected' : ''}>${dd.label}</option>`).join('')}</select>
-    ${d.noW ? '' : `<label class="f">${wl}: <b id="lsWV">${Math.round(st.w * 100)}%</b></label><input type="range" data-ls="w" min="0.4" max="3" step="0.1" value="${st.w}" style="padding:0">`}
-    <label class="f">Opacity: <b id="lsOV">${Math.round(st.o * 100)}%</b></label><input type="range" data-ls="o" min="0.1" max="1" step="0.05" value="${st.o}" style="padding:0">
-    ${d.color ? `<label class="f">Color</label><div class="swatches">${[d.color.def, '#d62828', '#ff6d00', '#8e24aa', '#00897b', '#111111', '#ffffff'].map(c => `<button data-lscolor="${c}" class="${(st.c || d.color.def) === c ? 'on' : ''}" style="background:${c}"></button>`).join('')}<label class="lscp" title="Any color" style="background:${esc(st.c || d.color.def)}"><input type="color" data-ls="c" value="${esc(st.c || d.color.def)}"></label></div>`
-      : `<div class="small muted" style="margin-top:6px">${d.kind === 'icon' || d.kind === 'pin' || k === 'lakes' || k === 'areas' ? 'Colors come from status (Settings → Status Colors).' : k === 'routes' ? 'Each route keeps its own color (open the route to change it).' : ''}</div>`}
-    <div class="row"><button class="btn sm" data-lsreset ${changed ? '' : 'disabled'}>Reset ${esc(d.label)}</button></div>
-  </details>`;
+  const cur = st.c || (d.color && d.color.def) || '#000000';
+  return `<div class="bstyle lsctl">
+    ${d.color ? `<label class="f">Color</label><div class="swatches">${[d.color.def, '#9333ea', '#1e6fe0', '#16a34a', '#d62828', '#ff6d00', '#a0522d', '#111111', '#ffffff'].filter((c, i, a) => a.indexOf(c) === i).map(c => `<button data-lscolor="${c}" class="${cur === c ? 'on' : ''}" style="background:${c}" title="${c}"></button>`).join('')}<label class="lscp" title="Any color" style="background:${esc(cur)}"><input type="color" data-ls="c" value="${/^#[0-9a-f]{6}$/i.test(cur) ? cur : '#000000'}"></label></div>`
+      : d.kind === 'icon' || d.kind === 'pin' || k === 'lakes' || k === 'areas' ? '<div class="small muted">Colors show status (Settings → Status Colors).</div>' : ''}
+    ${d.noW ? '' : `<label class="f">${wl} <b id="lsWV">${Math.round(st.w * 100)}%</b></label><input type="range" data-ls="w" min="0.4" max="3" step="0.05" value="${st.w}">`}
+    <label class="f">Opacity <b id="lsOV">${Math.round(st.o * 100)}%</b></label><input type="range" data-ls="o" min="0.1" max="1" step="0.05" value="${st.o}">
+    <div class="row"><button class="btn sm" data-lsreset ${changed ? '' : 'disabled'}>Reset to Default</button></div></div>`;
+}
+function showRowsHTML() {
+  const idn = data.identified ? data.identified.features.length : null;
+  return SHOW_ROWS.map(([g, rows]) => `<div class="lgrp">${g}</div>` + rows.map(([lk, label, sk, sub]) => {
+    const open = sk && view.lsSel === sk && view.lsRow === lk;
+    return `<div class="lrow ${open ? 'open' : ''}">${swHTML(`data-layer="${lk}"`, layerOn(lk))}<span class="lname" ${sk ? `data-lsopen="${sk}" data-lsrow="${lk}" title="Tap to change how it looks"` : 'style="cursor:default"'}>${sk ? lsPreview(sk) : '<i class="lsw" style="border:0"></i>'}<span class="lnm">${label}${sub ? `<span class="small muted lsub">${sub}</span>` : ''}</span></span>${sk ? `<span class="lchev" data-lsopen="${sk}" data-lsrow="${lk}">›</span>` : ''}</div>`
+      + (open ? lsControlsHTML(sk) : '')
+      + (lk === 'unnamed' ? `<div class="row" style="margin:2px 0 4px 52px"><button class="btn sm" data-act="scanPeaks">🔎 ${idn === null ? 'Find Unnamed Peaks' : `Scan Again (${idn} found)`}</button></div>` : '');
+  }).join('')).join('');
 }
 function setLs(k, patch, quiet) {
   const all = Object.assign({}, data.settings.lstyle), cur = Object.assign({}, all[k], patch);
@@ -7469,6 +7567,9 @@ function onAction(act, el) {
     case 'delPin': sure(`Delete “${pinName(p)}”?`, { body: 'You can restore it from Deleted Items.' }).then(ok => { if (ok) { trashPut('pin', p); selectedPinId = null; touch({ noRender: true }); goBack(); } }); break;
     case 'edUndo': undoPoint(); break;
     case 'campPick': startCampPick(); break;
+    case 'extPick': extPick(el.dataset.q, el.dataset.i); break;
+    case 'openStats': openDash(); break;
+    case 'edSnapMode': if (editor) { const k = el.dataset.k; if (k !== 'off' && (data.settings.snapRoads !== false) !== (k === 'both')) { data.settings.snapRoads = k === 'both'; buildGraph(); touch({ noRender: true }); } setEdSnap(k !== 'off'); data.settings.snap = k !== 'off'; renderToolbar(); renderSide(); } break;
     case 'sumTog': { const dv = view.detail, dt = el.parentElement; dt.open = !dt.open; dv.sumOpen = dv.sumOpen || {}; dv.sumOpen[el.dataset.k] = dt.open; break; }
     case 'revShow': showItemOnMap(el.dataset.id); break;
     case 'revDrop': { const tt = findTrack(view.detail.id); if (!tt) break; const rv = reviewOf(tt), rid = el.dataset.id;
@@ -8076,6 +8177,7 @@ $('layers').addEventListener('toggle', e => { const k = e.target.dataset && e.ta
 $('layers').addEventListener('click', e => {
   const act = e.target.closest('[data-act]'); if (act) { e.preventDefault(); onAction(act.dataset.act, act); if (!$('layers').hidden) renderLayers(); return; }
   const b = e.target.closest('[data-base]'); if (b) { setBase(b.dataset.base); renderLayers(); touch({ noRender: true }); return; }
+  const lo = e.target.closest('[data-lsopen]'); if (lo) { const same = view.lsSel === lo.dataset.lsopen && view.lsRow === lo.dataset.lsrow; view.lsSel = same ? null : lo.dataset.lsopen; view.lsRow = same ? null : lo.dataset.lsrow; layersOpen.show = true; renderLayers(); return; }
   const sel = e.target.closest('[data-bsel]'); if (sel) { bSel = bSel === sel.dataset.bsel ? null : sel.dataset.bsel; layersOpen.borders = true; renderLayers(); return; }
   const lc = e.target.closest('[data-lscolor]'); if (lc) { setLs(LST[view.lsSel] ? view.lsSel : 'tr-wish', { c: lc.dataset.lscolor }); return; }
   if (e.target.closest('[data-lsreset]')) { const all = Object.assign({}, data.settings.lstyle); delete all[LST[view.lsSel] ? view.lsSel : 'tr-wish']; data.settings.lstyle = all; applyLayerStyles(); syncPins(); sizePinDrag(); touch({ noRender: true }); renderLayers(); return; }
