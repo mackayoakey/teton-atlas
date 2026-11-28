@@ -863,7 +863,7 @@ a.srow[data-open]:hover{background:var(--hover)}
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V20.11';
+const APP_VERSION = 'V20.12';
 // Rough outline of the Teton Range (Teton Pass to Conant Pass, Jackson Hole side and Teton Valley side). Editable from the Layers panel.
 // Borders you can restyle (Layers -> Borders). Add an entry here to make another outline styleable.
 const BORDERS = [
@@ -1169,6 +1169,7 @@ const VERSIONS = [
   { name: 'Teton Atlas V20.9', date: '2026-11-27', notes: ['Planned routes are now violet, thin, dashed and see-through, so they never look like something you finished. Day colors show only while a route is open.', 'Updates: the app checks GitHub for a newer version every time you open or return to it and offers Update Now. Menu → Check for App Update does it by hand, and update.html fixes a browser stuck on an old version.'] },
   { name: 'Teton Atlas V20.10', date: '2026-11-27', notes: ['Potential trails (on a route, potential trip or saved) are now purple, thinner and see-through; planned trails are violet and thin too, so neither looks completed.', 'Every trail type (Not Yet, Seen, Potential, Planned, Completed) has its own color, thickness and opacity in Layers → Show on Map → Change How They Look.'] },
   { name: 'Teton Atlas V20.11', date: '2026-11-27', notes: ['Smart snapping crosses small gaps in the map data: a trail or fork that stops a few metres short of another trail or a trailhead road (common in OpenStreetMap) is now joined to it, so snapping follows it instead of drawing off-trail. Hidden trail sections stay gaps.'] },
+  { name: 'Teton Atlas V20.12', date: '2026-11-27', notes: ['Snapping downloads its own data: click where this device has no trail-and-road data yet (outside your regions, or a region downloaded before roads) and it fetches trails and roads around the click, then re-snaps. No need to run Check All Regions first.'] },
 ];
 
 // ================= State =================
@@ -3857,8 +3858,46 @@ function snapPoint(c) {
   const n = nearestNode(c[0], c[1], 120);
   return n >= 0 ? [GRAPH.lon[n], GRAPH.lat[n]] : c;
 }
-function computeLeg(i) {
+// V20.12: snapping gets its own map data. When you click where this device has no trail-and-road data yet (an area
+// outside your regions, or a region downloaded before roads came in), it downloads trails and roads around the click
+// (about 2 × 2.5 km), then re-snaps the legs there. Boxes already fetched are remembered (IndexedDB 'snapBoxes').
+let SNAPBOX = null, SNAP_BUSY = null;
+const snapCovered = p => (REG_HERE && regions().some(r => r.roads && REG_HERE.has(r.id) && inBox(p, r))) || (SNAPBOX || []).some(b => inBox(p, b));
+async function ensureSnapData(pts) {
+  if (!SNAPBOX) SNAPBOX = (await idbGet('snapBoxes')) || [];
+  await regionsHere();
+  const need = pts.filter(p => !snapCovered(p));
+  if (!need.length || !navigator.onLine) return false;
+  const pad = 0.012, padX = 0.016;
+  const box = { s: Math.min(...need.map(p => p[1])) - pad, n: Math.max(...need.map(p => p[1])) + pad, w: Math.min(...need.map(p => p[0])) - padX, e: Math.max(...need.map(p => p[0])) + padX };
+  if ((box.n - box.s) * (box.e - box.w) > 0.06) return false;   // a very long straight leg: leave it (download the region instead)
+  toast('Getting trails and roads here for snapping…', 0);
+  const json = await overpass(overpassQuery(box.s, box.w, box.n, box.e));
+  const fresh = buildFeatures(json.elements), have = new Map(((data.osm && data.osm.features) || []).map(f => [f.id, f]));
+  let nt = 0, nr = 0;
+  for (const f of fresh) if (!have.has(f.id)) { if (f.kind === 'trail') { f.rg = f.rg || 'snap'; nt++; } if (f.kind === 'road') nr++; have.set(f.id, f); }
+  data.osm = { fetchedAt: (data.osm && data.osm.fetchedAt) || Date.now(), features: [...have.values()] };
+  SNAPBOX.push({ s: +box.s.toFixed(4), w: +box.w.toFixed(4), n: +box.n.toFixed(4), e: +box.e.toFixed(4), at: Date.now() });
+  await idbPut('snapBoxes', SNAPBOX); await idbPut('osm', data.osm);
+  indexFeatures(); updateSources();
+  toast(nt || nr ? `Added ${nr} road${nr === 1 ? '' : 's'} and ${nt} trail${nt === 1 ? '' : 's'} here. Snapping again…` : 'No mapped trails or roads here.', 3000);
+  return nt + nr > 0;
+}
+function snapFetchLeg(i) {
+  const e = editor; if (!e || !e.wps[i + 1] || !e.wps[i + 1].snap) return;
+  const a = e.wps[i].c, b = e.wps[i + 1].c;
+  if (snapCovered(a) && snapCovered(b) && SNAPBOX) return;
+  const run = () => ensureSnapData([a, b]).then(got => {
+    if (editor !== e) return;
+    if (!got) { if (e.legs[i] && e.legs[i].off && snapCovered(a) && snapCovered(b)) toast('No trail or road connection here, so this leg is drawn off-trail.', 2500); return; }
+    e.legs.forEach((l, k) => { if (l && l.off && e.wps[k + 1] && e.wps[k + 1].snap) computeLeg(k, true); });
+    redrawEditor(); renderSide();
+  }).catch(err => toast('Could not download roads here (' + err.message + '). The leg stays off-trail.', 5000));
+  SNAP_BUSY = (SNAP_BUSY || Promise.resolve()).then(run, run);
+}
+function computeLeg(i, noFetch) {
   const a = editor.wps[i].c, b = editor.wps[i + 1].c, snap = editor.wps[i + 1].snap;
+  if (snap && !noFetch) snapFetchLeg(i);
   let path = snap ? routeBetween(a, b) : null;
   if (path && path.length > 1) {
     const st = path[0], en = path[path.length - 1];
@@ -3867,7 +3906,7 @@ function computeLeg(i) {
     editor.legs[i] = { off: false, pts: path.map(p => [p[0], p[1]]) };
   } else {
     editor.legs[i] = { off: true, pts: resample([a.slice(0, 2), b.slice(0, 2)], 30).map(p => [p[0], p[1]]) };
-    if (snap && !path) toast('No trail connection here, so this leg is drawn off-trail.', 2500);
+    if (snap && !path && noFetch) toast('No trail or road connection here, so this leg is drawn off-trail.', 2500);
   }
 }
 function addPoint(c, quiet) {
