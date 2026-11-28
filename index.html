@@ -863,7 +863,7 @@ a.srow[data-open]:hover{background:var(--hover)}
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V20.9';
+const APP_VERSION = 'V20.10';
 // Rough outline of the Teton Range (Teton Pass to Conant Pass, Jackson Hole side and Teton Valley side). Editable from the Layers panel.
 // Borders you can restyle (Layers -> Borders). Add an entry here to make another outline styleable.
 const BORDERS = [
@@ -1167,6 +1167,7 @@ const VERSIONS = [
   { name: 'Teton Atlas V20.7', date: '2026-11-26', notes: ['Complete step: tap Trails, Lakes, Passes… to see every item; tap one to see it on the map, × to drop it from the hike.', 'Every place page has Which Hikes: Add or Remove, a multi-select list of your hikes.'] },
   { name: 'Teton Atlas V20.8', date: '2026-11-26', notes: ['Snapping follows roads as well as trails (for hikes that start on a road). Trails win when both go the same way. Turn it off under Follow trails → …and roads. Run Trail Data → Check All Regions once to download the roads.', 'Trails outside your Teton Range outline now draw on the map even with Only Show What\'s Inside on (it showed the trail name but not the line). Lists and stats still keep to the range.'] },
   { name: 'Teton Atlas V20.9', date: '2026-11-27', notes: ['Planned routes are now violet, thin, dashed and see-through, so they never look like something you finished. Day colors show only while a route is open.', 'Updates: the app checks GitHub for a newer version every time you open or return to it and offers Update Now. Menu → Check for App Update does it by hand, and update.html fixes a browser stuck on an old version.'] },
+  { name: 'Teton Atlas V20.10', date: '2026-11-27', notes: ['Potential trails (on a route, potential trip or saved) are now purple, thinner and see-through; planned trails are violet and thin too, so neither looks completed.', 'Every trail type (Not Yet, Seen, Potential, Planned, Completed) has its own color, thickness and opacity in Layers → Show on Map → Change How They Look.'] },
 ];
 
 // ================= State =================
@@ -3102,7 +3103,12 @@ function restyleIcons() {
 // ===== V20.4: how each map layer looks (Layers → Show on Map → Change How They Look). Saved in settings.lstyle (synced). =====
 // w = thickness or size (×), o = opacity (×), c = color where the color is not set by status.
 const LST = {
-  trails: { label: 'Trails', kind: 'line', line: ['trail-line', 'trail-planned', 'trail-done'], cas: ['trail-case'] },
+  // V20.10: every trail type has its own look (the old single "Trails" setting still applies as their starting point)
+  'tr-none': { label: 'Trails: Not Yet', kind: 'line', line: ['trail-line'], cas: ['trail-line-case'], color: { layers: ['trail-line'], def: '#a0522d', expr: ['match', ['get', 'hw'], 'track', '#8d6e63', '#a0522d'] } },
+  'tr-seen': { label: 'Trails: Seen', kind: 'line', line: ['trail-seen'], cas: ['trail-seen-case'], color: { layers: ['trail-seen'], def: '#a0522d', expr: ['match', ['get', 'hw'], 'track', '#8d6e63', '#a0522d'] } },
+  'tr-wish': { label: 'Trails: Potential (on a route, potential trip or saved)', kind: 'line', line: ['trail-wish'], cas: ['trail-wish-case'], color: { layers: ['trail-wish'], def: '#9333ea' }, def: { w: 0.75, o: 0.6 } },
+  'tr-planned': { label: 'Trails: Planned (on a dated trip)', kind: 'line', line: ['trail-planned'], cas: ['trail-planned-case'], color: { layers: ['trail-planned'], def: '#7c3aed' }, def: { w: 0.7, o: 0.7 } },
+  'tr-done': { label: 'Trails: Completed', kind: 'line', line: ['trail-done'], cas: ['trail-done-case'], color: { layers: ['trail-done'], def: '#1e6fe0' } },
   tracks: { label: 'My Hikes (GPS lines)', kind: 'line', line: ['track-garmin', 'track-planned', 'track-pending', 'track-ignored'], cas: ['track-case'], color: { layers: ['track-garmin'], def: '#1d4ed8' } },
   completed: { label: 'Completed Trails (and hikes you drew)', kind: 'line', line: ['track-approved', 'track-manual'], cas: ['track-approved-case'], color: { layers: ['track-approved', 'track-manual'], def: '#1e6fe0' } },
   routes: { label: 'My Routes', kind: 'line', line: ['route-line'], cas: ['route-case'] },
@@ -3113,7 +3119,9 @@ const LST = {
   contours: { label: 'Contours', kind: 'line', line: ['o-contour'], noW: true },
   heat: { label: 'Heatmap', kind: 'heat', noW: true }
 };
-const lsOf = k => Object.assign({ w: 1, o: 1, c: '' }, ((data.settings.lstyle || {})[k]) || {});
+const lsOf = k => { const ls = data.settings.lstyle || {}, d = LST[k] || {};
+  return Object.assign({ w: 1, o: 1, c: '' }, d.def || {}, k.startsWith('tr-') ? ls.trails || {} : {}, ls[k] || {}); };
+const lsDef = (k, f) => f === 'c' ? '' : ((LST[k] || {}).def || {})[f] ?? 1;
 const LBASE = {};
 function lsBase(id, prop, dflt) { const key = id + '|' + prop; if (!(key in LBASE)) { let v = null; try { v = map.getPaintProperty(id, prop); } catch (e) { /* no layer */ } LBASE[key] = v == null ? dflt : v; } return LBASE[key]; }
 // Multiply a paint value by k, also when it changes with zoom (only the outputs of a zoom curve may be scaled)
@@ -3137,7 +3145,7 @@ function applyLayerStyles() {
         if (!id.startsWith('track-')) set(id, 'line-opacity', lsScale(lsBase(id, 'line-opacity', 1), st.o));   // hikes: applyGpsOp below
       }
       for (const id of (d.fill || []).filter(x => map.getLayer(x))) set(id, 'fill-opacity', lsScale(lsBase(id, 'fill-opacity', 1), st.o));
-      if (d.color) for (const id of d.color.layers) set(id, 'line-color', st.c || d.color.def);
+      if (d.color) for (const id of d.color.layers) set(id, 'line-color', st.c || d.color.expr || d.color.def);
     }
     if (d.kind === 'heat' && map.getLayer('heat-layer')) set('heat-layer', 'heatmap-opacity', lsScale(lsBase('heat-layer', 'heatmap-opacity', 1), st.o));
   }
@@ -3165,8 +3173,7 @@ function applyStatusPaint() {
   map.setPaintProperty('lake-line', 'line-color', stMatch('st', '#2b7bbd'));
   map.setPaintProperty('area-fill', 'fill-color', stMatch('st', '#7cb342'));
   map.setPaintProperty('area-line', 'line-color', stMatch('st', '#558b2f'));
-  map.setPaintProperty('trail-done', 'line-color', lsOf('completed').c || '#1e6fe0');   // V20.6: no green trails; seen or partly walked stays a normal trail
-  map.setPaintProperty('trail-planned', 'line-color', stColor('planned'));
+  applyLayerStyles();   // V20.10: trail colors come from Change How They Look (one entry per trail type)
 }
 // Peak labels only on the big peaks until you zoom in; everything from zoom 12.5
 const POI_LABEL = ['step', ['zoom'], ['case', ['all', ['==', ['get', 'kind'], 'peak'], ['>', ['get', 'ele'], 3600]], ['get', 'label'], ''], 12.5, ['get', 'label']];
@@ -3197,13 +3204,18 @@ function addOverlays() {
   map.addLayer({ id: 'hidden-pt', type: 'circle', source: 'hiddenf', filter: ['==', ['geometry-type'], 'Point'], layout: { visibility: layerOn('hidden') ? 'visible' : 'none' }, paint: { 'circle-radius': 5, 'circle-color': 'rgba(156,163,175,.35)', 'circle-stroke-color': '#9ca3af', 'circle-stroke-width': 1.5 } });
   map.addLayer({ id: 'trail-hit', type: 'line', source: 'trails', paint: { 'line-width': 14, 'line-opacity': 0 } });
   const trailW = (lo, hi) => ['interpolate', ['linear'], ['zoom'], 9, lo, 15, hi];
-  // Trails, AllTrails style: a soft white edge under a dashed brown line; trails you have done turn solid in your status colors
-  map.addLayer({ id: 'trail-case', type: 'line', source: 'trails', minzoom: 10, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-opacity': 0.75, 'line-width': trailW(2.4, 5.2) } });
-  map.addLayer({ id: 'trail-line', type: 'line', source: 'trails', filter: ['all', ['<', ['get', 'cov'], 2], ['!=', ['get', 'st'], 'planned'], ['!=', ['get', 'st'], 'been']], layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: {
-    'line-color': ['match', ['get', 'hw'], 'track', '#8d6e63', '#a0522d'], 'line-width': trailW(1, 2.6), 'line-dasharray': [2, 1.4] } });
-  map.addLayer({ id: 'trail-planned', type: 'line', source: 'trails', filter: ['all', ['<', ['get', 'cov'], 2], ['==', ['get', 'st'], 'planned']], layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: { 'line-color': stColor('planned'), 'line-width': trailW(1.4, 3.2), 'line-dasharray': [2, 1.2] } });
-  map.addLayer({ id: 'trail-done', type: 'line', source: 'trails', filter: ['any', ['==', ['get', 'cov'], 2], ['==', ['get', 'st'], 'been']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: {
-    'line-color': '#1e6fe0', 'line-width': trailW(1.6, 3) } });   // V20.6: only sections you completed (75%+ walked, or marked by hand), in the completed blue
+  // V20.10: one layer (and its own white edge) per trail type, so each can have its own color, thickness and opacity
+  // (Layers → Show on Map → Change How They Look). Defaults live in LST[...].def; the layers are drawn at full strength.
+  const notDone = ['<', ['get', 'cov'], 2];
+  const TR = [
+    ['trail-line', ['all', notDone, ['match', ['get', 'st'], ['planned', 'wish', 'seen', 'been'], false, true]], 'butt', [2, 1.4], trailW(1, 2.6)],
+    ['trail-seen', ['all', notDone, ['==', ['get', 'st'], 'seen']], 'butt', [2, 1.4], trailW(1, 2.6)],
+    ['trail-wish', ['all', notDone, ['==', ['get', 'st'], 'wish']], 'butt', [2, 1.4], trailW(1, 2.6)],
+    ['trail-planned', ['all', notDone, ['==', ['get', 'st'], 'planned']], 'butt', [2, 1.2], trailW(1.4, 3.2)],
+    ['trail-done', ['any', ['==', ['get', 'cov'], 2], ['==', ['get', 'st'], 'been']], 'round', null, trailW(1.6, 3)]
+  ];
+  for (const [id, filter, , , w] of TR) map.addLayer({ id: id + '-case', type: 'line', source: 'trails', minzoom: 10, filter, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-opacity': 0.75, 'line-width': ['interpolate', ['linear'], ['zoom'], 9, w[4] + 1.4, 15, w[6] + 2.6] } });
+  for (const [id, filter, cap, dash, w] of TR) map.addLayer({ id, type: 'line', source: 'trails', filter, layout: { 'line-cap': cap, 'line-join': 'round' }, paint: Object.assign({ 'line-color': '#a0522d', 'line-width': w }, dash ? { 'line-dasharray': dash } : {}) });
   // V20.9: routes are plans: thin, dashed and see-through (solid blue means done)
   map.addLayer({ id: 'route-case', type: 'line', source: 'routes', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': ['case', ['get', 'sel'], 6.5, 3.6], 'line-opacity': ['case', ['get', 'sel'], 0.85, 0.45] } });
   map.addLayer({ id: 'route-line', type: 'line', source: 'routes', layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': ['case', ['get', 'sel'], 4, 2.2], 'line-opacity': ['case', ['get', 'sel'], 0.95, 0.65], 'line-dasharray': [2.2, 1.6] } });
@@ -3258,7 +3270,7 @@ function addOverlays() {
   applyLayerVisibility(); applyMarkerStyle(); applyStatusPaint(); applyOutdoorPalette();
 }
 const LAYER_GROUPS = {
-  trails: ['trail-case', 'trail-line', 'trail-planned', 'trail-done', 'trail-hit'], lakes: ['lake-fill', 'lake-line'], tracks: [],   // V20.3: hikes are filtered in updateSources (My Hikes = GPX uploads and plans, My Completed Hikes = completed)
+  trails: ['trail-line-case', 'trail-seen-case', 'trail-wish-case', 'trail-planned-case', 'trail-done-case', 'trail-line', 'trail-seen', 'trail-wish', 'trail-planned', 'trail-done', 'trail-hit'], lakes: ['lake-fill', 'lake-line'], tracks: [],   // V20.3: hikes are filtered in updateSources (My Hikes = GPX uploads and plans, My Completed Hikes = completed)
   hidden: ['hidden-line', 'hidden-pt'], routes: ['route-case', 'route-line', 'route-dir'], labels: ['trail-label', 'lake-label', 'poi-label', 'area-label', 'river-name'], heat: ['heat-layer'], areas: ['area-fill', 'area-line', 'area-label']
 };
 function applyLayerVisibility() {
@@ -6958,20 +6970,20 @@ function renderLayers() {
   $('heatMode').value = s.heatMode || 'both';
 }
 function lsHTML() {
-  const k = view.lsSel || 'trails', d = LST[k], st = lsOf(k), changed = JSON.stringify((data.settings.lstyle || {})[k] || {}) !== '{}';
+  const k = LST[view.lsSel] ? view.lsSel : 'tr-wish', d = LST[k], st = lsOf(k), changed = JSON.stringify((data.settings.lstyle || {})[k] || {}) !== '{}';
   const wl = d.kind === 'icon' || d.kind === 'pin' ? 'Size' : 'Thickness';
   return `<details class="sub2 lsbox" ${view.lsOpen ? 'open' : ''} data-lsdet><summary>🎨 Change How They Look</summary>
     <select id="lsSel">${Object.entries(LST).map(([kk, dd]) => `<option value="${kk}" ${kk === k ? 'selected' : ''}>${dd.label}</option>`).join('')}</select>
     ${d.noW ? '' : `<label class="f">${wl}: <b id="lsWV">${Math.round(st.w * 100)}%</b></label><input type="range" data-ls="w" min="0.4" max="3" step="0.1" value="${st.w}" style="padding:0">`}
     <label class="f">Opacity: <b id="lsOV">${Math.round(st.o * 100)}%</b></label><input type="range" data-ls="o" min="0.1" max="1" step="0.05" value="${st.o}" style="padding:0">
     ${d.color ? `<label class="f">Color</label><div class="swatches">${[d.color.def, '#d62828', '#ff6d00', '#8e24aa', '#00897b', '#111111', '#ffffff'].map(c => `<button data-lscolor="${c}" class="${(st.c || d.color.def) === c ? 'on' : ''}" style="background:${c}"></button>`).join('')}<label class="lscp" title="Any color" style="background:${esc(st.c || d.color.def)}"><input type="color" data-ls="c" value="${esc(st.c || d.color.def)}"></label></div>`
-      : `<div class="small muted" style="margin-top:6px">${d.kind === 'icon' || d.kind === 'pin' || k === 'lakes' || k === 'areas' || k === 'trails' ? 'Colors come from status (Settings → Status Colors).' : k === 'routes' ? 'Each route keeps its own color (open the route to change it).' : ''}</div>`}
+      : `<div class="small muted" style="margin-top:6px">${d.kind === 'icon' || d.kind === 'pin' || k === 'lakes' || k === 'areas' ? 'Colors come from status (Settings → Status Colors).' : k === 'routes' ? 'Each route keeps its own color (open the route to change it).' : ''}</div>`}
     <div class="row"><button class="btn sm" data-lsreset ${changed ? '' : 'disabled'}>Reset ${esc(d.label)}</button></div>
   </details>`;
 }
 function setLs(k, patch, quiet) {
   const all = Object.assign({}, data.settings.lstyle), cur = Object.assign({}, all[k], patch);
-  for (const f of Object.keys(cur)) if (cur[f] === '' || (f !== 'c' && +cur[f] === 1)) delete cur[f];
+  for (const f of Object.keys(cur)) if (cur[f] === '' || (f !== 'c' && +cur[f] === +lsDef(k, f))) delete cur[f];
   if (Object.keys(cur).length) all[k] = cur; else delete all[k];
   data.settings.lstyle = all; applyLayerStyles(); syncPins(); sizePinDrag();
   if (!quiet) { touch({ noRender: true }); renderLayers(); }
@@ -6981,7 +6993,7 @@ function legendHTML() {
     <div class="legend-st">${ST_KEYS.map(k => `<i style="background:${stColor(k)}"></i><span><b>${STATUS[k].label}</b> <span class="muted">· ${STATUS[k].sub}</span></span>`).join('')}</div>
     <div class="small muted" style="margin:6px 0 10px">Change these colors in Settings → Status Colors.</div>
     <div class="small" style="line-height:1.9">
-      <span style="color:#a0522d">┅</span> trail · <span style="color:#1e6fe0">━</span> trail section you completed (partly walked or only seen stays a normal trail)<br>
+      <span style="color:#a0522d">┅</span> trail · <span style="color:${lsOf('tr-done').c || '#1e6fe0'}">━</span> trail section you completed · <span style="color:${lsOf('tr-wish').c || '#9333ea'}">┅</span> potential · <span style="color:${lsOf('tr-planned').c || '#7c3aed'}">┅</span> planned (change any of these in Show on Map → Change How They Look)<br>
       <span style="color:#1d4ed8">━</span> completed hike (GPS) · <span style="color:#1e6fe0">━</span> Completed Trail or drawn hike<br>
       <span style="color:${stColor('planned')}">┅</span> planned trip · <span style="color:#ea580c">┈</span> uploaded, waiting for review<br>
       ▲ peak · ◆ pass · ● waterfall · 💧 lake · dashed outline = unnamed<br>lake and waterfall markers are white until you have seen or visited them, then blue<br>
@@ -7872,7 +7884,7 @@ $('layers').addEventListener('input', e => {
   if (e.target.id === 'bearing') { $('bearV').textContent = e.target.value + '°'; map.setBearing(+e.target.value); }
   if (e.target.dataset.cpick === 'border') setBorderStyle({ color: e.target.value }, true);
   const lk = e.target.dataset && e.target.dataset.ls;
-  if (lk) { const key = view.lsSel || 'trails'; setLs(key, { [lk]: lk === 'c' ? e.target.value : +e.target.value }, true); if (lk === 'w') $('lsWV').textContent = Math.round(e.target.value * 100) + '%'; if (lk === 'o') $('lsOV').textContent = Math.round(e.target.value * 100) + '%'; return; }
+  if (lk) { const key = LST[view.lsSel] ? view.lsSel : 'tr-wish'; setLs(key, { [lk]: lk === 'c' ? e.target.value : +e.target.value }, true); if (lk === 'w') $('lsWV').textContent = Math.round(e.target.value * 100) + '%'; if (lk === 'o') $('lsOV').textContent = Math.round(e.target.value * 100) + '%'; return; }
   const k = e.target.dataset && e.target.dataset.bs; if (!k) return;
   const v = +e.target.value;
   setBorderStyle({ [k]: v }, true);
@@ -7885,8 +7897,8 @@ $('layers').addEventListener('click', e => {
   const act = e.target.closest('[data-act]'); if (act) { e.preventDefault(); onAction(act.dataset.act, act); if (!$('layers').hidden) renderLayers(); return; }
   const b = e.target.closest('[data-base]'); if (b) { setBase(b.dataset.base); renderLayers(); touch({ noRender: true }); return; }
   const sel = e.target.closest('[data-bsel]'); if (sel) { bSel = bSel === sel.dataset.bsel ? null : sel.dataset.bsel; layersOpen.borders = true; renderLayers(); return; }
-  const lc = e.target.closest('[data-lscolor]'); if (lc) { setLs(view.lsSel || 'trails', { c: lc.dataset.lscolor }); return; }
-  if (e.target.closest('[data-lsreset]')) { const all = Object.assign({}, data.settings.lstyle); delete all[view.lsSel || 'trails']; data.settings.lstyle = all; applyLayerStyles(); syncPins(); sizePinDrag(); touch({ noRender: true }); renderLayers(); return; }
+  const lc = e.target.closest('[data-lscolor]'); if (lc) { setLs(LST[view.lsSel] ? view.lsSel : 'tr-wish', { c: lc.dataset.lscolor }); return; }
+  if (e.target.closest('[data-lsreset]')) { const all = Object.assign({}, data.settings.lstyle); delete all[LST[view.lsSel] ? view.lsSel : 'tr-wish']; data.settings.lstyle = all; applyLayerStyles(); syncPins(); sizePinDrag(); touch({ noRender: true }); renderLayers(); return; }
   const col = e.target.closest('[data-swatch]'); if (col && col.dataset.swFor === 'border') { setBorderStyle({ color: col.dataset.swatch }); renderLayers(); return; }
   const ds = e.target.closest('[data-bdash]'); if (ds) { setBorderStyle({ dash: ds.dataset.bdash }); renderLayers(); return; }
   if (e.target.closest('[data-breset]')) { const o = Object.assign({}, data.settings.borders); delete o[bSel]; data.settings.borders = o; applyBorderStyle(bSel); touch({ noRender: true }); renderLayers(); return; }
