@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-store">
+<title>Update Teton Atlas</title>
+<style>
+  body { font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #1f2326; color: #eef1f3; margin: 0; display: grid; place-items: center; min-height: 100vh; }
+  .card { background: #2a2f33; border-radius: 16px; padding: 28px 30px; max-width: 460px; width: calc(100% - 40px); box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+  h1 { font-size: 21px; margin: 0 0 6px; }
+  .muted { color: #a9b2b8; font-size: 14px; }
+  ol { padding-left: 20px; margin: 14px 0; }
+  li { margin: 6px 0; }
+  li.ok::marker { content: "✓  "; color: #86efac; }
+  li.bad::marker { content: "✗  "; color: #fca5a5; }
+  a.btn { display: inline-block; margin-top: 10px; background: #bbf28c; color: #142008; text-decoration: none; font-weight: 600; padding: 11px 18px; border-radius: 999px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Updating Teton Atlas</h1>
+  <div class="muted">This clears the saved copy of the app's code in this browser and loads the newest version from GitHub. Your hikes, pins, routes, settings, sync token, downloaded trail data and offline terrain are not touched.</div>
+  <ol id="steps"></ol>
+  <div id="done"></div>
+</div>
+<script>
+(async () => {
+  const steps = document.getElementById('steps');
+  const step = (txt, ok) => { const li = document.createElement('li'); li.textContent = txt; li.className = ok === false ? 'bad' : 'ok'; steps.appendChild(li); };
+  let ver = null;
+  try { const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); ver = (await r.json()).version; step('Newest version on GitHub: ' + ver); }
+  catch (e) { step('Could not reach GitHub (' + e.message + '). Check your connection.', false); }
+  try {
+    const regs = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistrations() : [];
+    for (const r of regs) await r.unregister();
+    step('Stopped the old app helper (' + regs.length + ')');
+  } catch (e) { step('Could not stop the old app helper: ' + e.message, false); }
+  try {
+    let n = 0;
+    if (window.caches) for (const k of await caches.keys()) if (k.startsWith('teton-atlas-shell')) { await caches.delete(k); n++; }
+    step('Cleared ' + n + ' saved cop' + (n === 1 ? 'y' : 'ies') + ' of the app code');
+  } catch (e) { step('Could not clear the saved app code: ' + e.message, false); }
+  // Load the app file once with the browser cache bypassed, so the next open gets it fresh
+  try { await fetch('./?v=' + Date.now(), { cache: 'reload' }); await fetch('sw.js', { cache: 'reload' }); step('Downloaded the newest app files'); } catch (e) {}
+  const url = './?v=' + Date.now();
+  document.getElementById('done').innerHTML = '<a class="btn" href="' + url + '">Open Teton Atlas' + (ver ? ' ' + ver : '') + '</a><div class="muted" style="margin-top:10px">Opening automatically…</div>';
+  setTimeout(() => location.replace(url), 2500);
+})();
+</script>
+</body>
+</html>

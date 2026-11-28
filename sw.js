@@ -1,6 +1,6 @@
 // Teton Atlas app shell cache. Map tiles and map data are NOT cached here.
 // Saved terrain (offline terrain, 1 m terrain) and map text live in their own caches and must survive app updates.
-const CACHE = 'teton-atlas-shell-v20-8';
+const CACHE = 'teton-atlas-shell-v20-9';
 const DEM_CACHE = 'teton-dem-offline';
 const KEEP = [DEM_CACHE, 'teton-dem1m', 'teton-glyphs'];   // saved on request by the app; must survive updates
 const SHELL = ['./', './index.html', './manifest.json', './icon.svg', './favicon-32.png', './favicon-64.png', './icon-192.png', './icon-512.png', './apple-touch-icon.png',
@@ -29,7 +29,9 @@ self.addEventListener('fetch', e => {
   if (!ours && url.hostname !== 'unpkg.com') return; // tiles, Overpass, etc. go straight to the network
   if (ours) {
     // Network first for our own files so updates arrive; fall back to the cached copy offline
-    e.respondWith(fetch(req).then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); return res; })
+    // V20.9: always ask GitHub (cache: 'no-store'), never the browser's 10-minute HTTP cache; version.json and update.html are never stored
+    const fresh = url.pathname.endsWith('/version.json') || url.pathname.endsWith('/update.html');
+    e.respondWith(fetch(req.url, { cache: 'no-store', credentials: 'same-origin' }).then(res => { if (!fresh && res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); } return res; })
       .catch(() => caches.match(req).then(r => r || caches.match('./index.html'))));
   } else {
     // Library files from unpkg: cache first

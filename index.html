@@ -863,7 +863,7 @@ a.srow[data-open]:hover{background:var(--hover)}
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V20.8';
+const APP_VERSION = 'V20.9';
 // Rough outline of the Teton Range (Teton Pass to Conant Pass, Jackson Hole side and Teton Valley side). Editable from the Layers panel.
 // Borders you can restyle (Layers -> Borders). Add an entry here to make another outline styleable.
 const BORDERS = [
@@ -962,7 +962,9 @@ const AREA_TYPES = {
   basin: { label: 'Basin', icon: '🏞️' }, meadow: { label: 'Meadow', icon: '🌼' }, cirque: { label: 'Cirque', icon: '⛰️' },
   forest: { label: 'Forest', icon: '🌲' }, camp: { label: 'Camp Zone', icon: '⛺' }, other: { label: 'Other Area', icon: '🟩' }
 };
-const COLORS = ['#ff6d00', '#d62828', '#8e24aa', '#1e88e5', '#00897b', '#2e7d32', '#6d4c41', '#111111'];
+const COLORS = ['#9333ea', '#ff6d00', '#d62828', '#1e88e5', '#00897b', '#2e7d32', '#6d4c41', '#111111'];
+// V20.9: planned routes default to violet (old routes saved with the old orange default switch too), so they never read as done
+const ROUTE_DEF = '#9333ea', routeColor = r => (!r.color || r.color === '#ff6d00') ? ROUTE_DEF : r.color;
 const DAY_COLORS = ['#9be15d', '#72d6e0', '#7b6cf6', '#f6a76c', '#f06292', '#ffd54f', '#4db6ac'];
 const KIND_INFO = {
   peak: { label: 'Peak', icon: '⛰️' }, pass: { label: 'Pass', icon: '🏔️' }, waterfall: { label: 'Waterfall', icon: '🌊' },
@@ -1164,6 +1166,7 @@ const VERSIONS = [
   { name: 'Teton Atlas V20.6', date: '2026-11-26', notes: ['Trail Data: regions and updates. Add regions (Palisades & Snake River Range, Big Holes, Gros Ventre, Wyoming Range, Wind Rivers, southern Yellowstone, or the map view), check every region for new trails, and see what was added, changed or removed and where.', 'No more green trails: only sections you completed show, in the completed blue; seen or partly walked stays a normal trail.', 'Hikes you drew are blue too; completed lines are thinner.', 'While drawing, Mark a Place Seen or Completed on the day you were there.', 'Mark Been There / Seen It on a place page lets you pick the hike or hikes it was on.'] },
   { name: 'Teton Atlas V20.7', date: '2026-11-26', notes: ['Complete step: tap Trails, Lakes, Passes… to see every item; tap one to see it on the map, × to drop it from the hike.', 'Every place page has Which Hikes: Add or Remove, a multi-select list of your hikes.'] },
   { name: 'Teton Atlas V20.8', date: '2026-11-26', notes: ['Snapping follows roads as well as trails (for hikes that start on a road). Trails win when both go the same way. Turn it off under Follow trails → …and roads. Run Trail Data → Check All Regions once to download the roads.', 'Trails outside your Teton Range outline now draw on the map even with Only Show What\'s Inside on (it showed the trail name but not the line). Lists and stats still keep to the range.'] },
+  { name: 'Teton Atlas V20.9', date: '2026-11-27', notes: ['Planned routes are now violet, thin, dashed and see-through, so they never look like something you finished. Day colors show only while a route is open.', 'Updates: the app checks GitHub for a newer version every time you open or return to it and offers Update Now. Menu → Check for App Update does it by hand, and update.html fixes a browser stuck on an old version.'] },
 ];
 
 // ================= State =================
@@ -3201,8 +3204,9 @@ function addOverlays() {
   map.addLayer({ id: 'trail-planned', type: 'line', source: 'trails', filter: ['all', ['<', ['get', 'cov'], 2], ['==', ['get', 'st'], 'planned']], layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: { 'line-color': stColor('planned'), 'line-width': trailW(1.4, 3.2), 'line-dasharray': [2, 1.2] } });
   map.addLayer({ id: 'trail-done', type: 'line', source: 'trails', filter: ['any', ['==', ['get', 'cov'], 2], ['==', ['get', 'st'], 'been']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: {
     'line-color': '#1e6fe0', 'line-width': trailW(1.6, 3) } });   // V20.6: only sections you completed (75%+ walked, or marked by hand), in the completed blue
-  map.addLayer({ id: 'route-case', type: 'line', source: 'routes', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': ['case', ['get', 'sel'], 7.5, 4.8], 'line-opacity': 0.9 } });
-  map.addLayer({ id: 'route-line', type: 'line', source: 'routes', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': ['case', ['get', 'sel'], 5.5, 3.5], 'line-opacity': ['case', ['get', 'sel'], 1, 0.85] } });
+  // V20.9: routes are plans: thin, dashed and see-through (solid blue means done)
+  map.addLayer({ id: 'route-case', type: 'line', source: 'routes', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': ['case', ['get', 'sel'], 6.5, 3.6], 'line-opacity': ['case', ['get', 'sel'], 0.85, 0.45] } });
+  map.addLayer({ id: 'route-line', type: 'line', source: 'routes', layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': ['case', ['get', 'sel'], 4, 2.2], 'line-opacity': ['case', ['get', 'sel'], 0.95, 0.65], 'line-dasharray': [2.2, 1.6] } });
   map.addLayer({ id: 'track-hit', type: 'line', source: 'tracks', paint: { 'line-width': 14, 'line-opacity': 0 } });
   // Hike status (ts): done = taken and approved, planned = future trip, pending = imported and waiting for approval
   const isDone = ['==', ['get', 'ts'], 'done'];
@@ -3412,7 +3416,8 @@ function updateSources() {
   const routeF = (foc ? [] : data.routes).flatMap(r => {
     const isSel = sel.type === 'route' && sel.id === r.id, days = routeDays(r), mk = (pts, color) => ({ type: 'Feature', properties: { rid: r.id, color, sel: isSel }, geometry: { type: 'LineString', coordinates: pts.map(p => [p[0], p[1]]) } });
     if (isSel) { const l = routeLine(r); if (l.length > 1) ends.push(endPt(l[0], 'start'), endPt(l[l.length - 1], 'end')); }
-    return days.length > 1 ? days.map((d, i) => mk(d, DAY_COLORS[i % DAY_COLORS.length])) : [mk(routeLine(r), r.color || COLORS[0])];
+    // Day colors only while you look at the route; otherwise one quiet color
+    return days.length > 1 && isSel ? days.map((d, i) => mk(d, DAY_COLORS[i % DAY_COLORS.length])) : [mk(routeLine(r), routeColor(r))];
   }).filter(f => f.geometry.coordinates.length > 1);
   map.getSource('trails').setData(fc(trailF));
   map.getSource('lakes').setData(fc(lakeF));
@@ -3748,7 +3753,7 @@ function startEditor(kind, opts) {
   editor = {
     kind, routeId: r ? r.id : null, trackId: opts.trackId || null,
     name: r ? r.name : (kind === 'route' ? 'New route' : kind === 'track' ? 'Hike on ' + fmtDate(today()) : ''),
-    color: r ? r.color : COLORS[data.routes.length % COLORS.length], notes: r ? r.notes || '' : '',
+    color: r ? r.color : ROUTE_DEF, notes: r ? r.notes || '' : '',
     date: today(), snap: data.settings.snap !== false,
     wps: r ? r.wps.map(w => Object.assign({}, w, { c: w.c.slice() })) : [],
     legs: r ? r.legs.map(l => ({ off: l.off, pts: l.pts.map(p => p.slice()) })) : [], markers: [], prof: null, redo: []
@@ -5469,7 +5474,7 @@ function pageExplore() {
 }
 function pageSearch(q) {
   const items = featureItems().filter(i => i.title.toLowerCase().includes(q));
-  for (const r of data.routes) if (r.name.toLowerCase().includes(q)) items.unshift({ title: r.name, icon: '🧭', color: r.color, sub: 'Route · ' + fmtMi((r.stats || {}).len || 0) + ' mi', open: { type: 'route', id: r.id } });
+  for (const r of data.routes) if (r.name.toLowerCase().includes(q)) items.unshift({ title: r.name, icon: '🧭', color: routeColor(r), sub: 'Route · ' + fmtMi((r.stats || {}).len || 0) + ' mi', open: { type: 'route', id: r.id } });
   for (const t of TRACKS()) if (t.name.toLowerCase().includes(q) || (t.trip || '').toLowerCase().includes(q)) items.unshift({ title: t.name, icon: '🥾', sub: 'Hike · ' + fmtDate(t.date), open: { type: 'track', id: t.id } });
   items.sort((a, b) => (a.title.toLowerCase().startsWith(q) ? 0 : 1) - (b.title.toLowerCase().startsWith(q) ? 0 : 1));
   return `<h3 class="sec">Results</h3>${items.slice(0, 80).map(cardHTML).join('') || '<div class="empty">No matches.' + (FEATS.length ? '' : ' Download map data first (menu, top right).') + '</div>'}`;
@@ -5479,7 +5484,7 @@ function pageRoutes() {
   return `<button class="btn primary" style="width:100%;margin:16px 0 6px;padding:13px" data-act="newRoute">＋ Build a new route</button>
     <div class="small muted">Click points on the map. The route follows trails automatically; turn snapping off for off-trail legs.</div>
     <h2 class="sec">My routes <span class="small muted">${list.length}</span></h2>
-    ${list.map(r => { const s = r.stats || {}; return cardHTML({ title: r.name, icon: '🧭', color: r.color, sub: `${fmtMi(s.len || 0)} mi · ${fmtFt(s.gain || 0)} ft gain · ${s.days || 1} day${(s.days || 1) > 1 ? 's' : ''}`, open: { type: 'route', id: r.id } }); }).join('') || '<div class="empty">No routes yet.</div>'}`;
+    ${list.map(r => { const s = r.stats || {}; return cardHTML({ title: r.name, icon: '🧭', color: routeColor(r), sub: `${fmtMi(s.len || 0)} mi · ${fmtFt(s.gain || 0)} ft gain · ${s.days || 1} day${(s.days || 1) > 1 ? 's' : ''}`, open: { type: 'route', id: r.id } }); }).join('') || '<div class="empty">No routes yet.</div>'}`;
 }
 // Activity: your hikes by type. Uploaded (waiting for review) first, then Planned (with a date), Potential (no date) and Completed.
 function hikeCard(t, extraSub) {
@@ -6187,7 +6192,7 @@ function pageRoute(d) {
     ${segs.map((s, i) => { const camp = segs.length > 1 && i < segs.length - 1 ? (r.wps.filter(w => w.brk)[i] || {}).camp : null; return segHTML(segs.length > 1 ? ((r.dayNames || [])[i] || 'Day ' + (i + 1)) : 'Full route', DAY_COLORS[i % DAY_COLORS.length], s) + (segs.length > 1 ? `<div class="row" style="margin:-2px 0 6px 17px"><button class="btn sm" data-act="gpxDay" data-i="${i}">GPX for Day ${i + 1}</button></div>` : '') + (segs.length > 1 && i < segs.length - 1 ? `<div class="camprow"><span>⛺</span><b>Night ${i + 1}</b><span class="small muted">${esc(camp || 'Camp (name it in Edit Route)')}</span></div>` : ''); }).join('')}
     <div class="small muted">Lowest ${fmtFt(c.min)} ft · highest ${fmtFt(c.max)} ft · loss ${fmtFt(c.loss)} ft. Time assumes ${data.settings.pace} mph plus 1 hour per 2,000 ft of climbing (change in Settings).</div>
     <h2 class="sec">Details</h2>
-    <label class="f">Color</label><div class="swatches">${COLORS.map(cl => `<button data-color="${cl}" class="${(r.color || COLORS[0]) === cl ? 'on' : ''}" style="background:${cl}"></button>`).join('')}</div>
+    <label class="f">Color</label><div class="swatches">${COLORS.map(cl => `<button data-color="${cl}" class="${routeColor(r) === cl ? 'on' : ''}" style="background:${cl}"></button>`).join('')}</div>
     <label class="f">Notes</label><textarea id="rNotes" rows="3" placeholder="Permits, water, camps…">${esc(r.notes || '')}</textarea>
     <div class="row"><button class="btn primary" data-act="saveRoute">Save details</button></div>`;
 }
@@ -7527,6 +7532,7 @@ function renderMenu() {
     ${item('importJson', 'restore', 'Restore a Backup')}
     ${syncOn() ? '' : item('save', 'save', 'Save File', dirty ? 'You have unsaved changes' : 'Everything is saved', dirty ? '<span class="mdot"></span>' : '')}
     ${item('trash', 'trash', 'Deleted Items', 'Bring back anything you removed')}
+    ${item('appUpdate', 'data', 'Check for App Update', 'You have ' + APP_VERSION)}
     ${item('changes', 'history', 'Change History', DEVICE.name ? 'Who changed what · this is ' + esc(DEVICE.name) : 'Who changed what, by device')}
     <div class="mh">App</div>
     <div class="segbtn" role="group" aria-label="Appearance">${[['light', '☀︎ Light'], ['dark', '☾ Dark'], ['auto', 'Auto']].map(([k, l]) => `<button data-theme-set="${k}" class="${th === k ? 'on' : ''}">${l}</button>`).join('')}</div>
@@ -7558,6 +7564,7 @@ $('menu').addEventListener('click', e => {
   if (m === 'pdfMap') { leave(); openDetail({ type: 'print' }); }
   if (m === 'savedMaps') { leave(); openDetail({ type: 'print', tab: 'saved' }); }
   if (m === 'changes') { leave(); hxFlush(); openDetail({ type: 'changes' }); }
+  if (m === 'appUpdate') { leave(); checkAppUpdate(true); }
   if (m === 'regions') { leave(); regionsHere().then(() => openDetail({ type: 'regions' })); }
   if (['history', 'settings', 'help', 'offline', 'trash'].includes(m)) { leave(); openDetail({ type: m }); if (m === 'offline') setTimeout(updateOffStatus, 50); }
 });
@@ -8521,7 +8528,42 @@ function initMap() {
 
 // ================= Startup =================
 // Installable app shell (serves the page when offline; map tiles still need a connection)
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => { /* optional */ });
+// V20.9: updates. The service worker is checked for changes on every open and return to the app (never from the HTTP cache),
+// version.json is read fresh to see if GitHub has a newer build, and Update Now clears the old app files and reloads.
+// update.html does the same from a plain page, for a browser that is stuck on an old version.
+let SW_REG = null, UPD_AT = 0, UPD_SHOWN = null;
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  const hadController = !!navigator.serviceWorker.controller; let reloaded = false;
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => { SW_REG = r; r.update().catch(() => {}); }).catch(() => { /* optional */ });
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloaded && !hasUnsaved()) { reloaded = true; location.reload(); } });
+}
+function hasUnsaved() { return !!(editor || hed || areaEd); }
+const verNum = v => (String(v || '').match(/\d+/g) || []).map(Number);
+const verNewer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0; } return false; };
+async function checkAppUpdate(manual) {
+  if (!manual && Date.now() - UPD_AT < 5 * 60e3) return; UPD_AT = Date.now();
+  if (SW_REG) SW_REG.update().catch(() => {});
+  try {
+    const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if (verNewer(j.version, APP_VERSION)) {
+      if (UPD_SHOWN === j.version && !manual) return; UPD_SHOWN = j.version;
+      toast(`Teton Atlas ${esc(j.version)} is ready (you have ${APP_VERSION}).`, 0, { label: 'Update Now', run: hardUpdate });
+    } else if (manual) toast(`You're on the newest version (${APP_VERSION}).`, 4000);
+  } catch (e) { if (manual) toast('Could not reach GitHub to check for updates. Try again when you are online.', 5000); }
+}
+async function hardUpdate() {
+  if (hasUnsaved() && !(await sure('Update now?', { body: 'You are in the middle of drawing or editing. Save first, or the unsaved part is lost.', ok: 'Update Anyway' }))) return;
+  toast('Updating…', 0);
+  try { await hxFlush(); } catch (e) {}
+  try { saveLocal(); } catch (e) {}
+  try { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); } catch (e) {}
+  try { for (const k of await caches.keys()) if (k.startsWith('teton-atlas-shell')) await caches.delete(k); } catch (e) {}
+  location.replace(location.pathname + '?v=' + Date.now());
+}
+setTimeout(() => checkAppUpdate(), 4000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkAppUpdate(); });
+window.addEventListener('focus', () => checkAppUpdate());
 (async function start() {
   try {
     const local = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
