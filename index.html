@@ -863,7 +863,7 @@ a.srow[data-open]:hover{background:var(--hover)}
 <script>
 'use strict';
 // ================= Config =================
-const APP_VERSION = 'V20.12';
+const APP_VERSION = 'V20.13';
 // Rough outline of the Teton Range (Teton Pass to Conant Pass, Jackson Hole side and Teton Valley side). Editable from the Layers panel.
 // Borders you can restyle (Layers -> Borders). Add an entry here to make another outline styleable.
 const BORDERS = [
@@ -1170,6 +1170,7 @@ const VERSIONS = [
   { name: 'Teton Atlas V20.10', date: '2026-11-27', notes: ['Potential trails (on a route, potential trip or saved) are now purple, thinner and see-through; planned trails are violet and thin too, so neither looks completed.', 'Every trail type (Not Yet, Seen, Potential, Planned, Completed) has its own color, thickness and opacity in Layers → Show on Map → Change How They Look.'] },
   { name: 'Teton Atlas V20.11', date: '2026-11-27', notes: ['Smart snapping crosses small gaps in the map data: a trail or fork that stops a few metres short of another trail or a trailhead road (common in OpenStreetMap) is now joined to it, so snapping follows it instead of drawing off-trail. Hidden trail sections stay gaps.'] },
   { name: 'Teton Atlas V20.12', date: '2026-11-27', notes: ['Snapping downloads its own data: click where this device has no trail-and-road data yet (outside your regions, or a region downloaded before roads) and it fetches trails and roads around the click, then re-snaps. No need to run Check All Regions first.'] },
+  { name: 'Teton Atlas V20.13', date: '2026-11-27', notes: ['No more doubled trails: wherever the app has its own trail data, the background map\'s copy of the trails (and their names) is hidden, so each trail is drawn once and can be clicked and snapped to.', 'Trails and roads load automatically wherever you zoom in (Trail Data → Load trails automatically), in small 0.1° areas, so the edges of regions (like the Palisades trailhead) are filled in. These areas are included in update checks.'] },
 ];
 
 // ================= State =================
@@ -1668,7 +1669,12 @@ function regions() {
   return st.regions;
 }
 let REG_HERE = null;   // regions downloaded on this device (IndexedDB 'regionsHere')
-async function regionsHere() { if (!REG_HERE) REG_HERE = new Set((await idbGet('regionsHere')) || (data.osm && data.osm.features && data.osm.features.length ? ['teton'] : [])); return REG_HERE; }
+async function regionsHere() {
+  if (!REG_HERE) REG_HERE = new Set((await idbGet('regionsHere')) || []);
+  // Data downloaded before regions existed is the Teton Range (V20.13: also when the data arrived after the first look)
+  if (!REG_HERE.size && data.osm && data.osm.features && data.osm.features.some(f => f.kind === 'trail' && !f.rg)) REG_HERE.add('teton');
+  return REG_HERE;
+}
 const inBox = (c, r) => c[1] >= r.s && c[1] <= r.n && c[0] >= r.w && c[0] <= r.e;
 const featPts = f => f.coord ? [f.coord] : f.coords ? f.coords : f.polys ? f.polys.flat() : [];
 const featIn = (f, r) => featPts(f).some(c => inBox(c, r));
@@ -1690,7 +1696,7 @@ async function fetchRegions(list, opts) {
   }
   const fresh = buildFeatures([...byId.values()]), freshIds = new Set(fresh.map(f => f.id));
   const old = new Map(((data.osm && data.osm.features) || []).map(f => [f.id, f]));
-  const rep = { at: Date.now(), regions: list.map(r => r.name), byRegion: {}, added: [], changed: 0, gone: 0, goneKept: 0, first: !!opts.first };
+  const rep = { at: Date.now(), regions: [...new Set(list.map(r => r.name))], byRegion: {}, added: [], changed: 0, gone: 0, goneKept: 0, first: !!opts.first };
   const regOf = f => (list.find(r => byReg.get(r.id).has(f.id)) || list[0]);
   for (const f of fresh) {
     const o = old.get(f.id), r = regOf(f);
@@ -1714,7 +1720,9 @@ async function fetchRegions(list, opts) {
   hxFlush(); HX.tag = { label: 'Map data update (hikes re-checked against the new trails)' };
   for (const t of data.tracks) if (!t.planned && t.approved !== false) matchTrack(t);
   await idbPut('osm', data.osm);
-  const here = await regionsHere(); for (const r of list) { here.add(r.id); r.at = Date.now(); r.roads = true; const reg = regions().find(x => x.id === r.id); if (reg) { reg.at = r.at; reg.roads = true; } else regions().push(r); }
+  const here = await regionsHere(); for (const r of list) { if (r.auto) { const b = (SNAPBOX || []).find(x => x.k === r.k); if (b) b.at = Date.now(); continue; } here.add(r.id); r.at = Date.now(); r.roads = true; const reg = regions().find(x => x.id === r.id); if (reg) { reg.at = r.at; reg.roads = true; } else regions().push(r); }
+  if (SNAPBOX) await idbPut('snapBoxes', SNAPBOX);
+  applyCoverage();
   await idbPut('regionsHere', [...here]);
   rep.mi = rep.added.filter(a => a.kind === 'trail').reduce((a, x) => a + x.len, 0) / 1609.34;
   if (opts.check || !opts.first) { data.settings.trailCheck = { at: rep.at, regions: rep.regions, trails: rep.added.filter(a => a.kind === 'trail').length, mi: +rep.mi.toFixed(1), other: rep.added.filter(a => a.kind !== 'trail').length, changed: rep.changed, gone: rep.gone }; }
@@ -1736,6 +1744,9 @@ async function addRegion(r) {
 }
 async function checkTrailUpdates() {
   const here = await regionsHere(), list = regions().filter(r => here.has(r.id));
+  if (!SNAPBOX) SNAPBOX = (await idbGet('snapBoxes')) || [];
+  // V20.13: tiles loaded while looking around or snapping are checked too (those not already inside a region)
+  for (const b of SNAPBOX) if (b.k && !list.some(r => boxIn(b, r))) list.push({ id: 'auto:' + b.k, k: b.k, auto: true, name: 'Areas you viewed', s: b.s, w: b.w, n: b.n, e: b.e });
   if (!list.length) return toast('No trail data on this device yet. Download a region first.', 5000);
   try {
     const rep = await fetchRegions(list, { check: true });
@@ -1768,6 +1779,8 @@ function pageRegions() {
     <div class="notice info">${ck ? `Last check ${when(ck.at)}: ${ck.trails} new trail${ck.trails === 1 ? '' : 's'} (${ck.mi} mi), ${ck.other} new places, ${ck.changed} changed, ${ck.gone} removed.` : 'Not checked for updates yet.'} <a href="#" data-act="trailReport">See the details</a></div>
     ${FEATS.length && !ROADS.length ? '<div class="notice warn">Snapping can follow roads now (for hikes that start on a road). Tap <b>Check All Regions</b> once to download the roads in your regions.</div>' : ''}
     <button class="btn primary big" data-act="trailCheck">🔄 Check All Regions for Trail Updates</button>
+    <label class="toggle" style="margin:10px 0 2px"><input type="checkbox" id="autoTrails" ${data.settings.autoTrails !== false ? 'checked' : ''}> Load trails automatically wherever I zoom in</label>
+    <div class="small muted" style="margin-bottom:8px">Fetches trails and roads for the area on screen (zoomed in past about 1:50,000), so they can be clicked and snapped to anywhere. ${(SNAPBOX || []).length ? `${SNAPBOX.length} area${SNAPBOX.length === 1 ? '' : 's'} loaded this way on this device; they are checked with your regions.` : ''}</div>
     <label class="f">Remind me to check</label><select id="trailEvery">${[[0, 'Never'], [30, 'Every month'], [90, 'Every 3 months'], [180, 'Every 6 months']].map(([v, l]) => `<option value="${v}" ${(data.settings.trailEvery ?? 30) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
     <h2 class="sec">Your Regions <span class="small muted">${list.length}</span></h2>
     ${list.map(r => `<div class="visit"><span>🗺️</span><div class="tx"><b>${esc(r.name)}</b><div class="small muted">${here.has(r.id) ? `${cnt(r).toLocaleString()} trails · downloaded ${when(r.at)}` : 'Not downloaded on this device'}</div></div>
@@ -1926,9 +1939,14 @@ function buildGraph() {
     if (f.src) { noJoin.add(f.coords[0][0] + ',' + f.coords[0][1]); const l = f.coords[f.coords.length - 1]; noJoin.add(l[0] + ',' + l[1]); }
     let prev = node(f.coords[0]);
     for (let i = 1; i < f.coords.length; i++) {
-      const cur = node(f.coords[i]);
-      if (cur !== prev) { const w = dist(lat[prev], lon[prev], lat[cur], lon[cur]) * k; adj[prev].push(cur, w); adj[cur].push(prev, w); }
-      prev = cur;
+      const c0 = f.coords[i - 1], c1 = f.coords[i], d = dist(c0[1], c0[0], c1[1], c1[0]);
+      // V20.13: long straight stretches (roads especially) get a point every ~60 m, so a click anywhere along them finds the line
+      const steps = Math.ceil(d / 60);
+      for (let j = 1; j <= steps; j++) {
+        const cur = j === steps ? node(c1) : node([+(c0[0] + (c1[0] - c0[0]) * j / steps).toFixed(6), +(c0[1] + (c1[1] - c0[1]) * j / steps).toFixed(6)]);
+        if (cur !== prev) { const w = dist(lat[prev], lon[prev], lat[cur], lon[cur]) * k; adj[prev].push(cur, w); adj[cur].push(prev, w); }
+        prev = cur;
+      }
     }
   };
   for (const f of FEATS) if (f.kind === 'trail') add(f, 1);
@@ -3858,35 +3876,111 @@ function snapPoint(c) {
   const n = nearestNode(c[0], c[1], 120);
   return n >= 0 ? [GRAPH.lon[n], GRAPH.lat[n]] : c;
 }
-// V20.12: snapping gets its own map data. When you click where this device has no trail-and-road data yet (an area
-// outside your regions, or a region downloaded before roads came in), it downloads trails and roads around the click
-// (about 2 × 2.5 km), then re-snaps the legs there. Boxes already fetched are remembered (IndexedDB 'snapBoxes').
-let SNAPBOX = null, SNAP_BUSY = null;
-const snapCovered = p => (REG_HERE && regions().some(r => r.roads && REG_HERE.has(r.id) && inBox(p, r))) || (SNAPBOX || []).some(b => inBox(p, b));
+// V20.13: one source of trails everywhere. The map is split into 0.1° × 0.1° tiles (about 8 × 11 km). A tile is "loaded"
+// when this device has fetched its trails and roads (IndexedDB 'snapBoxes', entries { k, s, w, n, e }) or it lies wholly
+// inside a region downloaded here with roads. Tiles load (1) for snapping, around the points you click, and (2) as you look
+// around zoomed in (settings.autoTrails, default on). Inside loaded tiles and regions the base map's own trail lines and
+// names are hidden, so each trail is drawn once, by the app, and can be clicked and snapped to.
+let SNAPBOX = null, SNAP_BUSY = null, TILE_FAIL = {};
+const TILE = 0.1, tKey = p => Math.floor(p[1] / TILE + 1e-9) + ',' + Math.floor(p[0] / TILE + 1e-9);
+const tBox = k => { const [a, b] = k.split(',').map(Number); return { k, s: +(a * TILE).toFixed(4), n: +((a + 1) * TILE).toFixed(4), w: +(b * TILE).toFixed(4), e: +((b + 1) * TILE).toFixed(4) }; };
+const boxIn = (t, r) => t.s >= r.s - 1e-6 && t.n <= r.n + 1e-6 && t.w >= r.w - 1e-6 && t.e <= r.e + 1e-6;
+function tileLoaded(k) {
+  const t = tBox(k);
+  if ((SNAPBOX || []).some(b => b.k === k || boxIn(t, b))) return true;
+  return !!REG_HERE && regions().some(r => r.roads && REG_HERE.has(r.id) && boxIn(t, r));
+}
+// The tiles a point needs: its own, plus a neighbour when it is within ~400 m of that edge (trails cross tile edges)
+function tilesFor(p) {
+  const out = new Set([tKey(p)]), m = 0.004;
+  for (const dy of [-m, 0, m]) for (const dx of [-m * 1.4, 0, m * 1.4]) out.add(tKey([p[0] + dx, p[1] + dy]));
+  return [...out];
+}
+const snapCovered = p => tilesFor(p).every(tileLoaded);
+async function loadTiles(keys, opts) {
+  opts = opts || {};
+  if (!SNAPBOX) SNAPBOX = (await idbGet('snapBoxes')) || [];
+  await regionsHere();
+  keys = [...new Set(keys)].filter(k => !tileLoaded(k) && !(TILE_FAIL[k] > Date.now()));
+  if (!keys.length || !navigator.onLine) return { trails: 0, roads: 0, tiles: 0 };
+  const have = new Map(((data.osm && data.osm.features) || []).map(f => [f.id, f]));
+  let nt = 0, nr = 0, done = 0;
+  for (const k of keys) {
+    const b = tBox(k);
+    if (!opts.quiet) toast(`${opts.msg || 'Loading trails and roads here…'}${keys.length > 1 ? ` ${done + 1} of ${keys.length}` : ''}`, 0);
+    let json;
+    try { json = await overpass(overpassQuery(b.s, b.w, b.n, b.e)); } catch (e) { TILE_FAIL[k] = Date.now() + 10 * 60e3; if (opts.throwErr) throw e; continue; }
+    for (const f of buildFeatures(json.elements)) {
+      const o = have.get(f.id);
+      if (!o) { if (f.kind === 'trail') { f.rg = 'auto'; nt++; } else if (f.kind === 'road') nr++; else f.rg = 'auto'; have.set(f.id, f); }
+    }
+    SNAPBOX.push({ k, s: b.s, w: b.w, n: b.n, e: b.e, at: Date.now() }); done++;
+  }
+  if (!done) return { trails: 0, roads: 0, tiles: 0 };
+  data.osm = { fetchedAt: (data.osm && data.osm.fetchedAt) || Date.now(), features: [...have.values()] };
+  await idbPut('snapBoxes', SNAPBOX); await idbPut('osm', data.osm);
+  indexFeatures(); updateSources(); applyCoverage();
+  for (const t of data.tracks) if (!t.planned && t.approved !== false) matchTrack(t);
+  return { trails: nt, roads: nr, tiles: done };
+}
 async function ensureSnapData(pts) {
   if (!SNAPBOX) SNAPBOX = (await idbGet('snapBoxes')) || [];
   await regionsHere();
-  const need = pts.filter(p => !snapCovered(p));
-  if (!need.length || !navigator.onLine) return false;
-  const pad = 0.012, padX = 0.016;
-  const box = { s: Math.min(...need.map(p => p[1])) - pad, n: Math.max(...need.map(p => p[1])) + pad, w: Math.min(...need.map(p => p[0])) - padX, e: Math.max(...need.map(p => p[0])) + padX };
-  if ((box.n - box.s) * (box.e - box.w) > 0.06) return false;   // a very long straight leg: leave it (download the region instead)
-  toast('Getting trails and roads here for snapping…', 0);
-  const json = await overpass(overpassQuery(box.s, box.w, box.n, box.e));
-  const fresh = buildFeatures(json.elements), have = new Map(((data.osm && data.osm.features) || []).map(f => [f.id, f]));
-  let nt = 0, nr = 0;
-  for (const f of fresh) if (!have.has(f.id)) { if (f.kind === 'trail') { f.rg = f.rg || 'snap'; nt++; } if (f.kind === 'road') nr++; have.set(f.id, f); }
-  data.osm = { fetchedAt: (data.osm && data.osm.fetchedAt) || Date.now(), features: [...have.values()] };
-  SNAPBOX.push({ s: +box.s.toFixed(4), w: +box.w.toFixed(4), n: +box.n.toFixed(4), e: +box.e.toFixed(4), at: Date.now() });
-  await idbPut('snapBoxes', SNAPBOX); await idbPut('osm', data.osm);
-  indexFeatures(); updateSources();
-  toast(nt || nr ? `Added ${nr} road${nr === 1 ? '' : 's'} and ${nt} trail${nt === 1 ? '' : 's'} here. Snapping again…` : 'No mapped trails or roads here.', 3000);
-  return nt + nr > 0;
+  const keys = new Set();
+  for (const p of pts) tilesFor(p).forEach(k => keys.add(k));
+  // tiles along the straight line between the points (the route may run through them)
+  for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i], n = Math.ceil(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])) / 0.03); for (let j = 1; j < n; j++) keys.add(tKey([a[0] + (b[0] - a[0]) * j / n, a[1] + (b[1] - a[1]) * j / n])); }
+  const need = [...keys].filter(k => !tileLoaded(k));
+  if (!need.length) return false;
+  if (need.length > 8) return false;   // a very long straight leg: download the region instead
+  const r = await loadTiles(need, { msg: 'Getting trails and roads here for snapping…', throwErr: true });
+  if (r.tiles) toast(r.trails || r.roads ? `Added ${r.roads} road${r.roads === 1 ? '' : 's'} and ${r.trails} trail${r.trails === 1 ? '' : 's'} here. Snapping again…` : 'No new trails or roads here.', 3000);
+  return r.tiles > 0;
+}
+// Load the tiles in view when you are zoomed in (a few at a time, one request after another)
+let AUTO_T = null, AUTO_BUSY = false;
+function autoLoadView() {
+  clearTimeout(AUTO_T);
+  AUTO_T = setTimeout(async () => {
+    if (AUTO_BUSY || data.settings.autoTrails === false || !mapReady || map.getZoom() < 12.5 || !navigator.onLine || !FEATS.length) return;
+    if (!SNAPBOX) SNAPBOX = (await idbGet('snapBoxes')) || [];
+    await regionsHere();
+    const b = map.getBounds(), keys = [];
+    for (let y = Math.floor(b.getSouth() / TILE); y <= Math.floor(b.getNorth() / TILE); y++) for (let x = Math.floor(b.getWest() / TILE); x <= Math.floor(b.getEast() / TILE); x++) keys.push(y + ',' + x);
+    const need = keys.filter(k => !tileLoaded(k) && !(TILE_FAIL[k] > Date.now()));
+    if (!need.length || need.length > 9) return;
+    AUTO_BUSY = true;
+    try {
+      const r = await loadTiles(need, { msg: 'Loading trails here…' });
+      if (r.tiles) toast(r.trails ? `Loaded ${r.trails} trail${r.trails === 1 ? '' : 's'} in this area.` : 'Loaded this area (no new trails).', 2500);
+      if (editor) { editor.legs.forEach((l, k) => { if (l && l.off && editor.wps[k + 1] && editor.wps[k + 1].snap) computeLeg(k, true); }); redrawEditor(); }
+    } finally { AUTO_BUSY = false; }
+  }, 1200);
+}
+// The areas where the app draws trails itself: hide the base map's trail lines and trail names there
+function coverRects() {
+  const rs = (SNAPBOX || []).map(b => [b.w, b.s, b.e, b.n]);
+  if (REG_HERE) for (const r of regions()) if (REG_HERE.has(r.id)) rs.push([r.w, r.s, r.e, r.n]);
+  else if (FEATS.length && r.id === 'teton') rs.push([r.w, r.s, r.e, r.n]);
+  if (!REG_HERE && FEATS.length) rs.push([BBOX.w, BBOX.s, BBOX.e, BBOX.n]);
+  return rs;
+}
+function coverFilter() {
+  const rs = coverRects();
+  if (!rs.length) return true;
+  return ['!', ['within', { type: 'MultiPolygon', coordinates: rs.map(([w, s, e, n]) => [[[w, s], [e, s], [e, n], [w, n], [w, s]]]) }]];
+}
+function applyCoverage() {
+  if (!map || !map.getStyle()) return;
+  const out = coverFilter(), cls = (...c) => ['match', ['get', 'class'], c, true, false];
+  const set = (id, f) => { if (map.getLayer(id)) try { map.setFilter(id, f); } catch (e) { console.warn('cover', id, e); } };
+  set('o-path-case', ['all', cls('path'), out]); set('o-path', ['all', cls('path'), out]); set('o-road-track', ['all', cls('track'), out]);
+  set('o-road-name', ['any', ['!', cls('path', 'track')], out]);
 }
 function snapFetchLeg(i) {
   const e = editor; if (!e || !e.wps[i + 1] || !e.wps[i + 1].snap) return;
   const a = e.wps[i].c, b = e.wps[i + 1].c;
-  if (snapCovered(a) && snapCovered(b) && SNAPBOX) return;
+  if (SNAPBOX && REG_HERE && snapCovered(a) && snapCovered(b)) return;
   const run = () => ensureSnapData([a, b]).then(got => {
     if (editor !== e) return;
     if (!got) { if (e.legs[i] && e.legs[i].off && snapCovered(a) && snapCovered(b)) toast('No trail or road connection here, so this leg is drawn off-trail.', 2500); return; }
@@ -7483,6 +7577,7 @@ $('side').addEventListener('change', e => {
   if (id === 'exPhoto') { view.explore.photo = e.target.checked; renderSide(); }
   if (id === 'gpsOp') { data.settings.gpsOp = +e.target.value; touch({ noRender: true }); }
   if (id === 'edRoads') { data.settings.snapRoads = e.target.checked; buildGraph(); touch({ noRender: true }); toast(e.target.checked ? 'Snapping follows trails and roads.' : 'Snapping follows trails only.'); }
+  if (id === 'autoTrails') { data.settings.autoTrails = e.target.checked; touch({ noRender: true }); if (e.target.checked) autoLoadView(); toast(e.target.checked ? 'Trails load automatically where you zoom in.' : 'Trails load only from your regions (and when snapping).'); }
   if (id === 'trailEvery') { data.settings.trailEvery = +e.target.value; touch({ noRender: true }); toast(+e.target.value ? 'Saved. You will get a reminder when trail data is due for a check.' : 'No reminders.'); }
   if (id === 'edSnap') { editor.snap = e.target.checked; data.settings.snap = editor.snap; touch({ noRender: true }); renderToolbar(); const rk = $('edRoads'); if (rk) rk.disabled = !editor.snap; }
   if (id === 'edName' && editor) editor.name = e.target.value;
@@ -8559,8 +8654,10 @@ function initMap() {
     setTimeout(() => { trailReminder().catch(() => {}); }, 8000);   // V20.6
     try { if (data.settings.terrain) set3D(true); } catch (e) { console.warn(e); }
     try { updateSources(); } catch (e) { console.error(e); }
+    (async () => { SNAPBOX = SNAPBOX || (await idbGet('snapBoxes')) || []; await regionsHere(); applyCoverage(); autoLoadView(); })().catch(e => console.warn('coverage', e));   // V20.13
   };
   map.on('style.load', startOverlays);
+  map.on('moveend', () => { if (mapReady) autoLoadView(); });
   const closeAttrib = () => { const c = document.querySelector('.maplibregl-ctrl-attrib'); if (c) { c.classList.remove('maplibregl-compact-show'); c.removeAttribute('open'); } };
   setTimeout(closeAttrib, 300); setTimeout(closeAttrib, 1500);
   map.on('load', () => {
